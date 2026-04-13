@@ -680,15 +680,29 @@
       <!-- ===== ตั้งค่าเริ่มต้น staffOS ===== -->
       <div class="card" style="margin-top:0">
         <div class="section-header">
-          <div class="section-icon cyan">🗂️</div>
-          <span class="section-title-text">ตั้งค่าเริ่มต้น (staffOS Sheet)</span>
+          <div class="section-icon cyan">📍</div>
+          <span class="section-title-text">พื้นที่ GPS หลายตำแหน่ง</span>
         </div>
-        <p class="note" style="margin-bottom:14px">กดปุ่มนี้เมื่อ Deploy GAS ใหม่ครั้งแรก เพื่อสร้าง sheet "staffOS" และ
-          admin เริ่มต้น (รหัส 2569)</p>
-        <button class="btn" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#34d399"
-          type="button" onclick="runInitSetup()">⚙️ สร้าง staffOS Sheet</button>
-        <div id="initMsg" style="margin-top:10px;min-height:20px;font-size:0.88em;font-weight:600;text-align:center">
+        <div id="locations" class="locations"></div>
+        <div class="location-toolbar">
+          <button class="btn btn-add" type="button" onclick="addLocation()">+ เพิ่มตำแหน่ง</button>
+          <button class="btn btn-preview" type="button" onclick="loadFromServer()">โหลดจากเซิร์ฟเวอร์</button>
         </div>
+        <p class="note">แต่ละตำแหน่งรองรับชื่อหน่วยบริการ พิกัด Latitude/Longitude และรัศมีที่อนุญาตแยกกันได้</p>
+      </div>
+
+      <div class="card" style="margin-top:0">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(239,68,68,0.15);color:#fca5a5">🛟</div>
+          <span class="section-title-text">สิทธิ์แผนสำรองกรณี GPS ใช้งานไม่ได้</span>
+        </div>
+        <label>เปิดใช้งานแผนสำรอง</label>
+        <input type="text" id="fallbackEnabled" placeholder="true / false" value="false">
+        <p class="note">ค่าเริ่มต้นแนะนำคือ <code>false</code> เพื่อให้ระบบยึด GPS เป็นหลัก และให้แอดมินเป็นผู้เปิดใช้เฉพาะกรณีจำเป็น</p>
+
+        <label>ข้อความปุ่มติดต่อผู้ดูแล</label>
+        <input type="text" id="fallbackContactText" placeholder="กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง">
+        <p class="note">ข้อความนี้จะแสดงในหน้า scan เมื่อ GPS ใช้งานไม่ได้และยังไม่เปิดสิทธิ์แผนสำรอง</p>
       </div>
 
       <a href="index.html" class="btn-back">← กลับเมนูหลัก</a>
@@ -879,6 +893,10 @@
             sdBox.innerHTML = '';
             (wt.specialDates || []).forEach(sd => addSpecialDate(sd));
           }
+
+          const fallback = config.fallbackSettings || {};
+          document.getElementById('fallbackEnabled').value = fallback.enabled === true ? 'true' : 'false';
+          document.getElementById('fallbackContactText').value = fallback.contactText || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง';
           showMsg('✅ โหลดข้อมูลจากเซิร์ฟเวอร์แล้ว', MSG_SUCCESS);
         })
         .catch(err => showMsg('❌ โหลดข้อมูลไม่สำเร็จ: ' + err.message, MSG_ERROR));
@@ -925,13 +943,17 @@
         endTime:       document.getElementById('workEndTime').value        || '16:30',
         specialDates:  collectSpecialDates()
       };
+      const fallbackSettings = {
+        enabled: String(document.getElementById('fallbackEnabled').value || 'false').toLowerCase() === 'true',
+        contactText: document.getElementById('fallbackContactText').value.trim() || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
+      };
       if (!apiUrl) return showMsg('❌ กรุณากรอก API URL', MSG_ERROR);
       if (locations.length === 0) return showMsg('❌ กรุณาเพิ่มอย่างน้อย 1 ตำแหน่ง', MSG_ERROR);
       localStorage.setItem('gasApiUrl', apiUrl);
       showMsg('⏳ กำลังบันทึก...', '');
       fetch(apiUrl, {
         method: 'POST',
-        body: JSON.stringify({ action: 'saveConfig', apiUrl, locations, workTimes, updatedBy: 'admin' })
+        body: JSON.stringify({ action: 'saveConfig', apiUrl, locations, workTimes, fallbackSettings, updatedBy: 'admin' })
       })
         .then(r => r.json())
         .then(data => showMsg('✅ ' + (data.message || 'บันทึกสำเร็จ'), MSG_SUCCESS))
@@ -1003,8 +1025,13 @@
 
     // --------- Init ---------
     requireAuth();          // redirect ถ้าไม่มี session
-    if (getApiUrl()) loadFromServer();
-    else addLocation({ name: '', lat: '', lng: '', radius: 100, enabled: true });
+    if (getApiUrl()) {
+      loadFromServer();
+    } else {
+      addLocation({ name: '', lat: '', lng: '', radius: 100, enabled: true });
+      document.getElementById('fallbackEnabled').value = 'false';
+      document.getElementById('fallbackContactText').value = 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง';
+    }
   </script>
 </body>
 

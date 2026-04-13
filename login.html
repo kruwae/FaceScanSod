@@ -201,17 +201,17 @@
 
   <script>
     // ============================================================
-    //  Admin Login — Central page (same pattern as register.html)
-    //  SESSION_KEY เดียวกันสำหรับทุกหน้า Admin
+    //  Admin Login — Central page
+    //  SECURITY: ไม่มี hardcoded fallback — ตรวจผ่าน GAS API เท่านั้น
     // ============================================================
     const SESSION_KEY = 'adminAuth';
-    const LOCAL_FALLBACK_CODE = '2569';
+    // [REMOVED] LOCAL_FALLBACK_CODE — ลบออกเพื่อความปลอดภัย
 
-    const btnLogin = document.getElementById('btnLogin');
+    const btnLogin  = document.getElementById('btnLogin');
     const destBadge = document.getElementById('destBadge');
 
     // ---- อ่าน ?to=... จาก URL เพื่อรู้ว่าจะ redirect ไปหน้าไหน ----
-    const params = new URLSearchParams(window.location.search);
+    const params   = new URLSearchParams(window.location.search);
     const destPage = params.get('to') || 'config.html';
 
     // แสดงปลายทาง
@@ -228,9 +228,7 @@
     }
 
     // ถ้า login อยู่แล้ว → ไปเลย
-    if (isAuthed()) {
-      window.location.replace(destPage);
-    }
+    if (isAuthed()) { window.location.replace(destPage); }
 
     // ---- API URL ----
     function getApiUrl() {
@@ -238,30 +236,30 @@
               (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
     }
 
-    // ---- ตรวจรหัส ----
+    // ---- ตรวจรหัส (GAS API เท่านั้น — ไม่มี local bypass) ----
     async function verifyCode(code) {
       const trimmed = code.trim();
+      const apiUrl  = getApiUrl();
 
-      // local check ก่อนเสมอ (ทำงานแม้ offline)
-      if (trimmed === LOCAL_FALLBACK_CODE) return { ok: true };
-
-      // ลอง server (กรณีเปลี่ยนรหัสผ่าน GAS แล้ว)
-      const apiUrl = getApiUrl();
-      if (!apiUrl) return { ok: false };
+      if (!apiUrl) {
+        return { ok: false, error: 'ยังไม่ได้ตั้งค่า API URL — ไปตั้งค่าที่ config.html ก่อน' };
+      }
 
       try {
-        const ctrl = new AbortController();
+        const ctrl  = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 5000);
-        const res = await fetch(apiUrl, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'verifyAdmin', code: trimmed }),
-          signal: ctrl.signal
+        const res   = await fetch(apiUrl, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ action: 'verifyAdmin', code: trimmed }),
+          signal:  ctrl.signal
         });
         clearTimeout(timer);
         const data = await res.json();
         return data.success === true ? { ok: true } : { ok: false, error: data.error };
-      } catch (_) {
-        return { ok: false };
+      } catch (e) {
+        // ถ้า offline → แจ้ง ไม่ bypass
+        return { ok: false, error: 'ไม่สามารถเชื่อมต่อ Server ได้ — กรุณาตรวจสอบสัญญาณ Internet' };
       }
     }
 

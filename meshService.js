@@ -54,21 +54,26 @@ const MeshService = (function () {
    */
   function sendMeshData(data) {
     console.log('[Mesh] Sending locally...');
-    const queue = _getQueue();
+
+    // ADD: device fingerprint for post-hoc audit (ยากต่อการปลอมแปลง)
+    const fingerprint = [
+      navigator.userAgent,
+      screen.width + 'x' + screen.height,
+      navigator.language,
+      new Date().getTimezoneOffset()
+    ].join('|');
+
+    const queue  = _getQueue();
     const record = {
-      id:        Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-      timestamp: new Date().toISOString(),
-      synced:    false,
-      data:      data
+      id:                Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      clientTimestamp:   new Date().toISOString(),   // เวลาบนอุปกรณ์
+      deviceFingerprint: fingerprint,                // audit trail
+      synced:            false,
+      data:              data
     };
     queue.push(record);
     localStorage.setItem(STORAGE_KEY_QUEUE, JSON.stringify(queue));
     console.log('[Mesh] Stored locally. Queue size:', queue.length);
-
-    // Prepare structure for future transport protocols:
-    // TODO: Bluetooth LE broadcast (navigator.bluetooth)
-    // TODO: WebRTC DataChannel peer-to-peer
-    // TODO: WebSocket relay when connectivity returns
     return { success: true, id: record.id, message: 'บันทึกในเครื่องสำเร็จ (จะ sync เมื่อมีสัญญาณ)' };
   }
 
@@ -100,8 +105,15 @@ const MeshService = (function () {
     for (const record of queue) {
       try {
         const res = await fetch(apiUrl, {
-          method: 'POST',
-          body: JSON.stringify({ ...record.data, meshSynced: true, meshId: record.id })
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            ...record.data,
+            meshSynced:        true,
+            meshId:            record.id,
+            meshClientTime:    record.clientTimestamp,
+            meshFingerprint:   record.deviceFingerprint || ''
+          })
         });
         const d = await res.json();
         if (d.success !== false) {
@@ -141,8 +153,39 @@ const MeshService = (function () {
    * showBanner — display offline mode warning banner
    */
   function showBanner() {
-    const existing = document.getElementById(BANNER_ID);
-    if (existing) { existing.style.display = 'block'; return; }
+    let banner = document.getElementById(BANNER_ID);
+    if (banner) {
+      banner.style.display = 'block';
+      return;
+    }
+    // สร้าง banner DOM ใหม่ถ้ายังไม่มี (กรณีเรียกก่อน injectToggleButton)
+    banner = document.createElement('div');
+    banner.id = BANNER_ID;
+    banner.style.cssText = [
+      'display:block',
+      'width:100%',
+      'background:rgba(245,158,11,0.12)',
+      'border:1px solid rgba(245,158,11,0.35)',
+      'border-radius:12px',
+      'padding:12px 16px',
+      'margin-bottom:10px',
+      'font-size:0.84em',
+      'color:#fcd34d',
+      'text-align:center',
+      'font-weight:600',
+      'line-height:1.5',
+      'position:relative',
+      'z-index:10'
+    ].join(';');
+    banner.innerHTML = '📡 โหมดออฟไลน์ถูกเปิดใช้งาน<br>' +
+      '<span style="font-weight:400;color:#fbbf24">เหมาะสำหรับกรณีฉุกเฉิน เช่น น้ำท่วม หรือไม่มีสัญญาณอินเทอร์เน็ต</span>';
+    // แทรกที่ต้นของ body ถ้าไม่มี container
+    const root = document.getElementById('statusAreaRoot') || document.body.firstChild;
+    if (root && root.parentNode) {
+      root.parentNode.insertBefore(banner, root);
+    } else {
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
   }
 
   // ===== UI Components =====

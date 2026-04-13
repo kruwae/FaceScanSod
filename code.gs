@@ -49,7 +49,7 @@ function doPost(e) {
   } else if (action === 'logAttendance') {
     result = logAttendance(data.name, data.lat, data.lng, data.matchScore, data.distance, data.device, data.locationName);
   } else if (action === 'saveConfig') {
-    result = saveConfig(data.apiUrl, data.locations, data.updatedBy);
+    result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy);
   } else if (action === 'verifyAdmin') {
     result = verifyAdmin(data.code);
   } else if (action === 'changeAdminCode') {
@@ -353,7 +353,7 @@ function logAttendance(name, lat, lng, matchScore, distance, device, locationNam
 // ============================================================
 //  Config — Save / Load
 // ============================================================
-function saveConfig(apiUrl, locations, updatedBy) {
+function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('Config');
   const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled'];
@@ -379,6 +379,8 @@ function saveConfig(apiUrl, locations, updatedBy) {
 
   PropertiesService.getScriptProperties().setProperty('API_URL', apiUrl || '');
   PropertiesService.getScriptProperties().setProperty('CONFIG_UPDATED_BY', updatedBy || '');
+  PropertiesService.getScriptProperties().setProperty('WORK_TIMES', JSON.stringify(workTimes || {}));
+  PropertiesService.getScriptProperties().setProperty('FALLBACK_SETTINGS', JSON.stringify(fallbackSettings || {}));
 
   return { success: true, message: 'บันทึกการตั้งค่าลง Google Sheets เรียบร้อย' };
 }
@@ -404,8 +406,28 @@ function getConfig() {
     }
   }
 
+  let workTimes = {};
+  let fallbackSettings = {};
+
+  try {
+    workTimes = JSON.parse(PropertiesService.getScriptProperties().getProperty('WORK_TIMES') || '{}');
+  } catch (e) {
+    workTimes = {};
+  }
+
+  try {
+    fallbackSettings = JSON.parse(PropertiesService.getScriptProperties().getProperty('FALLBACK_SETTINGS') || '{}');
+  } catch (e) {
+    fallbackSettings = {};
+  }
+
   return {
     apiUrl: PropertiesService.getScriptProperties().getProperty('API_URL') || '',
-    locations: locations
+    locations: locations,
+    workTimes: workTimes,
+    fallbackSettings: {
+      enabled: fallbackSettings.enabled === true,
+      contactText: fallbackSettings.contactText || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
+    }
   };
 }

@@ -388,7 +388,7 @@
   </div>
 
   <div id="gps-alert-box" class="gps-alert">
-    ⚠️ คุณอยู่นอกพื้นที่ที่กำหนดทุกสาขา!&lt;br&gt;กรุณาเข้าใกล้จุดเช็คอินแล้วรีเฟรชหน้าจอ
+    ⚠️ คุณอยู่นอกพื้นที่ที่กำหนดทุกสาขา!<br>กรุณาเข้าใกล้จุดเช็คอินแล้วรีเฟรชหน้าจอ
   </div>
 
   <!-- GPS Permission Check Banner -->
@@ -402,10 +402,13 @@
     <div class="gps-guide-platform" id="gpsGuidePlatform"></div>
     <div id="gpsGuideSteps"></div>
     <div class="gps-fallback-title">🔄 แผนสำรอง</div>
-    <div class="gps-fallback-row">
+    <div class="gps-fallback-row" id="fallbackActionRow" style="display:none">
       <button class="btn-gps-fallback btn-wifi" id="btnWifiFallback">📦 ใช้ WiFi Network</button>
       <button class="btn-gps-fallback btn-ip" id="btnIpFallback">📡 ใช้ IP Location (ประมาณระดับเมือง)</button>
       <button class="btn-gps-fallback btn-skip-mild" id="btnSkipFallback">⚠️ ข้ามตรวจสอบ (มีเหตุผล)</button>
+    </div>
+    <div class="gps-fallback-row" id="fallbackContactRow" style="display:flex">
+      <button class="btn-gps-fallback btn-skip-mild" id="btnContactAdmin">📞 ติดต่อ admin เพื่อเปิดใช้แผนสำรอง</button>
     </div>
   </div>
 
@@ -490,6 +493,10 @@
   let currentLng       = null;
   let currentLocation  = null;   // { id, name, lat, lng, radius }
   let allLocations     = [];     // locations[] from server config
+  let fallbackSettings = {
+    enabled: false,
+    contactText: 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
+  };
 
   // ===== SAFE helper: returns false if MeshService not loaded =====
   function meshEnabled() {
@@ -540,6 +547,7 @@
     bindIpButton();
     bindSkipButton();
     bindWifiButton();
+    bindContactAdminButton();
 
     // ===== ตรวจ Mesh Mode ก่อน (ADD: Mesh Module integration) =====
     if (typeof MeshService !== 'undefined' && MeshService.isEnabled()) {
@@ -686,6 +694,25 @@
   }
 
   function hideGpsGuide() { if (gpsGuide) gpsGuide.style.display = 'none'; }
+
+  function applyFallbackPolicy() {
+    const allowFallback = fallbackSettings && fallbackSettings.enabled === true;
+    const actionRow = document.getElementById('fallbackActionRow');
+    const contactRow = document.getElementById('fallbackContactRow');
+    const contactBtn = document.getElementById('btnContactAdmin');
+
+    if (actionRow) actionRow.style.display = allowFallback ? 'flex' : 'none';
+    if (contactRow) contactRow.style.display = allowFallback ? 'none' : 'flex';
+    if (contactBtn) contactBtn.textContent = '📞 ' + (fallbackSettings.contactText || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง');
+  }
+
+  function bindContactAdminButton() {
+    const btn = document.getElementById('btnContactAdmin');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      alert(fallbackSettings.contactText || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง');
+    });
+  }
 
   // ----- IP Location Fallback -----
   async function getIpLocation() {
@@ -841,6 +868,12 @@
           currentLng = pos.coords.longitude;
           try {
             const config    = await fetch(API_URL + '?action=getConfig').then(r => r.json());
+            fallbackSettings = config.fallbackSettings || fallbackSettings;
+            applyFallbackPolicy();
+            const locations = Array.isArray(config.locations)
+            const config    = await fetch(API_URL + '?action=getConfig').then(r => r.json());
+            fallbackSettings = config.fallbackSettings || fallbackSettings;
+            applyFallbackPolicy();
             const locations = Array.isArray(config.locations)
               ? config.locations.filter(l => l.enabled !== false) : [];
 
@@ -907,6 +940,7 @@
   // ===== GPS Fallback Helpers =====
   window._locationMode = 'gps';
   window._wifiType     = '';
+  applyFallbackPolicy();
 
   // ===== Load AI =====
   async function initFaceSystem() {
@@ -1105,7 +1139,11 @@
   // ADD: Isolated helper — normal API call (unchanged logic)
   async function _sendToApi(btn, payload) {
     try {
-      const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+      const res = await fetch(API_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload)
+      });
       const data = await res.json();
       const flagNote = (window._locationMode === 'skipped')
         ? '\n⚠️ บันทึก GPS ไม่ยืนยัน'

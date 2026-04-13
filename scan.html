@@ -6,6 +6,7 @@
   <title>สแกนเข้างาน</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
+  <script src="meshService.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -381,7 +382,7 @@
     <div class="spacer"></div>
   </div>
 
-  <div class="status-area">
+  <div class="status-area" id="statusAreaRoot">
     <div id="main-status">⏳ กำลังเตรียมระบบ...</div>
     <div id="gps-status"></div>
   </div>
@@ -498,32 +499,84 @@
   }
 
   async function init() {
+    // ===== FIX: อัปเดต status ทันทีที่ init() เริ่ม (ก่อน await ใดๆ) =====
+    mainStatus.innerText = '🔄 กำลังตรวจสอบ GPS...';
+    mainStatus.style.color = '#94a3b8';
+
+    // ADD: Inject mesh toggle button (idempotent — safe to call multiple times)
+    MeshService.injectToggleButton(document.getElementById('statusAreaRoot'));
+    // ===== WATCHDOG: ถ้าค้างเกิน 22 วินาที → แสดงแผนสำรองอัตโนมัติ =====
+    const watchdogTimer = setTimeout(() => {
+      if (!document.getElementById('gpsGuide') ||
+          document.getElementById('gpsGuide').style.display !== 'block') {
+        showError('⏰ GPS ใช้เวลานานเกินไป — กรุณาเลือกแผนสำรอง');
+        showGpsGuide(3);  // timeout error code
+        console.warn('[GPS Watchdog] Triggered after 22s timeout');
+      }
+    }, 22000);
+
     // bind ปุ่มแผนสำรองใน gpsGuide panel
     bindIpButton();
     bindSkipButton();
     bindWifiButton();
 
-    // ตรวจ permission ก่อน → แจ้ง user ทันที
-    const permState = await checkGeolocationPermission();
+    // ===== ตรวจ Mesh Mode ก่อน (ADD: Mesh Module integration) =====
+    if (MeshService.isEnabled()) {
+      console.log('[Mesh Mode] ON — switching to offline mode');
+      clearTimeout(watchdogTimer);
+      MeshService.showBanner();
+      // โหลด location list จาก localStorage ที่ sync ไว้ก่อนหน้า
+      const cachedLocations = MeshService.getCachedLocations();
+      if (cachedLocations.length > 0) {
+        allLocations = cachedLocations;
+        locationSelect.innerHTML = '';
+        cachedLocations.forEach(loc => {
+          const opt = document.createElement('option');
+          opt.value = loc.id || loc.name;
+          opt.textContent = '📡 ' + loc.name + ' (Cached)';
+          opt.dataset.locJson = JSON.stringify(loc);
+          locationSelect.appendChild(opt);
+        });
+        currentLocation = cachedLocations[0];
+        locationSelector.style.display = 'block';
+      }
+      mainStatus.innerText = '📡 โหมดออฟไลน์ — กด "แตะเพื่อเริ่มสแกน"';
+      mainStatus.style.color = '#34d399';
+      initFaceSystem();
+      return;
+    }
+
+    // ===== ตรวจ permission ก่อน → แจ้ง user ทันที =====
+    let permState = 'unknown';
+    try {
+      permState = await checkGeolocationPermission();
+    } catch (_) { permState = 'unknown'; }
+
     if (permState === 'unsupported') {
+      clearTimeout(watchdogTimer);
       showError('❌ อุปกรณ์นี้ไม่รองรับ GPS — กรุณาใช้ Browser ที่ทันสมัย');
       showGpsGuide(0);
       return;
     }
     if (permState === 'prompt') {
       if (gpsPermBanner) gpsPermBanner.style.display = 'block';
+      mainStatus.innerText = '⏳ รอการอนุญาต GPS... (กรุณากด Allow)';
     }
     if (permState === 'denied') {
+      clearTimeout(watchdogTimer);
       showError('❗ ถูกปฏิเสธสิทธิ์ GPS — ดูวิธีแก้ไขด้านล่าง หรือใช้แผนสำรอง');
       showGpsGuide(1);
-      return;
+      return;  // กลับ แต่ guide + fallback buttons ยังแสดงอยู่
     }
 
     try {
-      mainStatus.innerText = '1/4 ตรวจสอบ GPS...';
+      mainStatus.innerText = '1/4 รอสัญญาณ GPS... (สูงสุด 15 วิ)';
       await checkGPS();
+      clearTimeout(watchdogTimer);
     } catch (e) {
+      clearTimeout(watchdogTimer);
       showError(e.message);
+      // gpsGuide ถูก showGpsGuide() เรียกใน checkGPS error handler แล้ว
     }
   }
 
@@ -805,6 +858,8 @@
             });
 
             locationSelector.style.display = 'block';
+            // ADD: Cache locations for offline mesh use
+            MeshService.cacheLocations(locations);
             resolve();
             initFaceSystem();
           } catch (e) {
@@ -1002,9 +1057,9 @@
         descriptor: new Float32Array(u.descriptor)
       }));
 
-      mainStatus.innerText    = '✅ ระบบพร้อมใช้งาน';
-      mainStatus.style.color  = '#34d399';
-      btnStart.style.display  = 'inline-block';
+      mainStatus.innerText   = '✅ ระบบพร้อมใช้งาน';
+      mainStatus.style.color = '#34d399';
+      btnStart.style.display = 'inline-block';
     } catch (e) {
       showError('โหลดฐานข้อมูลล้มเหลว: ' + e.message);
     }
@@ -1017,12 +1072,12 @@
       const sel = locationSelect.options[locationSelect.selectedIndex];
       if (sel) {
         const loc = JSON.parse(sel.dataset.locJson);
-        updateGpsInfoCard(loc);   // อัปเดต currentLocation ใหม่
+        updateGpsInfoCard(loc);
       }
     }
 
-    // ถ้าอยู่นอกพื้นที่ → ห้ามสแกน
-    if (locationSelect.options.length > 0 && !currentLocation) {
+    // ถ้าอยู่นอกพื้นที่ → ห้ามสแกน (Mesh Mode ข้าม check นี้)
+    if (!MeshService.isEnabled() && locationSelect.options.length > 0 && !currentLocation) {
       const sel = locationSelect.options[locationSelect.selectedIndex];
       const loc = sel ? JSON.parse(sel.dataset.locJson) : null;
       const name = loc ? loc.name : 'สาขานี้';
@@ -1052,17 +1107,15 @@
   // ===== Scan Loop =====
   function startScanLoop() {
     if (scanInterval) clearInterval(scanInterval);
-    overlayStatus.innerText     = 'มองกล้องเพื่อสแกน';
+    overlayStatus.innerText        = 'มองกล้องเพื่อสแกน';
     overlayStatus.style.background = 'rgba(0,0,0,0.65)';
 
     scanInterval = setInterval(async () => {
       if (video.paused || video.ended) return;
-
       const detection = await faceapi
         .detectSingleFace(video)
         .withFaceLandmarks()
         .withFaceDescriptor();
-
       if (detection) {
         const best = findBestMatch(detection.descriptor);
         if (best.distance < MATCH_THRESHOLD) {
@@ -1070,8 +1123,8 @@
           document.getElementById('scanLine').classList.remove('active');
           showModal(best);
         } else {
-          overlayStatus.innerText            = 'ไม่รู้จัก (' + best.distance.toFixed(2) + ')';
-          overlayStatus.style.background     = 'rgba(239,68,68,0.6)';
+          overlayStatus.innerText        = 'ไม่รู้จัก (' + best.distance.toFixed(2) + ')';
+          overlayStatus.style.background = 'rgba(239,68,68,0.6)';
         }
       }
     }, 500);
@@ -1089,28 +1142,33 @@
   // ===== Modal =====
   function showModal(match) {
     currentMatch = match.name;
-    document.getElementById('modalName').innerText  = match.name;
-
+    document.getElementById('modalName').innerText = match.name;
     const now = new Date();
     const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
     document.getElementById('modalTime').innerText  = 'เวลาเข้างาน: ' + timeStr + ' น.';
-
     const pct = ((1 - match.distance) * 100).toFixed(1);
     document.getElementById('modalScore').innerText = 'ความเหมือน: ' + pct + '%';
 
     const modalLoc = document.getElementById('modalLocation');
-    if (currentLocation) {
+    const modeTag  = window._locationMode || 'gps';
+    if (MeshService.isEnabled()) {
+      modalLoc.innerHTML = '📡 โหมดออฟไลน์ — บันทึกในเครื่อง';
+      modalLoc.style.display    = 'block';
+      modalLoc.style.background = 'rgba(245,158,11,0.1)';
+      modalLoc.style.borderColor = 'rgba(245,158,11,0.3)';
+      modalLoc.style.color      = '#fcd34d';
+    } else if (currentLocation) {
       modalLoc.innerHTML = '📍 ' + currentLocation.name;
-      modalLoc.style.display = 'block';
+      modalLoc.style.display    = 'block';
       modalLoc.style.background = 'rgba(99,102,241,0.12)';
       modalLoc.style.borderColor = 'rgba(99,102,241,0.25)';
-      modalLoc.style.color = '#a5b4fc';
+      modalLoc.style.color      = '#a5b4fc';
     } else if (gpsSkipped) {
       modalLoc.innerHTML = '⚠️ GPS ไม่ได้รับการยืนยัน — <em style="font-style:normal;color:#fca5a5">จะถูก Flag ไว้</em>';
-      modalLoc.style.display = 'block';
+      modalLoc.style.display    = 'block';
       modalLoc.style.background = 'rgba(239,68,68,0.1)';
       modalLoc.style.borderColor = 'rgba(239,68,68,0.3)';
-      modalLoc.style.color = '#fca5a5';
+      modalLoc.style.color      = '#fca5a5';
     } else {
       modalLoc.style.display = 'none';
     }
@@ -1119,43 +1177,66 @@
     mainStatus.innerText = 'กรุณายืนยัน...';
   }
 
+  // ===== Confirm — Mesh Routing + Normal API =====
   async function confirmAttendance() {
     const btn = document.getElementById('btnConfirm');
     btn.disabled  = true;
     btn.innerText = 'กำลังบันทึก...';
 
-    // คำนวณ gpsStatus จาก _locationMode
     const mode = window._locationMode || 'gps';
     let gpsStatus_val = 'ok';
     if      (mode === 'skipped') gpsStatus_val = 'skipped';
     else if (mode === 'wifi')    gpsStatus_val = 'wifi';
     else if (mode === 'ip')      gpsStatus_val = 'ip';
+    else if (mode === 'mesh')    gpsStatus_val = 'mesh_offline';
     else if (!currentLat && !currentLocation) gpsStatus_val = 'no_locations';
 
+    const payload = {
+      action:        'logAttendance',
+      name:          currentMatch,
+      lat:           currentLat,
+      lng:           currentLng,
+      locationName:  currentLocation ? currentLocation.name : '',
+      gpsStatus:     gpsStatus_val,
+      gpsSkipReason: gpsSkipped ? gpsSkipReason : (mode === 'wifi' ? 'WiFi:' + window._wifiType : ''),
+      userAgent:     navigator.userAgent
+    };
+
+
+    // ADD: Mesh Mode routing — DO NOT MODIFY THE ELSE BRANCH
+    if (MeshService.isEnabled()) {
+      console.log('[Mesh] Sending locally...');
+      try {
+        const result = MeshService.sendMeshData(payload);
+        alert('📡 ' + result.message + '\n(กรณีฉุกเฉิน — จะ sync อัตโนมัติเมื่อมีสัญญาณ)');
+        window.location.replace('index.html');
+      } catch (meshErr) {
+        // Mesh failed → fallback to normal API automatically
+        console.warn('[Mesh] Failed, falling back to API:', meshErr.message);
+        alert('⚠️ บันทึก offline ล้มเหลว กำลัง fallback ไป API...');
+        // fall through to normal API below
+        await _sendToApi(btn, payload);
+      }
+      return;
+    }
+
+    // DO NOT MODIFY: Normal online API flow (unchanged)
+    await _sendToApi(btn, payload);
+  }
+
+  // ADD: Isolated helper — normal API call (unchanged logic)
+  async function _sendToApi(btn, payload) {
     try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-          action:        'logAttendance',
-          name:          currentMatch,
-          lat:           currentLat,
-          lng:           currentLng,
-          locationName:  currentLocation ? currentLocation.name : '',
-          gpsStatus:     gpsStatus_val,          // 'ok' | 'wifi' | 'ip' | 'skipped' | 'no_locations'
-          gpsSkipReason: gpsSkipped ? gpsSkipReason : (mode === 'wifi' ? 'WiFi:' + window._wifiType : ''),
-          userAgent:     navigator.userAgent      // ช่วย audit device
-        })
-      });
+      const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
       const data = await res.json();
-      const flagNote = gpsSkipped
-        ? '\n⚠️ บันทึก GPS ไม่ยืนยัน (เหตุ: ' + gpsSkipReason + ')'
-        : (mode === 'wifi' ? '\n📶 ใช้ WiFi Location' : mode === 'ip' ? '\n📡 ใช้ IP Location' : '');
+      const flagNote = (window._locationMode === 'skipped')
+        ? '\n⚠️ บันทึก GPS ไม่ยืนยัน'
+        : (window._locationMode === 'wifi' ? '\n📦 WiFi Location' : window._locationMode === 'ip' ? '\n📡 IP Location' : '');
       alert('✅ ' + (data.message || 'บันทึกเวลาสำเร็จ') + flagNote);
       window.location.replace('index.html');
     } catch (e) {
       alert('❌ บันทึกล้มเหลว: ' + e.message);
-      btn.disabled  = false;
-      btn.innerText = '✅ ยืนยันเข้างาน';
+      if (btn) { btn.disabled = false; btn.innerText = '✅ ยืนยันเข้างาน'; }
     }
   }
 

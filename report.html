@@ -476,10 +476,12 @@
     hideError();
 
     try {
-      const url = `${API_URL}?action=getAttendanceLogs&start=${start}&end=${end}`;
+      const startDmy = toDmy(start);
+      const endDmy = toDmy(end);
+      const url = `${API_URL}?action=getAttendanceLogs`;
       const data = await fetch(url).then(r => r.json());
       const logs = Array.isArray(data) ? data : (data.logs || data.data || []);
-      allRecords = processLogs(logs, start, end);
+      allRecords = processLogs(logs, startDmy, endDmy);
       renderTable(allRecords);
       updateSummary(allRecords);
     } catch (e) {
@@ -491,72 +493,119 @@
   // ===== Process Logs =====
   function timeToMinutes(timeStr) {
     if (!timeStr) return Infinity;
-    const [h, m] = timeStr.split(':').map(Number);
+    const [h, m] = String(timeStr).split(':').map(Number);
     return h * 60 + m;
   }
 
-  function processLogs(logs, startDate, endDate) {
-    // Group by name + date
-    const map = {};
-    logs.forEach(log => {
-      const rawTs = log.timestamp || log.time || log.date || '';
-      const dt = new Date(rawTs);
-      if (isNaN(dt.getTime())) return;
+  function toDmy(isoDate) {
+    if (!isoDate) return '';
+    const parts = isoDate.split('-');
+    if (parts.length !== 3) return isoDate;
+    return Number(parts[2]) + '/' + Number(parts[1]) + '/' + parts[0];
+  }
 
-      const dateKey = fmt(dt);
-      const key = (log.name || 'ไม่ระบุ') + '|' + dateKey;
+  function parseSheetDate(value) {
+    const raw = String(value || '').replace(/^'/, '').trim();
+    if (!raw) return null;
+
+    const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) {
+      const d = Number(m[1]);
+      const mo = Number(m[2]) - 1;
+      const y = Number(m[3]);
+      const dt = new Date(y, mo, d);
+      if (!isNaN(dt.getTime())) return dt;
+    }
+
+    const dt = new Date(raw);
+    if (!isNaN(dt.getTime())) return dt;
+    return null;
+  }
+
+  function processLogs(logs, startDate, endDate) {
+    const map = {};
+    const startText = startDate || '';
+    const endText = endDate || '';
+
+    logs.forEach(log => {
+      const rawName = log['Name'] || log.name || 'ไม่ระบุ';
+      const rawDate = (log['Date'] || log.date || '').toString().replace(/^'/, '').trim();
+      const rawTime = (log['Time'] || log.time || '').toString().trim();
+
+      if (!rawDate) return;
+      if (startText && rawDate < startText) return;
+      if (endText && rawDate > endText) return;
+
+      const parsedDate = parseSheetDate(rawDate);
+      const dateKey = rawDate;
+      const key = rawName + '|' + dateKey;
 
       if (!map[key]) {
         map[key] = {
-          name: log.name || 'ไม่ระบุ',
+          name: rawName,
           date: dateKey,
-          displayDate: dt.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }),
-          checkIn:    null,
-          checkOut:   null,
-          locationName: '',
-          gpsStatus:  log.gpsStatus || 'ok',
-          gpsSkipReason: log.gpsSkipReason || '',
+          displayDate: parsedDate
+            ? parsedDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
+            : rawDate,
+          checkIn: null,
+          checkOut: null,
+          locationName: log['Location'] || log.locationName || '',
+          gpsStatus: log['GPS Status'] || log.gpsStatus || 'ok',
+          gpsSkipReason: log['GPS Skip Reason'] || log.gpsSkipReason || '',
           logs: []
         };
       }
+
       map[key].logs.push(log);
 
-      const action = (log.action || 'in').toLowerCase();
-      if ((action === 'in' || action === 'checkin') && !map[key].checkIn) {
-        map[key].checkIn = { dt, timeStr: dt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) };
-        map[key].locationName = log.locationName || '';
-        map[key].gpsStatus    = log.gpsStatus || 'ok';
-        map[key].gpsSkipReason = log.gpsSkipReason || '';
-      } else if ((action === 'out' || action === 'checkout')) {
-        map[key].checkOut = { dt, timeStr: dt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) };
+      const minutes = timeToMinutes(rawTime);
+      const endMin = timeToMinutes((workTimes.specialDates || []).find(s => s.date === isoFromDmy(rawDate))?.endTime || workTimes.endTime);
+
+      if (!map[key].checkIn || minutes < map[key].checkIn.minutes) {
+        map[key].checkIn = { timeStr: rawTime || '-', minutes: minutes };
+        map[key].locationName = log['Location'] || log.locationName || map[key].locationName;
+        map[key].gpsStatus = log['GPS Status'] || log.gpsStatus || map[key].gpsStatus;
+        map[key].gpsSkipReason = log['GPS Skip Reason'] || log.gpsSkipReason || map[key].gpsSkipReason;
+      }
+
+      if (rawTime && minutes >= endMin) {
+        if (!map[key].checkOut || minutes > map[key].checkOut.minutes) {
+          map[key].checkOut = { timeStr: rawTime, minutes: minutes };
+        }
       }
     });
 
-    // Calculate status
     return Object.values(map).map(rec => {
-      const dateSpecial = workTimes.specialDates?.find(s => s.date === rec.date);
-      const lateThresh  = dateSpecial?.lateThreshold  || workTimes.lateThreshold;
-      const endTime     = dateSpecial?.endTime         || workTimes.endTime;
+      const specialIso = isoFromDmy(rec.date);
+      const dateSpecial = (workTimes.specialDates || []).find(s => s.date === specialIso);
+      const lateThresh = dateSpecial?.lateThreshold || workTimes.lateThreshold;
 
       let statusType = 'absent';
       let lateMinutes = 0;
 
-      if (rec.checkIn) {
-        const checkInMin = rec.checkIn.dt.getHours() * 60 + rec.checkIn.dt.getMinutes();
-        const lateMin    = timeToMinutes(lateThresh);
-        if (checkInMin <= lateMin) {
+      if (rec.checkIn && Number.isFinite(rec.checkIn.minutes)) {
+        const lateMin = timeToMinutes(lateThresh);
+        if (rec.checkIn.minutes <= lateMin) {
           statusType = 'ontime';
         } else {
           statusType = 'late';
-          lateMinutes = checkInMin - lateMin;
+          lateMinutes = rec.checkIn.minutes - lateMin;
         }
       }
+
       return { ...rec, statusType, lateMinutes };
     }).sort((a, b) => {
-      if (a.date > b.date) return -1;
-      if (a.date < b.date) return 1;
+      const ad = parseSheetDate(a.date);
+      const bd = parseSheetDate(b.date);
+      if (ad && bd && ad.getTime() !== bd.getTime()) return bd - ad;
       return a.name.localeCompare(b.name, 'th');
     });
+  }
+
+  function isoFromDmy(dmy) {
+    const m = String(dmy || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) return '';
+    return m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
   }
 
   // ===== Render Table =====

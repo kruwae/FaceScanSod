@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
   <script src="meshService.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js" defer></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -944,6 +944,18 @@
 
   // ===== Load AI =====
   async function initFaceSystem() {
+    // รอ faceapi พร้อม (face-api.js โหลดด้วย defer — อาจช้ากว่า GPS)
+    mainStatus.innerText = '2/4 รอ AI Library...';
+    let waited = 0;
+    while (typeof faceapi === 'undefined' && waited < 30000) {
+      await new Promise(r => setTimeout(r, 300));
+      waited += 300;
+    }
+    if (typeof faceapi === 'undefined') {
+      showError('โหลด face-api.js ไม่สำเร็จ — ลองรีเฟรชหน้าจอ');
+      return;
+    }
+
     mainStatus.innerText = '2/4 โหลด AI Model...';
     const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
     try {

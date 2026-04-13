@@ -604,6 +604,15 @@
         return;
       }
 
+      // อ่าน API URL ใหม่ทุกครั้ง (กัน case ที่ตั้งค่าหลัง page load)
+      const currentApiUrl = (localStorage.getItem('gasApiUrl') ||
+        (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
+
+      if (!currentApiUrl) {
+        msgDiv.innerHTML = '<span class="msg-error">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
+        return;
+      }
+
       btnSave.disabled = true;
       btnSave.innerHTML = '⏳ กำลังประมวลผล... <span class="count-badge">' + saveCounter + '</span>';
       msgDiv.innerText = '';
@@ -614,7 +623,7 @@
         .withFaceDescriptor();
 
       if (!detection) {
-        alert('ไม่พบใบหน้า! กรุณามองกล้องให้ชัดเจน');
+        msgDiv.innerHTML = '<span class="msg-error">❌ ไม่พบใบหน้า! กรุณามองกล้องให้ชัดเจน แล้วลองใหม่</span>';
         btnSave.disabled = false;
         btnSave.innerHTML = '📸 บันทึกใบหน้า <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
         return;
@@ -623,9 +632,8 @@
       const descriptorArray = Array.from(detection.descriptor);
 
       try {
-        const res = await fetch(API_URL, {
+        const res = await fetch(currentApiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'registerUser',
             name,

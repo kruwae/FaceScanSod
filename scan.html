@@ -432,6 +432,7 @@
       await checkGPS();
     } catch (e) {
       showError(e.message);
+      showGpsSkipButton();   // ให้ข้ามได้เมื่อ GPS ไม่ทำงาน
     }
   }
 
@@ -477,6 +478,7 @@
   function checkGPS() {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) { reject(new Error('Browser ไม่รองรับ GPS')); return; }
+      mainStatus.innerText = '1/4 รอ GPS... (อาจใช้เวลา 10-15 วิ)';
       navigator.geolocation.getCurrentPosition(
         async pos => {
           currentLat = pos.coords.latitude;
@@ -535,9 +537,38 @@
             reject(new Error('เชื่อมต่อ API ไม่ได้: ' + e.message));
           }
         },
-        () => reject(new Error('กรุณาเปิด GPS (Location Service)'))
+        (err) => {
+          // แยก GPS error code ให้ผู้ใช้เข้าใจ
+          const GPS_ERRORS = {
+            1: '❌ ถูกปฏิเสธสิทธิ์ GPS\nกรุณาเปิดสิทธิ์ Location ใน Settings ของ Browser แล้วรีเฟรช',
+            2: '❌ ไม่สามารถรับพิกัดได้\nออก-เข้าอาคาร หรือรอสักครู่แล้วรีเฟรช',
+            3: '⏰ GPS หมดเวลา (Timeout)\nสัญญาณอ่อน — ลองกด "ข้ามตรวจสอบ GPS" ด้านล่าง'
+          };
+          const msg = GPS_ERRORS[err.code] || ('GPS Error: ' + err.message);
+          reject(new Error(msg));
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
       );
     });
+  }
+
+  // ===== GPS Skip (ฉุกเฉิน) =====
+  function showGpsSkipButton() {
+    const existing = document.getElementById('btnSkipGps');
+    if (existing) return;
+    const btn = document.createElement('button');
+    btn.id = 'btnSkipGps';
+    btn.style.cssText = 'margin:14px auto 0;display:block;width:100%;padding:14px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#fcd34d;border-radius:14px;font-family:Sarabun,sans-serif;font-size:14px;font-weight:600;cursor:pointer;';
+    btn.innerHTML = '⚠️ ข้ามการตรวจสอบ GPS (ไม่บันทึกพิกัด)';
+    btn.addEventListener('click', () => {
+      btn.remove();
+      currentLat = null; currentLng = null; currentLocation = null;
+      mainStatus.innerText = '⚠️ ข้ามตรวจสอบ GPS — ดำเนินการต่อ';
+      mainStatus.style.color = '#f59e0b';
+      gpsStatus.innerHTML = '<span style="color:#f59e0b">📍 ไม่มีพิกัด GPS</span>';
+      initFaceSystem();
+    });
+    document.querySelector('.page-wrap').appendChild(btn);
   }
 
   // ===== Load AI =====

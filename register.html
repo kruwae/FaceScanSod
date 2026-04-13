@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ลงทะเบียนใบหน้า</title>
+  <title>Admin Panel - ลงทะเบียนใบหน้า</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
@@ -40,6 +40,71 @@
       max-width: 520px;
       position: relative; z-index: 1;
       animation: fadeIn 0.5s ease;
+      display: none;
+    }
+
+    .admin-lock {
+      width: 100%;
+      max-width: 460px;
+      margin: 10vh auto 0;
+      text-align: center;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 22px;
+      padding: 28px 22px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      position: relative;
+      z-index: 1;
+    }
+
+    .admin-lock__badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      box-shadow: 0 10px 30px rgba(99,102,241,0.35);
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+
+    .admin-lock h2 {
+      font-size: 1.5em;
+      margin-bottom: 8px;
+    }
+
+    .admin-lock p {
+      color: #94a3b8;
+      font-size: 0.9em;
+      line-height: 1.7;
+      margin-bottom: 18px;
+    }
+
+    .admin-lock .btn-admin {
+      width: 100%;
+      border: none;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 10px;
+    }
+
+    .btn-admin-login {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(99,102,241,0.28);
+    }
+
+    .btn-admin-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(99,102,241,0.4);
     }
 
     /* Header */
@@ -203,7 +268,14 @@
   </style>
 </head>
 <body>
-<div class="container">
+  <div class="admin-lock" id="adminLock">
+    <div class="admin-lock__badge">🔒</div>
+    <h2>Admin Only</h2>
+    <p>หน้านี้สำหรับผู้ดูแลระบบเท่านั้น<br>กรุณายืนยันรหัสแอดมินก่อนเข้าใช้งาน</p>
+    <button class="btn-admin btn-admin-login" onclick="requestAdminAccess()">ยืนยันรหัสแอดมิน</button>
+  </div>
+
+  <div class="container" id="adminContent">
   <div class="page-header">
     <a href="index.html" class="back-btn">← กลับ</a>
     <h2>👤 ลงทะเบียนใบหน้า</h2>
@@ -244,12 +316,44 @@
   const btnSave   = document.getElementById('btnSave');
   const msgDiv    = document.getElementById('msg');
   const countSpan = document.getElementById('saveCount');
+  const adminLock = document.getElementById('adminLock');
+  const adminContent = document.getElementById('adminContent');
   let saveCounter = 0;
+  const ADMIN_CODE = '2569';
 
-  if (!API_URL) {
-    statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่า</a></span>';
-  } else {
-    window.addEventListener('load', initModels);
+  function isAdminAuthenticated() {
+    return localStorage.getItem('faceScanAdminAuth') === '1';
+  }
+
+  function requestAdminAccess() {
+    const code = prompt('กรอกรหัสแอดมิน');
+    if (code === null) return;
+
+    if (code.trim() === ADMIN_CODE) {
+      localStorage.setItem('faceScanAdminAuth', '1');
+      showAdminContent();
+      if (!API_URL) {
+        statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
+      } else {
+        initModels();
+      }
+    } else {
+      alert('รหัสแอดมินไม่ถูกต้อง');
+    }
+  }
+
+  function showAdminContent() {
+    adminLock.style.display = 'none';
+    adminContent.style.display = 'block';
+  }
+
+  if (isAdminAuthenticated()) {
+    showAdminContent();
+    if (!API_URL) {
+      statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
+    } else {
+      window.addEventListener('load', initModels);
+    }
   }
 
   function updateDots() {
@@ -308,11 +412,10 @@
     const descriptorArray = Array.from(detection.descriptor);
 
     try {
-      const res = await fetch(API_URL, {
+      await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'registerUser', name, faceDescriptor: descriptorArray })
+        body: JSON.stringify({ action: 'registerUser', name, faceDescriptor: descriptorArray, registeredBy: 'admin', status: 'active' })
       });
-      const data = await res.json();
 
       saveCounter++;
       countSpan.innerText = saveCounter;

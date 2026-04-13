@@ -196,59 +196,9 @@
     }
     .btn-menu:hover .card-arrow { transform: translateX(4px); color: #94a3b8; }
 
-    .admin-actions {
-      display: flex;
-      gap: 12px;
-      width: 100%;
-      max-width: 420px;
-      margin-top: 10px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .action-btn {
-      flex: 1;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.05);
-      color: #e2e8f0;
-      border-radius: 14px;
-      padding: 12px 14px;
-      font-family: 'Sarabun', sans-serif;
-      font-size: 0.92em;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.25s ease;
-    }
-    .action-btn:hover {
-      transform: translateY(-2px);
-      background: rgba(255,255,255,0.09);
-      border-color: rgba(255,255,255,0.22);
-    }
-    .action-btn.primary {
-      background: linear-gradient(135deg, #6366f1, #4f46e5);
-      border-color: rgba(99,102,241,0.35);
-      box-shadow: 0 4px 18px rgba(99,102,241,0.24);
-    }
-    .action-btn.primary:hover {
-      box-shadow: 0 8px 28px rgba(99,102,241,0.35);
-    }
-
-    .auth-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 10px;
-      padding: 7px 12px;
-      border-radius: 999px;
-      background: rgba(16,185,129,0.12);
-      border: 1px solid rgba(16,185,129,0.22);
-      color: #a7f3d0;
-      font-size: 0.82em;
-    }
-
-    @keyframes fadeIn    { from { opacity: 0; }                      to { opacity: 1; } }
+    @keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
     @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes fadeInUp  { from { opacity: 0; transform: translateY(20px);  } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeInUp  { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
@@ -275,7 +225,6 @@
       2) สแกนใบหน้าเพื่อยืนยันตัวตน<br>
       3) ระบบจะบันทึกเวลาเข้างานให้อัตโนมัติ
     </div>
-    <div id="authState" class="auth-chip" style="display:none;">🔓 Admin พร้อมใช้งาน</div>
   </div>
 
   <div class="menu-cards">
@@ -290,16 +239,16 @@
     </a>
 
     <div class="section-label">Admin Tools</div>
-    <a href="register.html" class="btn-menu btn-admin" id="registerLink">
+    <a href="register.html" class="btn-menu btn-admin">
       <div class="card-icon">👤</div>
       <div class="card-text">
         <div class="card-title">ลงทะเบียนพนักงาน</div>
-        <div class="card-desc">สำหรับผู้ดูแลระบบที่ได้รับสิทธิ์เท่านั้น</div>
+        <div class="card-desc">สำหรับผู้ดูแลระบบเท่านั้น</div>
       </div>
       <span class="card-arrow">›</span>
     </a>
 
-    <a href="config.html" class="btn-menu btn-admin" id="configLink">
+    <a href="config.html" class="btn-menu btn-admin">
       <div class="card-icon">⚙️</div>
       <div class="card-text">
         <div class="card-title">ตั้งค่าระบบ</div>
@@ -309,62 +258,16 @@
     </a>
   </div>
 
-  <div class="admin-actions">
-    <button class="action-btn primary" id="adminLoginBtn" type="button">เข้าสู่ระบบผู้ดูแล</button>
-    <button class="action-btn" id="adminLogoutBtn" type="button">ออกจากระบบ</button>
-  </div>
-
   <script>
-    const ADMIN_KEY = 'faceScanAdminAuth';
-    const ADMIN_CODE = '2569';
     const apiWarning = document.getElementById('apiWarning');
-    const authState = document.getElementById('authState');
-    const adminLoginBtn = document.getElementById('adminLoginBtn');
-    const adminLogoutBtn = document.getElementById('adminLogoutBtn');
-    const registerLink = document.getElementById('registerLink');
-    const configLink = document.getElementById('configLink');
 
     function hasApiConfig() {
       return !!(localStorage.getItem('gasApiUrl') || typeof GAS_API_URL !== 'undefined');
     }
 
-    function isAdminAuthed() {
-      return localStorage.getItem(ADMIN_KEY) === 'true';
-    }
-
-    function syncAdminUi() {
-      const authed = isAdminAuthed();
-      authState.style.display = authed ? 'inline-flex' : 'none';
-      authState.textContent = authed ? '🔓 Admin พร้อมใช้งาน' : '';
-      registerLink.href = 'register.html';
-      configLink.href = 'config.html';
-      adminLoginBtn.textContent = authed ? 'เปลี่ยนรหัสผู้ดูแล' : 'เข้าสู่ระบบผู้ดูแล';
-    }
-
-    function promptAdminLogin() {
-      const code = prompt('กรอกรหัสผู้ดูแลระบบ');
-      if (code === null) return;
-      if (code.trim() === ADMIN_CODE) {
-        localStorage.setItem(ADMIN_KEY, 'true');
-        alert('✅ ยืนยันผู้ดูแลเรียบร้อย');
-      } else {
-        alert('❌ รหัสผู้ดูแลไม่ถูกต้อง');
-      }
-      syncAdminUi();
-    }
-
-    adminLoginBtn.addEventListener('click', promptAdminLogin);
-    adminLogoutBtn.addEventListener('click', function () {
-      localStorage.removeItem(ADMIN_KEY);
-      alert('✅ ออกจากระบบผู้ดูแลแล้ว');
-      syncAdminUi();
-    });
-
     if (!hasApiConfig()) {
       apiWarning.style.display = 'block';
     }
-
-    syncAdminUi();
   </script>
 </body>
 </html>

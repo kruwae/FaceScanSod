@@ -105,9 +105,8 @@ const MeshService = (function () {
     for (const record of queue) {
       try {
         const res = await fetch(apiUrl, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
+          method: 'POST',
+          body:   JSON.stringify({
             ...record.data,
             meshSynced:        true,
             meshId:            record.id,

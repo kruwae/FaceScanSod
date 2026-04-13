@@ -1140,9 +1140,8 @@
   async function _sendToApi(btn, payload) {
     try {
       const res = await fetch(API_URL, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload)
+        method: 'POST',
+        body:   JSON.stringify(payload)
       });
       const data = await res.json();
       const flagNote = (window._locationMode === 'skipped')

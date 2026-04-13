@@ -645,8 +645,9 @@
 
   <script>
     // ============================================================
-    //  Admin Auth — sessionStorage + verifyAdmin จาก GAS (staffOS)
-    //  รหัสไม่ถูก expose ที่ client — ตรวจสอบฝั่ง server ทั้งหมด
+    //  Admin Auth
+    //  - _adminUnlocked = in-memory flag (หลัก) ทำงานแม้ sessionStorage พัง
+    //  - sessionStorage = บันทึกสำรอง (กรณี refresh)
     // ============================================================
     const SESSION_KEY = "configAdminAuth";
     const MSG_SUCCESS = "msg-success";
@@ -659,33 +660,36 @@
     const btnLogoutTop = document.getElementById("btnLogoutTop");
     const locationsBox = document.getElementById("locations");
 
-    // API URL — อ่านจาก localStorage ก่อน ถ้าไม่มีใช้จาก api-config.js
+    // ---- in-memory unlock flag (primary) ----
+    let _adminUnlocked = false;
+
+    function isAdminAuthed() {
+      if (_adminUnlocked) return true;         // in-memory (เชื่อถือได้เสมอ)
+      try {
+        return sessionStorage.getItem(SESSION_KEY) === "1"; // secondary
+      } catch (e) { return false; }
+    }
+
+    function setAdminAuthed() {
+      _adminUnlocked = true;                   // set in-memory
+      try { sessionStorage.setItem(SESSION_KEY, "1"); } catch (e) {} // optional
+    }
+
+    function clearAdminState() {
+      _adminUnlocked = false;
+      try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+    }
+
+    // API URL
     function getApiUrl() {
       return (localStorage.getItem("gasApiUrl") || (typeof GAS_API_URL !== "undefined" ? GAS_API_URL : "") || "").trim();
     }
 
-    function isAdminAuthed() {
-      return sessionStorage.getItem(SESSION_KEY) === "1";
-    }
-
-    function clearAdminState() {
-      sessionStorage.removeItem(SESSION_KEY);
-    }
-
     // --------- Back Button Guard ---------
-    // ใช้ replaceState แทน pushState เพื่อไม่ให้เพิ่ม history entry
-    // แล้วใช้ pageshow เป็น guard หลักแทน popstate
     window.addEventListener("pageshow", function (e) {
-      // bfcache restore (กด back แล้วหน้ากลับมา) → ตรวจ session
-      if (e.persisted || !isAdminAuthed()) {
-        if (!isAdminAuthed()) {
-          // ยังไม่ได้ล็อกอิน → แสดง gate
-          syncGate();
-        }
-      }
+      if (e.persisted || !isAdminAuthed()) syncGate();
     });
 
-    // กรณีกด back แล้วหน้าไม่ได้ bfcache → ตรวจ session ตอนโหลด
     function syncGate() {
       const authed = isAdminAuthed();
       gateBox.style.display = authed ? "none" : "block";
@@ -697,37 +701,29 @@
       window.location.replace("index.html");
     }
 
-    // --------- Login (SweetAlert2) ---------
-    const LOCAL_FALLBACK_CODE = "2569"; // รหัสสำรอง
+    // --------- Verify code ---------
+    const LOCAL_FALLBACK_CODE = "2569";
 
-    /**
-     * verifyCode — ตรวจสอบรหัส
-     *  ก่อน: ตรวจ local code ก่อนเสมอ (เร็ว / offline ก็ได้)
-     *  ถ้าผ่าน local → ปลดล็อกได้เลย
-     *  ถ้าไม่ผ่าน local → ลอง server (กรณีเปลี่ยนรหัสผ่าน GAS แล้ว)
-     */
-    async function verifyCode(code) {
-      const trimmed = code.trim();
+    // ตรวจ local ทันที (sync) — ไม่ต้องรอ network
+    function verifyCodeLocal(code) {
+      return (code || "").trim() === LOCAL_FALLBACK_CODE;
+    }
 
-      // Local check ก่อนเสมอ (ทำงานแม้ offline / GAS ไม่ได้ update)
-      if (trimmed === LOCAL_FALLBACK_CODE) return { ok: true, via: "local" };
-
-      // ถ้าไม่ตรง local → ลองดูว่า server มีรหัสใหม่หรือเปล่า
+    // ตรวจ server (async) — กรณีเปลี่ยนรหัสผ่าน GAS แล้ว
+    async function verifyCodeServer(code) {
       const apiUrl = getApiUrl();
       if (!apiUrl) return { ok: false };
-
       try {
         const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 5000); // timeout 5s
+        const timer = setTimeout(() => ctrl.abort(), 5000);
         const res = await fetch(apiUrl, {
           method: "POST",
-          body: JSON.stringify({ action: "verifyAdmin", code: trimmed }),
+          body: JSON.stringify({ action: "verifyAdmin", code: code.trim() }),
           signal: ctrl.signal
         });
         clearTimeout(timer);
         const data = await res.json();
-        if (data.success === true) return { ok: true, via: "server" };
-        return { ok: false, error: data.error };
+        return data.success === true ? { ok: true } : { ok: false, error: data.error };
       } catch (_) {
         return { ok: false };
       }
@@ -736,89 +732,53 @@
     adminLoginBtn.addEventListener("click", async function () {
       const gateInput = document.getElementById("gatePasswordInput");
       const gateError = document.getElementById("gateError");
-      const inlineCode = gateInput ? gateInput.value : "";
+      const code = (gateInput ? gateInput.value : "").trim();
 
-      // ถ้ามีรหัสใน inline input → ใช้เลยไม่ต้อง popup
-      if (inlineCode && inlineCode.trim()) {
-        gateError.innerText = "";
-        adminLoginBtn.disabled = true;
-        adminLoginBtn.innerText = "⏳ กำลังตรวจสอบ...";
+      // 1. ต้องกรอกรหัสก่อน
+      if (!code) {
+        gateError.innerText = "❌ กรุณากรอกรหัสก่อน";
+        if (gateInput) gateInput.focus();
+        return;
+      }
 
-        const result = await verifyCode(inlineCode);
-        adminLoginBtn.disabled = false;
-        adminLoginBtn.innerText = "🔓 ยืนยันรหัสแอดมิน";
+      gateError.innerText = "";
 
+      // 2. ตรวจ local ก่อน (sync — ไม่ต้องรอ network เลย)
+      if (verifyCodeLocal(code)) {
+        setAdminAuthed();      // set _adminUnlocked = true ทันที
+        syncGate();            // ปลดล็อก UI
+        if (gateInput) gateInput.value = "";
+        showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
+        if (getApiUrl()) loadFromServer();
+        return;
+      }
+
+      // 3. local ไม่ตรง → ลอง server (กรณีเปลี่ยนรหัสผ่าน GAS แล้ว)
+      adminLoginBtn.disabled = true;
+      adminLoginBtn.textContent = "⏳ กำลังตรวจสอบ...";
+
+      try {
+        const result = await verifyCodeServer(code);
         if (result.ok) {
-          sessionStorage.setItem(SESSION_KEY, "1");
+          setAdminAuthed();
           syncGate();
           if (gateInput) gateInput.value = "";
           showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
           if (getApiUrl()) loadFromServer();
         } else {
           gateError.innerText = "❌ รหัสไม่ถูกต้อง กรุณาลองใหม่";
-          gateInput.value = "";
-          gateInput.focus();
+          if (gateInput) { gateInput.value = ""; gateInput.focus(); }
         }
-        return;
-      }
-
-      // Fallback → Swal popup (สำหรับกรณีที่ใช้งานได้ปกติ)
-      const { value: code, isConfirmed } = await Swal.fire({
-        title: "🔐 ยืนยันผู้ดูแลระบบ",
-        input: "password",
-        inputLabel: "กรอกรหัสผู้ดูแลระบบ",
-        inputPlaceholder: "รหัสผ่าน",
-        inputAttributes: { autocomplete: "current-password" },
-        confirmButtonText: "🔓 ปลดล็อก",
-        cancelButtonText: "ยกเลิก",
-        showCancelButton: true,
-        confirmButtonColor: "#6366f1",
-        cancelButtonColor: "#374151",
-        background: "#1e1b4b",
-        color: "#e2e8f0",
-        inputValidator: (v) => {
-          if (!v || !v.trim()) return "กรุณากรอกรหัสก่อน";
-        }
-      });
-
-      if (!isConfirmed || !code) return;
-
-      Swal.fire({
-        title: "⏳ กำลังตรวจสอบ...",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-        background: "#1e1b4b",
-        color: "#e2e8f0"
-      });
-
-      const result = await verifyCode(code);
-
-      if (result.ok) {
-        sessionStorage.setItem(SESSION_KEY, "1");
-        syncGate();
-        await Swal.fire({
-          icon: "success",
-          title: "✅ เข้าสู่ระบบสำเร็จ",
-          text: "ยืนยันผู้ดูแลเรียบร้อย",
-          timer: 1200,
-          showConfirmButton: false,
-          background: "#1e1b4b",
-          color: "#e2e8f0"
-        });
-        showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
-        if (getApiUrl()) loadFromServer();
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "❌ รหัสไม่ถูกต้อง",
-          text: result.error || "กรุณาตรวจสอบรหัสผู้ดูแลอีกครั้ง",
-          confirmButtonText: "ลองใหม่",
-          confirmButtonColor: "#6366f1",
-          background: "#1e1b4b",
-          color: "#e2e8f0"
-        });
+      } catch (err) {
+        gateError.innerText = "❌ เกิดข้อผิดพลาด: " + err.message;
+      } finally {
+        adminLoginBtn.disabled = false;
+        adminLoginBtn.textContent = "🔓 ยืนยันรหัสแอดมิน";
       }
     });
+
+    // Popup fallback (กรณีช่องว่างแล้วก็ยังอยาก popup) — ไม่ใช้แล้ว
+    // ถูก replace ด้วย inline input ข้างบน
 
 
     adminLogoutBtn.addEventListener("click", hardLogout);

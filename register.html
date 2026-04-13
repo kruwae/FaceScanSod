@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,7 +11,11 @@
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
       font-family: 'Sarabun', sans-serif;
@@ -28,19 +33,23 @@
     body::before {
       content: '';
       position: fixed;
-      width: 400px; height: 400px;
+      width: 400px;
+      height: 400px;
       background: #6366f1;
       border-radius: 50%;
       filter: blur(100px);
       opacity: 0.12;
-      top: -80px; left: -80px;
-      pointer-events: none; z-index: 0;
+      top: -80px;
+      left: -80px;
+      pointer-events: none;
+      z-index: 0;
     }
 
     .container {
       width: 100%;
       max-width: 520px;
-      position: relative; z-index: 1;
+      position: relative;
+      z-index: 1;
       animation: fadeIn 0.5s ease;
       display: none;
     }
@@ -51,8 +60,8 @@
       max-width: 460px;
       margin: 10vh auto 0;
       text-align: center;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 22px;
       padding: 28px 22px;
       backdrop-filter: blur(14px);
@@ -69,7 +78,7 @@
       height: 72px;
       border-radius: 20px;
       background: linear-gradient(135deg, #6366f1, #4f46e5);
-      box-shadow: 0 10px 30px rgba(99,102,241,0.35);
+      box-shadow: 0 10px 30px rgba(99, 102, 241, 0.35);
       font-size: 32px;
       margin-bottom: 16px;
     }
@@ -102,12 +111,12 @@
     .btn-admin-login {
       background: linear-gradient(135deg, #6366f1, #4f46e5);
       color: #fff;
-      box-shadow: 0 6px 20px rgba(99,102,241,0.28);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.28);
     }
 
     .btn-admin-login:hover {
       transform: translateY(-2px);
-      box-shadow: 0 10px 28px rgba(99,102,241,0.4);
+      box-shadow: 0 10px 28px rgba(99, 102, 241, 0.4);
     }
 
     /* ===== Header & Navigation ===== */
@@ -115,76 +124,109 @@
       text-align: center;
       margin-bottom: 24px;
     }
+
     .header-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 16px;
     }
+
     .back-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      color: #64748b; text-decoration: none; font-size: 0.88em;
-      padding: 6px 12px; border-radius: 20px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.88em;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       transition: all 0.25s ease;
     }
-    .back-btn:hover { color: #e2e8f0; background: rgba(255,255,255,0.1); }
+
+    .back-btn:hover {
+      color: #e2e8f0;
+      background: rgba(255, 255, 255, 0.1);
+    }
 
     .logout-btn {
-      display: inline-flex; align-items: center; gap: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       font-family: 'Sarabun', sans-serif;
-      font-size: 0.88em; font-weight: 600;
-      padding: 7px 14px; border-radius: 20px;
-      background: rgba(239,68,68,0.12);
-      border: 1px solid rgba(239,68,68,0.3);
+      font-size: 0.88em;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 20px;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
       color: #fca5a5;
       cursor: pointer;
       transition: all 0.25s ease;
     }
+
     .logout-btn:hover {
-      background: rgba(239,68,68,0.2);
-      border-color: rgba(239,68,68,0.5);
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.5);
     }
 
     h2 {
-      font-size: 1.6em; font-weight: 700;
+      font-size: 1.6em;
+      font-weight: 700;
       background: linear-gradient(135deg, #a5b4fc, #e2e8f0);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
       margin-bottom: 4px;
     }
+
     .instruction {
-      font-size: 0.83em; color: #64748b; line-height: 1.6;
+      font-size: 0.83em;
+      color: #64748b;
+      line-height: 1.6;
     }
 
     /* Step dots */
     .step-dots {
-      display: flex; justify-content: center; gap: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
       margin: 16px 0 20px;
     }
+
     .dot {
-      width: 10px; height: 10px; border-radius: 50%;
-      background: rgba(255,255,255,0.15);
-      border: 1px solid rgba(255,255,255,0.2);
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       transition: all 0.3s ease;
     }
+
     .dot.active {
       background: #6366f1;
-      box-shadow: 0 0 10px rgba(99,102,241,0.6);
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
     }
 
     /* Status */
     #status {
-      font-size: 0.88em; color: #64748b;
-      margin-bottom: 14px; min-height: 20px;
-      display: flex; align-items: center; justify-content: center; gap: 6px;
+      font-size: 0.88em;
+      color: #64748b;
+      margin-bottom: 14px;
+      min-height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
+
     .spinner {
       display: inline-block;
-      width: 14px; height: 14px;
-      border: 2px solid rgba(99,102,241,0.3);
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(99, 102, 241, 0.3);
       border-top-color: #6366f1;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
@@ -195,15 +237,17 @@
       position: relative;
       border-radius: 20px;
       overflow: hidden;
-      border: 2px solid rgba(99,102,241,0.4);
-      box-shadow: 0 0 30px rgba(99,102,241,0.2), inset 0 0 30px rgba(0,0,0,0.3);
+      border: 2px solid rgba(99, 102, 241, 0.4);
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.2), inset 0 0 30px rgba(0, 0, 0, 0.3);
       background: #0a0a1a;
       width: 100%;
       max-width: 480px;
       margin: 0 auto;
     }
+
     video {
-      width: 100%; display: block;
+      width: 100%;
+      display: block;
       transform: scaleX(-1);
       border-radius: 18px;
     }
@@ -211,8 +255,8 @@
     /* Form Section */
     .form-section {
       margin-top: 22px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 18px;
       padding: 22px 20px;
       backdrop-filter: blur(12px);
@@ -223,11 +267,12 @@
       position: relative;
       margin-bottom: 16px;
     }
+
     .input-group input {
       width: 100%;
       padding: 14px 16px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 12px;
       color: #e2e8f0;
       font-size: 15px;
@@ -235,11 +280,15 @@
       outline: none;
       transition: all 0.3s ease;
     }
-    .input-group input::placeholder { color: #475569; }
+
+    .input-group input::placeholder {
+      color: #475569;
+    }
+
     .input-group input:focus {
-      border-color: rgba(99,102,241,0.6);
-      background: rgba(99,102,241,0.06);
-      box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+      border-color: rgba(99, 102, 241, 0.6);
+      background: rgba(99, 102, 241, 0.06);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
     }
 
     #btnSave {
@@ -253,48 +302,79 @@
       font-weight: 600;
       font-family: 'Sarabun', sans-serif;
       cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
     }
+
     #btnSave:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(99,102,241,0.5);
+      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.5);
     }
+
     #btnSave:disabled {
-      background: rgba(255,255,255,0.1);
+      background: rgba(255, 255, 255, 0.1);
       color: #475569;
       box-shadow: none;
       cursor: default;
     }
 
     .count-badge {
-      background: rgba(255,255,255,0.2);
+      background: rgba(255, 255, 255, 0.2);
       padding: 2px 10px;
       border-radius: 20px;
       font-size: 13px;
     }
+
     #btnSave:not(:disabled) .count-badge {
-      background: rgba(255,255,255,0.25);
+      background: rgba(255, 255, 255, 0.25);
     }
 
     #msg {
-      margin-top: 14px; min-height: 24px;
-      font-size: 0.9em; font-weight: 600;
+      margin-top: 14px;
+      min-height: 24px;
+      font-size: 0.9em;
+      font-weight: 600;
       text-align: center;
     }
-    .msg-success { color: #34d399; }
-    .msg-error   { color: #f87171; }
+
+    .msg-success {
+      color: #34d399;
+    }
+
+    .msg-error {
+      color: #f87171;
+    }
 
     /* Animations */
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes spin   { to { transform: rotate(360deg); } }
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
   </style>
 </head>
+
 <body>
 
   <!-- ===== หน้าล็อก ===== -->
   <div class="admin-lock" id="adminLock">
+    <a href="index.html" class="back-btn">← กลับเมนูหลัก</a>
     <div class="admin-lock__badge">🔒</div>
     <h2>Admin Only</h2>
     <p>หน้านี้สำหรับผู้ดูแลระบบเท่านั้น<br>กรุณายืนยันรหัสแอดมินก่อนเข้าใช้งาน</p>
@@ -339,237 +419,238 @@
     </div>
   </div>
 
-<script>
-  // ============================================================
-  //  Admin Auth — ใช้ sessionStorage (หมดอายุเมื่อปิด tab)
-  //  + ป้องกัน back button วนกลับเข้ามาได้
-  // ============================================================
-  const SESSION_KEY  = 'registerAdminAuth';
-  const API_URL      = localStorage.getItem('gasApiUrl') || GAS_API_URL;
+  <script>
+    // ============================================================
+    //  Admin Auth — ใช้ sessionStorage (หมดอายุเมื่อปิด tab)
+    //  + ป้องกัน back button วนกลับเข้ามาได้
+    // ============================================================
+    const SESSION_KEY = 'registerAdminAuth';
+    const API_URL = localStorage.getItem('gasApiUrl') || GAS_API_URL;
 
-  const adminLock    = document.getElementById('adminLock');
-  const adminContent = document.getElementById('adminContent');
-  const btnAdminLogin = document.getElementById('btnAdminLogin');
-  const btnLogout    = document.getElementById('btnLogout');
-  const video        = document.getElementById('video');
-  const statusDiv    = document.getElementById('status');
-  const btnSave      = document.getElementById('btnSave');
-  const msgDiv       = document.getElementById('msg');
-  const countSpan    = document.getElementById('saveCount');
+    const adminLock = document.getElementById('adminLock');
+    const adminContent = document.getElementById('adminContent');
+    const btnAdminLogin = document.getElementById('btnAdminLogin');
+    const btnLogout = document.getElementById('btnLogout');
+    const video = document.getElementById('video');
+    const statusDiv = document.getElementById('status');
+    const btnSave = document.getElementById('btnSave');
+    const msgDiv = document.getElementById('msg');
+    const countSpan = document.getElementById('saveCount');
 
-  let saveCounter = 0;
+    let saveCounter = 0;
 
-  // --------- ตรวจสอบสถานะ auth ---------
-  function isAuthed() {
-    return sessionStorage.getItem(SESSION_KEY) === '1';
-  }
-
-  function showAdminContent() {
-    adminLock.style.display    = 'none';
-    adminContent.style.display = 'block';
-  }
-
-  function showLockScreen() {
-    adminContent.style.display = 'none';
-    adminLock.style.display    = 'block';
-  }
-
-  // --------- Back Button Guard (pageshow — ไม่ใช้ pushState/popstate) ---------
-  window.addEventListener('pageshow', function (e) {
-    // bfcache restore หรือโหลดปกติ → ถ้าไม่มี session ให้ล็อก
-    if (e.persisted) {
-      if (!isAuthed()) showLockScreen();
+    // --------- ตรวจสอบสถานะ auth ---------
+    function isAuthed() {
+      return sessionStorage.getItem(SESSION_KEY) === '1';
     }
-  });
 
-  // --------- Login (SweetAlert2) ---------
-  const LOCAL_FALLBACK_CODE = '2569';
-
-  async function verifyCode(code) {
-    const trimmed = code.trim();
-    // ตรวจ local ก่อนเสมอ (ทำงานแม้ offline)
-    if (trimmed === LOCAL_FALLBACK_CODE) return { ok: true };
-    // ถ้าไม่ตรง local → ลอง server (กรณีเปลี่ยนรหัสผ่าน GAS)
-    const apiUrl = (localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
-    if (!apiUrl) return { ok: false };
-    try {
-      const ctrl  = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 5000);
-      const res   = await fetch(apiUrl, {
-        method: 'POST',
-        body  : JSON.stringify({ action: 'verifyAdmin', code: trimmed }),
-        signal: ctrl.signal
-      });
-      clearTimeout(timer);
-      const data = await res.json();
-      return data.success === true ? { ok: true } : { ok: false, error: data.error };
-    } catch (_) {
-      return { ok: false };
+    function showAdminContent() {
+      adminLock.style.display = 'none';
+      adminContent.style.display = 'block';
     }
-  }
 
-  btnAdminLogin.addEventListener('click', async function () {
-    const { value: code, isConfirmed } = await Swal.fire({
-      title: '🔐 Admin Login',
-      input: 'password',
-      inputLabel: 'กรอกรหัสแอดมิน',
-      inputPlaceholder: 'รหัสผ่าน',
-      inputAttributes: { autocomplete: 'current-password' },
-      confirmButtonText: '🔓 ยืนยัน',
-      cancelButtonText: 'ยกเลิก',
-      showCancelButton: true,
-      confirmButtonColor: '#6366f1',
-      cancelButtonColor: '#374151',
-      background: '#1e1b4b',
-      color: '#e2e8f0',
-      inputValidator: (v) => {
-        if (!v || !v.trim()) return 'กรุณากรอกรหัสก่อน';
+    function showLockScreen() {
+      adminContent.style.display = 'none';
+      adminLock.style.display = 'block';
+    }
+
+    // --------- Back Button Guard (pageshow — ไม่ใช้ pushState/popstate) ---------
+    window.addEventListener('pageshow', function (e) {
+      // bfcache restore หรือโหลดปกติ → ถ้าไม่มี session ให้ล็อก
+      if (e.persisted) {
+        if (!isAuthed()) showLockScreen();
       }
     });
 
-    if (!isConfirmed || !code) return;
+    // --------- Login (SweetAlert2) ---------
+    const LOCAL_FALLBACK_CODE = '2569';
 
-    Swal.fire({ title: '⏳ กำลังตรวจสอบ...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e1b4b', color: '#e2e8f0' });
-
-    const result = await verifyCode(code);
-
-    if (result.ok) {
-      sessionStorage.setItem(SESSION_KEY, '1');
-      Swal.fire({ icon: 'success', title: '✅ เข้าสู่ระบบสำเร็จ', timer: 1200, showConfirmButton: false, background: '#1e1b4b', color: '#e2e8f0' })
-        .then(() => {
-          showAdminContent();
-          if (!API_URL) {
-            statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
-          } else {
-            initModels();
-          }
+    async function verifyCode(code) {
+      const trimmed = code.trim();
+      // ตรวจ local ก่อนเสมอ (ทำงานแม้ offline)
+      if (trimmed === LOCAL_FALLBACK_CODE) return { ok: true };
+      // ถ้าไม่ตรง local → ลอง server (กรณีเปลี่ยนรหัสผ่าน GAS)
+      const apiUrl = (localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
+      if (!apiUrl) return { ok: false };
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 5000);
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'verifyAdmin', code: trimmed }),
+          signal: ctrl.signal
         });
-    } else {
-      Swal.fire({ icon: 'error', title: '❌ รหัสไม่ถูกต้อง', text: result.error || 'กรุณาตรวจสอบรหัสอีกครั้ง', confirmButtonText: 'ลองใหม่', confirmButtonColor: '#6366f1', background: '#1e1b4b', color: '#e2e8f0' });
+        clearTimeout(timer);
+        const data = await res.json();
+        return data.success === true ? { ok: true } : { ok: false, error: data.error };
+      } catch (_) {
+        return { ok: false };
+      }
     }
-  });
 
+    btnAdminLogin.addEventListener('click', async function () {
+      const { value: code, isConfirmed } = await Swal.fire({
+        title: '🔐 Admin Login',
+        input: 'password',
+        inputLabel: 'กรอกรหัสแอดมิน',
+        inputPlaceholder: 'รหัสผ่าน',
+        inputAttributes: { autocomplete: 'current-password' },
+        confirmButtonText: '🔓 ยืนยัน',
+        cancelButtonText: 'ยกเลิก',
+        showCancelButton: true,
+        confirmButtonColor: '#6366f1',
+        cancelButtonColor: '#374151',
+        background: '#1e1b4b',
+        color: '#e2e8f0',
+        inputValidator: (v) => {
+          if (!v || !v.trim()) return 'กรุณากรอกรหัสก่อน';
+        }
+      });
 
-  // --------- Logout ---------
-  function doLogout() {
-    sessionStorage.removeItem(SESSION_KEY);
-    // หยุดกล้องก่อน
-    if (video.srcObject) {
-      video.srcObject.getTracks().forEach(t => t.stop());
-      video.srcObject = null;
-    }
-    window.location.replace('index.html');
-  }
+      if (!isConfirmed || !code) return;
 
-  btnLogout.addEventListener('click', doLogout);
+      Swal.fire({ title: '⏳ กำลังตรวจสอบ...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e1b4b', color: '#e2e8f0' });
 
-  // --------- ตรวจสอบ session เมื่อโหลดหน้า ---------
-  // ไม่ auto-restore จาก sessionStorage — ต้อง verify ทุกครั้งที่เปิดหน้าใหม่
-  // (session จาก tab เดิมยังใช้ได้ถ้าไม่ refresh หน้า)
-  if (isAuthed()) {
-    showAdminContent();
-    if (!API_URL) {
-      statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
-    } else {
-      window.addEventListener('load', initModels);
-    }
-  }
+      const result = await verifyCode(code);
 
-
-  // --------- Step Dots ---------
-  function updateDots() {
-    [1,2,3].forEach(i => {
-      const dot = document.getElementById('dot' + i);
-      dot.className = 'dot' + (i <= saveCounter ? ' active' : '');
+      if (result.ok) {
+        sessionStorage.setItem(SESSION_KEY, '1');
+        Swal.fire({ icon: 'success', title: '✅ เข้าสู่ระบบสำเร็จ', timer: 1200, showConfirmButton: false, background: '#1e1b4b', color: '#e2e8f0' })
+          .then(() => {
+            showAdminContent();
+            if (!API_URL) {
+              statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
+            } else {
+              initModels();
+            }
+          });
+      } else {
+        Swal.fire({ icon: 'error', title: '❌ รหัสไม่ถูกต้อง', text: result.error || 'กรุณาตรวจสอบรหัสอีกครั้ง', confirmButtonText: 'ลองใหม่', confirmButtonColor: '#6366f1', background: '#1e1b4b', color: '#e2e8f0' });
+      }
     });
-  }
 
-  // --------- Load AI ---------
-  async function initModels() {
-    try {
-      statusDiv.innerHTML = '<span class="spinner"></span> กำลังโหลด AI Model...';
-      const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
-      await Promise.all([
-        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-      ]);
-      startCamera();
-    } catch (e) {
-      statusDiv.innerHTML = '<span style="color:#f87171">❌ โหลด AI Model ล้มเหลว: ' + e.message + '</span>';
+
+    // --------- Logout ---------
+    function doLogout() {
+      sessionStorage.removeItem(SESSION_KEY);
+      // หยุดกล้องก่อน
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
+      }
+      window.location.replace('index.html');
     }
-  }
 
-  function startCamera() {
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-      .then(stream => {
-        video.srcObject = stream;
-        statusDiv.innerText = '';
-        btnSave.disabled = false;
-      })
-      .catch(err => {
-        statusDiv.innerHTML = '<span style="color:#f87171">❌ เปิดกล้องไม่ได้: ' + err.message + '</span>';
+    btnLogout.addEventListener('click', doLogout);
+
+    // --------- ตรวจสอบ session เมื่อโหลดหน้า ---------
+    // ไม่ auto-restore จาก sessionStorage — ต้อง verify ทุกครั้งที่เปิดหน้าใหม่
+    // (session จาก tab เดิมยังใช้ได้ถ้าไม่ refresh หน้า)
+    if (isAuthed()) {
+      showAdminContent();
+      if (!API_URL) {
+        statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
+      } else {
+        window.addEventListener('load', initModels);
+      }
+    }
+
+
+    // --------- Step Dots ---------
+    function updateDots() {
+      [1, 2, 3].forEach(i => {
+        const dot = document.getElementById('dot' + i);
+        dot.className = 'dot' + (i <= saveCounter ? ' active' : '');
       });
-  }
-
-  // --------- Save Face ---------
-  async function saveFace() {
-    const name = document.getElementById('username').value.trim();
-    if (!name) return alert('กรุณาใส่ชื่อก่อน');
-
-    // ตรวจสอบ session ยังอยู่ไหม
-    if (!isAuthed()) {
-      alert('หมดสิทธิ์การเข้าถึง กรุณาเข้าสู่ระบบใหม่');
-      doLogout();
-      return;
     }
 
-    btnSave.disabled = true;
-    btnSave.innerHTML = '⏳ กำลังประมวลผล... <span class="count-badge">' + saveCounter + '</span>';
-    msgDiv.innerText = '';
-
-    const detection = await faceapi
-      .detectSingleFace(video)
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-
-    if (!detection) {
-      alert('ไม่พบใบหน้า! กรุณามองกล้องให้ชัดเจน');
-      btnSave.disabled = false;
-      btnSave.innerHTML = '📸 บันทึกใบหน้า <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
-      return;
+    // --------- Load AI ---------
+    async function initModels() {
+      try {
+        statusDiv.innerHTML = '<span class="spinner"></span> กำลังโหลด AI Model...';
+        const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+        await Promise.all([
+          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        startCamera();
+      } catch (e) {
+        statusDiv.innerHTML = '<span style="color:#f87171">❌ โหลด AI Model ล้มเหลว: ' + e.message + '</span>';
+      }
     }
 
-    const descriptorArray = Array.from(detection.descriptor);
-
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'registerUser',
-          name,
-          faceDescriptor: descriptorArray,
-          registeredBy: 'admin',
-          status: 'active'
+    function startCamera() {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+        .then(stream => {
+          video.srcObject = stream;
+          statusDiv.innerText = '';
+          btnSave.disabled = false;
         })
-      });
-      const data = await res.json();
-
-      if (data.error) throw new Error(data.error);
-
-      saveCounter++;
-      document.getElementById('saveCount') && (document.getElementById('saveCount').innerText = saveCounter);
-      updateDots();
-      msgDiv.innerHTML = '<span class="msg-success">✅ บันทึกครั้งที่ ' + saveCounter + ' สำเร็จ! ขยับหน้าเล็กน้อยแล้วกดอีกครั้ง</span>';
-      btnSave.disabled = false;
-      btnSave.innerHTML = '📸 บันทึกเพิ่ม <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
-    } catch (e) {
-      msgDiv.innerHTML = '<span class="msg-error">❌ บันทึกล้มเหลว: ' + e.message + '</span>';
-      btnSave.disabled = false;
-      btnSave.innerHTML = '📸 บันทึกใบหน้า <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
+        .catch(err => {
+          statusDiv.innerHTML = '<span style="color:#f87171">❌ เปิดกล้องไม่ได้: ' + err.message + '</span>';
+        });
     }
-  }
-</script>
+
+    // --------- Save Face ---------
+    async function saveFace() {
+      const name = document.getElementById('username').value.trim();
+      if (!name) return alert('กรุณาใส่ชื่อก่อน');
+
+      // ตรวจสอบ session ยังอยู่ไหม
+      if (!isAuthed()) {
+        alert('หมดสิทธิ์การเข้าถึง กรุณาเข้าสู่ระบบใหม่');
+        doLogout();
+        return;
+      }
+
+      btnSave.disabled = true;
+      btnSave.innerHTML = '⏳ กำลังประมวลผล... <span class="count-badge">' + saveCounter + '</span>';
+      msgDiv.innerText = '';
+
+      const detection = await faceapi
+        .detectSingleFace(video)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!detection) {
+        alert('ไม่พบใบหน้า! กรุณามองกล้องให้ชัดเจน');
+        btnSave.disabled = false;
+        btnSave.innerHTML = '📸 บันทึกใบหน้า <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
+        return;
+      }
+
+      const descriptorArray = Array.from(detection.descriptor);
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'registerUser',
+            name,
+            faceDescriptor: descriptorArray,
+            registeredBy: 'admin',
+            status: 'active'
+          })
+        });
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        saveCounter++;
+        document.getElementById('saveCount') && (document.getElementById('saveCount').innerText = saveCounter);
+        updateDots();
+        msgDiv.innerHTML = '<span class="msg-success">✅ บันทึกครั้งที่ ' + saveCounter + ' สำเร็จ! ขยับหน้าเล็กน้อยแล้วกดอีกครั้ง</span>';
+        btnSave.disabled = false;
+        btnSave.innerHTML = '📸 บันทึกเพิ่ม <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
+      } catch (e) {
+        msgDiv.innerHTML = '<span class="msg-error">❌ บันทึกล้มเหลว: ' + e.message + '</span>';
+        btnSave.disabled = false;
+        btnSave.innerHTML = '📸 บันทึกใบหน้า <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
+      }
+    }
+  </script>
 </body>
+
 </html>

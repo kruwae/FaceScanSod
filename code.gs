@@ -11,17 +11,12 @@ function doGet(e) {
   const action = e.parameter.action;
   let result;
 
-  if (action === 'getConfig') {
-    result = getConfig();
-  } else if (action === 'getKnownFaces') {
-    result = getKnownFaces();
-  } else if (action === 'getLocations') {
-    result = getLocations();
-  } else if (action === 'initSetup') {
-    result = initSetup();
-  } else {
-    result = { error: 'Unknown action: ' + action };
-  }
+  if      (action === 'getConfig')          result = getConfig();
+  else if (action === 'getKnownFaces')      result = getKnownFaces();
+  else if (action === 'getLocations')       result = getLocations();
+  else if (action === 'getAttendanceLogs')  result = getAttendanceLogs(e.parameter);
+  else if (action === 'initSetup')          result = initSetup();
+  else result = { error: 'Unknown action: ' + action };
 
   return ContentService
     .createTextOutput(JSON.stringify(result))
@@ -44,19 +39,12 @@ function doPost(e) {
   const action = data.action;
   let result;
 
-  if (action === 'registerUser') {
-    result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status);
-  } else if (action === 'logAttendance') {
-    result = logAttendance(data.name, data.lat, data.lng, data.matchScore, data.distance, data.device, data.locationName);
-  } else if (action === 'saveConfig') {
-    result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy);
-  } else if (action === 'verifyAdmin') {
-    result = verifyAdmin(data.code);
-  } else if (action === 'changeAdminCode') {
-    result = changeAdminCode(data.currentCode, data.newCode);
-  } else {
-    result = { error: 'Unknown action: ' + action };
-  }
+  if      (action === 'registerUser')   result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status);
+  else if (action === 'logAttendance')  result = logAttendance(data);
+  else if (action === 'saveConfig')     result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy);
+  else if (action === 'verifyAdmin')    result = verifyAdmin(data.code);
+  else if (action === 'changeAdminCode') result = changeAdminCode(data.currentCode, data.newCode);
+  else result = { error: 'Unknown action: ' + action };
 
   return ContentService
     .createTextOutput(JSON.stringify(result))
@@ -320,34 +308,136 @@ function getLocations() {
 // ============================================================
 //  Attendance Log
 // ============================================================
-function logAttendance(name, lat, lng, matchScore, distance, device, locationName) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const schema = ['Name', 'Time', 'Date', 'Latitude', 'Longitude', 'Google Map Link', 'Match Score', 'Distance', 'Device', 'Location'];
-  const result = ensureSheetWithHeaders(ss, 'Attendance', schema);
-  const sheet = result.sheet;
 
-  const now = new Date();
-  const mapLink = (lat && lng) ? `https://www.google.com/maps?q=${lat},${lng}` : '';
+/**
+ * logAttendance — บันทึกเวลาเข้าออกงาน
+ * payload: { name, lat, lng, locationName, gpsStatus, gpsSkipReason, userAgent,
+ *            meshSynced, meshId, meshClientTime, meshFingerprint }
+ * เพิ่ม duplicate check: ถ้ายังไม่ลงวันนี้ → append | ถ้าลงแล้ว → flag duplicate
+ */
+function logAttendance(payload) {
+  // รองรับ old-style call (positional args) และ new-style (payload object)
+  var name, lat, lng, locationName, gpsStatus, gpsSkipReason, userAgent;
+  var meshSynced, meshId, meshClientTime, meshFingerprint;
+
+  if (typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
+    name            = payload.name         || '';
+    lat             = payload.lat          || '';
+    lng             = payload.lng          || '';
+    locationName    = payload.locationName || '';
+    gpsStatus       = payload.gpsStatus    || 'ok';
+    gpsSkipReason   = payload.gpsSkipReason || '';
+    userAgent       = payload.userAgent    || '';
+    meshSynced      = payload.meshSynced   || false;
+    meshId          = payload.meshId       || '';
+    meshClientTime  = payload.meshClientTime || '';
+    meshFingerprint = payload.meshFingerprint || '';
+  } else {
+    // legacy positional: (name, lat, lng, matchScore, distance, device, locationName)
+    name         = arguments[0] || '';
+    lat          = arguments[1] || '';
+    lng          = arguments[2] || '';
+    locationName = arguments[6] || '';
+    gpsStatus    = 'ok';
+  }
+
+  const ss     = SpreadsheetApp.getActiveSpreadsheet();
+  const schema = [
+    'Name', 'Time', 'Date', 'Latitude', 'Longitude', 'Google Map Link',
+    'Location', 'GPS Status', 'GPS Skip Reason',
+    'Mesh Synced', 'Mesh ID', 'Mesh Client Time', 'Mesh Fingerprint',
+    'User Agent', 'Duplicate'
+  ];
+  const result = ensureSheetWithHeaders(ss, 'Attendance', schema);
+  const sheet  = result.sheet;
+  const hm     = result.headerMap;
+
+  const now     = new Date();
   const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'd/M/yyyy');
   const timeStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm:ss');
+  const mapLink = (lat && lng) ? 'https://www.google.com/maps?q=' + lat + ',' + lng : '';
+
+  // ===== Duplicate Check =====
+  // ตรวจว่ามีชื่อ+วันที่เดียวกันในวันนี้แล้วหรือยัง
+  var isDuplicate = false;
+  var allData = sheet.getDataRange().getValues();
+  var nameCol = hm['Name'] - 1;
+  var dateCol = hm['Date'] - 1;
+  for (var i = 1; i < allData.length; i++) {
+    var rowName = String(allData[i][nameCol] || '').trim();
+    var rowDate = String(allData[i][dateCol] || '').replace(/^'/, '').trim();
+    if (rowName === String(name).trim() && rowDate === dateStr) {
+      isDuplicate = true;
+      break;
+    }
+  }
 
   const rowNumber = sheet.getLastRow() + 1;
-  sheet.getRange(rowNumber, 1, 1, Math.max(sheet.getLastColumn(), schema.length)).setValues([new Array(Math.max(sheet.getLastColumn(), schema.length)).fill('')]);
+  sheet.getRange(rowNumber, 1, 1, Math.max(sheet.getLastColumn(), schema.length))
+       .setValues([new Array(Math.max(sheet.getLastColumn(), schema.length)).fill('')]);
 
-  setRowByHeaders(sheet, rowNumber, result.headerMap, {
-    'Name': name,
-    'Time': timeStr,
-    'Date': "'" + dateStr,
-    'Latitude': lat || '-',
-    'Longitude': lng || '-',
-    'Google Map Link': mapLink,
-    'Match Score': matchScore != null ? matchScore : '',
-    'Distance': distance != null ? distance : '',
-    'Device': device || '',
-    'Location': locationName || ''
+  setRowByHeaders(sheet, rowNumber, hm, {
+    'Name':              name,
+    'Time':              timeStr,
+    'Date':              "'" + dateStr,
+    'Latitude':          lat || '-',
+    'Longitude':         lng || '-',
+    'Google Map Link':   mapLink,
+    'Location':          locationName,
+    'GPS Status':        gpsStatus,
+    'GPS Skip Reason':   gpsSkipReason,
+    'Mesh Synced':       meshSynced ? 'YES' : '',
+    'Mesh ID':           meshId,
+    'Mesh Client Time':  meshClientTime,
+    'Mesh Fingerprint':  meshFingerprint,
+    'User Agent':        userAgent,
+    'Duplicate':         isDuplicate ? 'DUPLICATE' : ''
   });
 
+  if (isDuplicate) {
+    return {
+      success: true,
+      duplicate: true,
+      message: '⚠️ พบว่า ' + name + ' ลงชื่อเข้างานไปแล้วในวันนี้ (บันทึกเพิ่ม Flag: DUPLICATE)'
+    };
+  }
   return { success: true, message: 'บันทึกเวลาเสร็จสิ้น' };
+}
+
+/**
+ * getAttendanceLogs — สำหรับ report.html
+ * params: { date, name } (optional filters)
+ */
+function getAttendanceLogs(params) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Attendance');
+  if (!sheet) return [];
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+
+  const headers = data[0].map(function(h) { return String(h).trim(); });
+  const filterDate = (params && params.date) ? params.date.trim() : '';
+  const filterName = (params && params.name) ? params.name.trim().toLowerCase() : '';
+
+  const rows = [];
+  for (var i = 1; i < data.length; i++) {
+    var row = {};
+    headers.forEach(function(h, idx) { row[h] = data[i][idx]; });
+
+    // filter by date
+    if (filterDate) {
+      var rowDate = String(row['Date'] || '').replace(/^'/, '').trim();
+      if (rowDate !== filterDate) continue;
+    }
+    // filter by name
+    if (filterName) {
+      var rowName = String(row['Name'] || '').toLowerCase();
+      if (!rowName.includes(filterName)) continue;
+    }
+    rows.push(row);
+  }
+  return rows;
 }
 
 // ============================================================
@@ -356,31 +446,29 @@ function logAttendance(name, lat, lng, matchScore, distance, device, locationNam
 function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('Config');
-  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled'];
+  // ADD: audit trail columns
+  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At'];
 
-  if (!sheet) {
-    sheet = ss.insertSheet('Config');
-  }
+  if (!sheet) sheet = ss.insertSheet('Config');
 
   sheet.clearContents();
   sheet.getRange(1, 1, 1, schema.length).setValues([schema]);
 
+  const now = new Date();
   const parsedLocations = parseLocations(locations).map(normalizeLocation);
-  parsedLocations.forEach((loc, index) => {
+  parsedLocations.forEach(function(loc, index) {
     sheet.getRange(index + 2, 1, 1, schema.length).setValues([[
-      loc.id,
-      loc.name,
-      loc.lat,
-      loc.lng,
-      loc.radius,
-      true
+      loc.id, loc.name, loc.lat, loc.lng, loc.radius, true,
+      updatedBy || 'admin', now          // audit trail
     ]]);
   });
 
-  PropertiesService.getScriptProperties().setProperty('API_URL', apiUrl || '');
-  PropertiesService.getScriptProperties().setProperty('CONFIG_UPDATED_BY', updatedBy || '');
-  PropertiesService.getScriptProperties().setProperty('WORK_TIMES', JSON.stringify(workTimes || {}));
-  PropertiesService.getScriptProperties().setProperty('FALLBACK_SETTINGS', JSON.stringify(fallbackSettings || {}));
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('API_URL',            apiUrl || '');
+  props.setProperty('CONFIG_UPDATED_BY',  updatedBy || '');
+  props.setProperty('CONFIG_UPDATED_AT',  now.toISOString());
+  props.setProperty('WORK_TIMES',         JSON.stringify(workTimes || {}));
+  props.setProperty('FALLBACK_SETTINGS',  JSON.stringify(fallbackSettings || {}));
 
   return { success: true, message: 'บันทึกการตั้งค่าลง Google Sheets เรียบร้อย' };
 }

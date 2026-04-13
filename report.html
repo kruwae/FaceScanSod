@@ -429,7 +429,9 @@
     updateTimeInfoBar();
     if (!API_URL) {
       showError('❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a>');
+      return;
     }
+    await loadReport();
   }
 
   function setDefaultDates() {

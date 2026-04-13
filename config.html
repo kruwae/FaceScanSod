@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ตั้งค่าระบบ</title>
+  <title>ตั้งค่าระบบ | Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
   <style>
@@ -40,8 +40,7 @@
       animation: fadeIn 0.5s ease;
     }
 
-    /* Header */
-    .page-header { margin-bottom: 24px; }
+    .page-header { margin-bottom: 18px; text-align: center; }
     .back-btn {
       display: inline-flex; align-items: center; gap: 6px;
       color: #64748b; text-decoration: none; font-size: 0.88em;
@@ -53,17 +52,92 @@
     }
     .back-btn:hover { color: #e2e8f0; background: rgba(255,255,255,0.1); }
 
+    .admin-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(6,182,212,0.14);
+      border: 1px solid rgba(6,182,212,0.25);
+      color: #a5f3fc;
+      font-size: 0.84em;
+      margin-bottom: 12px;
+    }
+
     h2 {
       font-size: 1.6em; font-weight: 700;
       background: linear-gradient(135deg, #a5b4fc, #e2e8f0);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
-    .page-subtitle { font-size: 0.83em; color: #64748b; }
+    .page-subtitle { font-size: 0.83em; color: #94a3b8; line-height: 1.6; }
 
-    /* Card */
+    .warning-box {
+      background: rgba(245,158,11,0.12);
+      border: 1px solid rgba(245,158,11,0.26);
+      color: #fde68a;
+      border-radius: 16px;
+      padding: 14px 16px;
+      line-height: 1.65;
+      font-size: 0.9em;
+      margin: 16px 0 18px;
+      text-align: left;
+    }
+
+    .access-gate {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 18px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .gate-title {
+      font-size: 1em;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .gate-desc {
+      font-size: 0.88em;
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+
+    .gate-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .gate-btn {
+      flex: 1;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 0.95em;
+      font-weight: 600;
+      padding: 12px 14px;
+      transition: all 0.3s ease;
+    }
+    .gate-btn.primary {
+      background: linear-gradient(135deg, #06b6d4, #0891b2);
+      color: white;
+    }
+    .gate-btn.secondary {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #e2e8f0;
+    }
+    .gate-btn:hover { transform: translateY(-1px); }
+
     .card {
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.1);
@@ -89,7 +163,6 @@
     .section-icon.cyan    { background: rgba(6,182,212,0.2);  }
     .section-title-text { font-weight: 600; font-size: 0.95em; color: #c7d2fe; }
 
-    /* Inputs */
     label {
       display: block; font-size: 0.82em; font-weight: 600;
       color: #94a3b8; margin-bottom: 6px; letter-spacing: 0.03em;
@@ -109,16 +182,16 @@
     }
     input::placeholder { color: #334155; }
     input:focus {
-      border-color: rgba(99,102,241,0.5);
-      background: rgba(99,102,241,0.07);
-      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+      border-color: rgba(6,182,212,0.5);
+      background: rgba(6,182,212,0.07);
+      box-shadow: 0 0 0 3px rgba(6,182,212,0.12);
     }
+
     .note {
       font-size: 0.78em; color: #475569;
       margin-top: -10px; margin-bottom: 14px; line-height: 1.5;
     }
 
-    /* Buttons */
     .btn {
       border: none; border-radius: 12px; cursor: pointer;
       font-family: 'Sarabun', sans-serif; font-size: 15px; font-weight: 600;
@@ -132,19 +205,11 @@
       box-shadow: 0 4px 15px rgba(6,182,212,0.3);
       margin-bottom: 18px;
     }
-    .btn-get-loc:hover {
-      box-shadow: 0 6px 25px rgba(6,182,212,0.45);
-      transform: translateY(-1px);
-    }
     .btn-save {
       background: linear-gradient(135deg, #10b981, #059669);
       color: white;
       box-shadow: 0 4px 20px rgba(16,185,129,0.3);
       font-size: 16px; padding: 15px;
-    }
-    .btn-save:hover {
-      box-shadow: 0 8px 30px rgba(16,185,129,0.5);
-      transform: translateY(-2px);
     }
 
     .btn-back {
@@ -164,12 +229,6 @@
       display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
     }
 
-    .divider {
-      border: none;
-      border-top: 1px solid rgba(255,255,255,0.07);
-      margin: 4px 0 18px;
-    }
-
     #msg {
       margin-top: 14px; min-height: 22px;
       font-size: 0.9em; font-weight: 600;
@@ -178,7 +237,8 @@
     .msg-success { color: #34d399; }
     .msg-error   { color: #f87171; }
 
-    /* Animation */
+    .hidden { display: none !important; }
+
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
@@ -186,81 +246,126 @@
 <div class="container">
 
   <div class="page-header">
-    <a href="index.html" class="back-btn">← กลับ</a>
+    <a href="index.html" class="back-btn">← กลับเมนูหลัก</a>
+    <div class="admin-badge">🔒 Admin Only</div>
     <h2>⚙️ ตั้งค่าระบบ</h2>
-    <p class="page-subtitle">จัดการ API และจุดเช็คอิน GPS</p>
+    <p class="page-subtitle">กำหนด Web App URL, จุดเช็คอิน GPS และค่าควบคุมระบบ</p>
+    <div class="warning-box">
+      หน้านี้สำหรับผู้ดูแลระบบเท่านั้น การเปลี่ยนค่า API หรือ GPS มีผลต่อการสแกนเข้างานทั้งหมด
+    </div>
   </div>
 
-  <!-- API URL Card -->
-  <div class="card">
-    <div class="section-header">
-      <div class="section-icon indigo">🔗</div>
-      <span class="section-title-text">Google Apps Script API</span>
+  <div id="adminGate" class="access-gate">
+    <div class="gate-title">ต้องยืนยันสิทธิ์ผู้ดูแลก่อน</div>
+    <div class="gate-desc">กรอกรหัสผู้ดูแลเพื่อปลดล็อกหน้าตั้งค่า ระบบจะจำสถานะไว้ในอุปกรณ์นี้</div>
+    <div class="gate-actions">
+      <button class="gate-btn primary" id="btnAdminLogin" type="button">ปลดล็อกผู้ดูแล</button>
+      <button class="gate-btn secondary" id="btnAdminLogout" type="button">ล้างสถานะ</button>
     </div>
-
-    <label>WEB APP URL</label>
-    <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec">
-    <p class="note">Deploy GAS แล้วนำ URL มาวางที่นี่ (Execute as: Me / Anyone can access)</p>
   </div>
 
-  <!-- GPS Config Card -->
-  <div class="card">
-    <div class="section-header">
-      <div class="section-icon cyan">📍</div>
-      <span class="section-title-text">จุดเช็คอิน GPS</span>
+  <div id="adminContent" class="hidden">
+    <div class="card">
+      <div class="section-header">
+        <div class="section-icon indigo">🔗</div>
+        <span class="section-title-text">Google Apps Script API</span>
+      </div>
+
+      <label>WEB APP URL</label>
+      <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      <p class="note">Deploy GAS แล้วนำ URL มาวางที่นี่ (Execute as: Me / Anyone can access)</p>
     </div>
 
-    <button class="btn btn-get-loc" onclick="getCurrentLocation()">
-      📍 ดึงตำแหน่งปัจจุบันของฉัน
+    <div class="card">
+      <div class="section-header">
+        <div class="section-icon cyan">📍</div>
+        <span class="section-title-text">จุดเช็คอิน GPS</span>
+      </div>
+
+      <button class="btn btn-get-loc" onclick="getCurrentLocation()">
+        📍 ดึงตำแหน่งปัจจุบันของฉัน
+      </button>
+
+      <div class="input-row">
+        <div>
+          <label>LATITUDE</label>
+          <input type="number" step="any" id="lat" placeholder="13.7563">
+        </div>
+        <div>
+          <label>LONGITUDE</label>
+          <input type="number" step="any" id="lng" placeholder="100.5018">
+        </div>
+      </div>
+
+      <label>รัศมีที่ยอมรับ (กิโลเมตร)</label>
+      <input type="number" step="0.01" id="radius" placeholder="เช่น 0.1 คือ 100 เมตร">
+      <p class="note">* ใส่ 0 หากไม่ต้องการจำกัดพื้นที่</p>
+    </div>
+
+    <button class="btn btn-save" onclick="saveAll()">
+      💾 บันทึกการตั้งค่าทั้งหมด
     </button>
+    <div id="msg"></div>
 
-    <div class="input-row">
-      <div>
-        <label>LATITUDE</label>
-        <input type="number" step="any" id="lat" placeholder="13.7563">
-      </div>
-      <div>
-        <label>LONGITUDE</label>
-        <input type="number" step="any" id="lng" placeholder="100.5018">
-      </div>
-    </div>
-
-    <label>รัศมีที่ยอมรับ (กิโลเมตร)</label>
-    <input type="number" step="0.01" id="radius" placeholder="เช่น 0.1 คือ 100 เมตร">
-    <p class="note">* ใส่ 0 หากไม่ต้องการจำกัดพื้นที่</p>
+    <a href="index.html" class="btn-back">← กลับเมนูหลัก</a>
   </div>
-
-  <!-- Actions -->
-  <button class="btn btn-save" onclick="saveAll()">
-    💾 บันทึกการตั้งค่าทั้งหมด
-  </button>
-  <div id="msg"></div>
-
-  <a href="index.html" class="btn-back">← กลับเมนูหลัก</a>
 </div>
 
 <script>
+  const ADMIN_KEY = 'faceScanAdminAuth';
+  const ADMIN_CODE = '2569';
   const msgDiv = document.getElementById('msg');
+  const gateBox = document.getElementById('adminGate');
+  const contentBox = document.getElementById('adminContent');
+  const adminLoginBtn = document.getElementById('btnAdminLogin');
+  const adminLogoutBtn = document.getElementById('btnAdminLogout');
 
-  // โหลดค่าที่บันทึกไว้
-  window.onload = function() {
+  function isAdminAuthed() {
+    return localStorage.getItem(ADMIN_KEY) === 'true';
+  }
+
+  function syncGate() {
+    const authed = isAdminAuthed();
+    gateBox.style.display = authed ? 'none' : 'block';
+    contentBox.classList.toggle('hidden', !authed);
+  }
+
+  adminLoginBtn.addEventListener('click', function () {
+    const code = prompt('กรอกรหัสผู้ดูแลระบบ');
+    if (code === null) return;
+    if (code.trim() === ADMIN_CODE) {
+      localStorage.setItem(ADMIN_KEY, 'true');
+      alert('✅ ยืนยันผู้ดูแลเรียบร้อย');
+      syncGate();
+      loadSavedValues();
+    } else {
+      alert('❌ รหัสผู้ดูแลไม่ถูกต้อง');
+    }
+  });
+
+  adminLogoutBtn.addEventListener('click', function () {
+    localStorage.removeItem(ADMIN_KEY);
+    alert('✅ ล้างสถานะผู้ดูแลแล้ว');
+    syncGate();
+  });
+
+  function loadSavedValues() {
     const savedUrl = localStorage.getItem('gasApiUrl') || GAS_API_URL;
-    document.getElementById('apiUrl').value = savedUrl;
-
+    document.getElementById('apiUrl').value = savedUrl || '';
     if (savedUrl) {
       loadGpsConfig(savedUrl);
     }
-  };
+  }
 
   function loadGpsConfig(apiUrl) {
     fetch(apiUrl + '?action=getConfig')
       .then(r => r.json())
       .then(config => {
-        document.getElementById('lat').value    = config.lat    || '';
-        document.getElementById('lng').value    = config.lng    || '';
+        document.getElementById('lat').value = config.lat || '';
+        document.getElementById('lng').value = config.lng || '';
         document.getElementById('radius').value = config.radius || '0.5';
       })
-      .catch(() => {}); // ถ้าโหลดไม่ได้ก็ข้ามไป
+      .catch(() => {});
   }
 
   function getCurrentLocation() {
@@ -277,21 +382,26 @@
 
   async function saveAll() {
     const apiUrl = document.getElementById('apiUrl').value.trim();
-    const lat    = document.getElementById('lat').value;
-    const lng    = document.getElementById('lng').value;
+    const lat = document.getElementById('lat').value;
+    const lng = document.getElementById('lng').value;
     const radius = document.getElementById('radius').value;
 
     if (!apiUrl) return showMsg('❌ กรุณากรอก API URL', 'error');
     if (!lat || !lng || !radius) return showMsg('❌ กรุณากรอกข้อมูล GPS ให้ครบ', 'error');
 
-    // บันทึก API URL ลง localStorage
     localStorage.setItem('gasApiUrl', apiUrl);
     showMsg('⏳ กำลังบันทึก...', '');
 
     try {
       const res = await fetch(apiUrl, {
         method: 'POST',
-        body: JSON.stringify({ action: 'saveConfig', lat, lng, radius })
+        body: JSON.stringify({
+          action: 'saveConfig',
+          lat,
+          lng,
+          radius,
+          updatedBy: 'admin'
+        })
       });
       const data = await res.json();
       showMsg('✅ ' + (data.message || 'บันทึกสำเร็จ'), 'success');
@@ -304,6 +414,9 @@
     msgDiv.innerText = text;
     msgDiv.className = type === 'success' ? 'msg-success' : type === 'error' ? 'msg-error' : '';
   }
+
+  syncGate();
+  loadSavedValues();
 </script>
 </body>
 </html>

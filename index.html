@@ -22,7 +22,6 @@
       overflow-x: hidden;
     }
 
-    /* Ambient orbs */
     body::before, body::after {
       content: '';
       position: fixed;
@@ -43,12 +42,13 @@
       bottom: -80px; right: -80px;
     }
 
-    /* Header */
     .header {
       text-align: center;
-      margin-bottom: 40px;
+      margin-bottom: 20px;
       position: relative; z-index: 1;
       animation: fadeInDown 0.6s ease;
+      width: 100%;
+      max-width: 420px;
     }
     .logo-icon {
       font-size: 52px;
@@ -66,12 +66,55 @@
       margin-bottom: 6px;
     }
     .subtitle {
-      font-size: 0.85em;
-      color: #64748b;
-      letter-spacing: 0.03em;
+      font-size: 0.9em;
+      color: #94a3b8;
+      letter-spacing: 0.02em;
+      line-height: 1.6;
     }
 
-    /* Warning */
+    .hero-card {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 24px;
+      padding: 22px 20px;
+      margin: 18px 0 22px;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.18);
+    }
+
+    .hero-title {
+      font-size: 1.05em;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 8px;
+    }
+    .hero-desc {
+      font-size: 0.9em;
+      color: #94a3b8;
+      line-height: 1.75;
+    }
+
+    .scan-banner {
+      width: 100%;
+      max-width: 420px;
+      margin-bottom: 18px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(16,185,129,0.35);
+      background: rgba(16,185,129,0.12);
+      color: #d1fae5;
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .scan-banner strong { color: #ecfdf5; }
+
     .api-warning {
       display: none;
       background: rgba(245,158,11,0.15);
@@ -80,22 +123,31 @@
       border-radius: 12px;
       padding: 12px 18px;
       width: 100%;
-      max-width: 360px;
+      max-width: 420px;
       margin-bottom: 20px;
       font-size: 0.88em;
       position: relative; z-index: 1;
       animation: fadeIn 0.5s ease;
+      text-align: center;
     }
     .api-warning a { color: #fbbf24; font-weight: 600; text-decoration: none; }
 
-    /* Menu Cards */
     .menu-cards {
       width: 100%;
-      max-width: 380px;
+      max-width: 420px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
       position: relative; z-index: 1;
+    }
+
+    .section-label {
+      font-size: 0.8em;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin: 6px 0 2px;
+      padding-left: 4px;
     }
 
     .btn-menu {
@@ -123,9 +175,8 @@
       border-color: rgba(255,255,255,0.25);
     }
 
-    .btn-register:hover { box-shadow: 0 8px 30px rgba(99,102,241,0.35); border-color: rgba(99,102,241,0.5); }
-    .btn-scan:hover     { box-shadow: 0 8px 30px rgba(16,185,129,0.35); border-color: rgba(16,185,129,0.5); }
-    .btn-config:hover   { box-shadow: 0 8px 30px rgba(100,116,139,0.25); border-color: rgba(148,163,184,0.4); }
+    .btn-scan     .card-icon { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16,185,129,0.4); }
+    .btn-admin    .card-icon { background: linear-gradient(135deg, #6366f1, #4f46e5); box-shadow: 0 4px 15px rgba(99,102,241,0.35); }
 
     .card-icon {
       width: 52px; height: 52px;
@@ -134,13 +185,10 @@
       font-size: 24px;
       flex-shrink: 0;
     }
-    .btn-register .card-icon { background: linear-gradient(135deg, #6366f1, #4f46e5); box-shadow: 0 4px 15px rgba(99,102,241,0.4); }
-    .btn-scan     .card-icon { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16,185,129,0.4); }
-    .btn-config   .card-icon { background: linear-gradient(135deg, #475569, #334155); box-shadow: 0 4px 15px rgba(71,85,105,0.4); }
 
     .card-text { flex: 1; text-align: left; }
     .card-title { font-size: 1.05em; font-weight: 600; color: #f1f5f9; margin-bottom: 2px; }
-    .card-desc  { font-size: 0.8em; color: #64748b; }
+    .card-desc  { font-size: 0.8em; color: #64748b; line-height: 1.5; }
 
     .card-arrow {
       font-size: 18px; color: #475569;
@@ -148,7 +196,56 @@
     }
     .btn-menu:hover .card-arrow { transform: translateX(4px); color: #94a3b8; }
 
-    /* Animations */
+    .admin-actions {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      max-width: 420px;
+      margin-top: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .action-btn {
+      flex: 1;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      color: #e2e8f0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 0.92em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .action-btn:hover {
+      transform: translateY(-2px);
+      background: rgba(255,255,255,0.09);
+      border-color: rgba(255,255,255,0.22);
+    }
+    .action-btn.primary {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      border-color: rgba(99,102,241,0.35);
+      box-shadow: 0 4px 18px rgba(99,102,241,0.24);
+    }
+    .action-btn.primary:hover {
+      box-shadow: 0 8px 28px rgba(99,102,241,0.35);
+    }
+
+    .auth-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.22);
+      color: #a7f3d0;
+      font-size: 0.82em;
+    }
+
     @keyframes fadeIn    { from { opacity: 0; }                      to { opacity: 1; } }
     @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes fadeInUp  { from { opacity: 0; transform: translateY(20px);  } to { opacity: 1; transform: translateY(0); } }
@@ -157,26 +254,32 @@
 <body>
 
   <div class="header">
-    <span class="logo-icon">🏢</span>
-    <h1>ระบบบันทึกเวลาเข้างาน</h1>
-    <p class="subtitle">Face Recognition &amp; GPS Attendance</p>
+    <span class="logo-icon">📷</span>
+    <h1>สแกนเข้างาน</h1>
+    <p class="subtitle">หน้าใช้งานหลักสำหรับพนักงาน<br>ยืนยันตัวตนด้วยใบหน้าและ GPS</p>
+  </div>
+
+  <div class="scan-banner">
+    <strong>เริ่มต้นที่หน้านี้</strong><br>
+    สำหรับสแกนเข้างานประจำวัน ให้เข้าใช้งานจาก <strong>scan.html</strong> เป็นหลัก
   </div>
 
   <div id="apiWarning" class="api-warning">
-    ⚠️ ยังไม่ได้ตั้งค่า API —
-    <a href="config.html">ไปตั้งค่าก่อน</a>
+    ⚠️ ยังไม่ได้ตั้งค่า API — <a href="config.html">ไปตั้งค่าระบบ</a>
+  </div>
+
+  <div class="hero-card">
+    <div class="hero-title">สิ่งที่พนักงานต้องใช้</div>
+    <div class="hero-desc">
+      1) เปิดกล้องและอนุญาต GPS<br>
+      2) สแกนใบหน้าเพื่อยืนยันตัวตน<br>
+      3) ระบบจะบันทึกเวลาเข้างานให้อัตโนมัติ
+    </div>
+    <div id="authState" class="auth-chip" style="display:none;">🔓 Admin พร้อมใช้งาน</div>
   </div>
 
   <div class="menu-cards">
-    <a href="register.html" class="btn-menu btn-register">
-      <div class="card-icon">👤</div>
-      <div class="card-text">
-        <div class="card-title">ลงทะเบียนพนักงาน</div>
-        <div class="card-desc">บันทึกข้อมูลใบหน้าใหม่</div>
-      </div>
-      <span class="card-arrow">›</span>
-    </a>
-
+    <div class="section-label">Employee Access</div>
     <a href="scan.html" class="btn-menu btn-scan">
       <div class="card-icon">📷</div>
       <div class="card-text">
@@ -186,20 +289,82 @@
       <span class="card-arrow">›</span>
     </a>
 
-    <a href="config.html" class="btn-menu btn-config">
+    <div class="section-label">Admin Tools</div>
+    <a href="register.html" class="btn-menu btn-admin" id="registerLink">
+      <div class="card-icon">👤</div>
+      <div class="card-text">
+        <div class="card-title">ลงทะเบียนพนักงาน</div>
+        <div class="card-desc">สำหรับผู้ดูแลระบบที่ได้รับสิทธิ์เท่านั้น</div>
+      </div>
+      <span class="card-arrow">›</span>
+    </a>
+
+    <a href="config.html" class="btn-menu btn-admin" id="configLink">
       <div class="card-icon">⚙️</div>
       <div class="card-text">
         <div class="card-title">ตั้งค่าระบบ</div>
-        <div class="card-desc">จัดการ GPS และ API (Admin)</div>
+        <div class="card-desc">กำหนด API, GPS และค่าควบคุมระบบ</div>
       </div>
       <span class="card-arrow">›</span>
     </a>
   </div>
 
+  <div class="admin-actions">
+    <button class="action-btn primary" id="adminLoginBtn" type="button">เข้าสู่ระบบผู้ดูแล</button>
+    <button class="action-btn" id="adminLogoutBtn" type="button">ออกจากระบบ</button>
+  </div>
+
   <script>
-    if (!localStorage.getItem('gasApiUrl') && typeof GAS_API_URL === 'undefined') {
-      document.getElementById('apiWarning').style.display = 'block';
+    const ADMIN_KEY = 'faceScanAdminAuth';
+    const ADMIN_CODE = '2569';
+    const apiWarning = document.getElementById('apiWarning');
+    const authState = document.getElementById('authState');
+    const adminLoginBtn = document.getElementById('adminLoginBtn');
+    const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+    const registerLink = document.getElementById('registerLink');
+    const configLink = document.getElementById('configLink');
+
+    function hasApiConfig() {
+      return !!(localStorage.getItem('gasApiUrl') || typeof GAS_API_URL !== 'undefined');
     }
+
+    function isAdminAuthed() {
+      return localStorage.getItem(ADMIN_KEY) === 'true';
+    }
+
+    function syncAdminUi() {
+      const authed = isAdminAuthed();
+      authState.style.display = authed ? 'inline-flex' : 'none';
+      authState.textContent = authed ? '🔓 Admin พร้อมใช้งาน' : '';
+      registerLink.href = 'register.html';
+      configLink.href = 'config.html';
+      adminLoginBtn.textContent = authed ? 'เปลี่ยนรหัสผู้ดูแล' : 'เข้าสู่ระบบผู้ดูแล';
+    }
+
+    function promptAdminLogin() {
+      const code = prompt('กรอกรหัสผู้ดูแลระบบ');
+      if (code === null) return;
+      if (code.trim() === ADMIN_CODE) {
+        localStorage.setItem(ADMIN_KEY, 'true');
+        alert('✅ ยืนยันผู้ดูแลเรียบร้อย');
+      } else {
+        alert('❌ รหัสผู้ดูแลไม่ถูกต้อง');
+      }
+      syncAdminUi();
+    }
+
+    adminLoginBtn.addEventListener('click', promptAdminLogin);
+    adminLogoutBtn.addEventListener('click', function () {
+      localStorage.removeItem(ADMIN_KEY);
+      alert('✅ ออกจากระบบผู้ดูแลแล้ว');
+      syncAdminUi();
+    });
+
+    if (!hasApiConfig()) {
+      apiWarning.style.display = 'block';
+    }
+
+    syncAdminUi();
   </script>
 </body>
 </html>

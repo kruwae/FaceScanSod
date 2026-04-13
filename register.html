@@ -380,46 +380,63 @@
     }
   });
 
-  // --------- Login (verifyAdmin ที่ server) ---------
+  // --------- Login ---------
+  const LOCAL_FALLBACK_CODE = '2569'; // รหัสสำรอง
+
   btnAdminLogin.addEventListener('click', async function () {
     const code = prompt('กรอกรหัสแอดมิน');
     if (code === null || code.trim() === '') return;
 
-    const apiUrl = (localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
-
-    if (!apiUrl) {
-      alert('❌ ยังไม่ได้ตั้งค่า API URL\nกรุณาไปที่ config.html ก่อน');
-      return;
-    }
+    const trimmed = code.trim();
+    const apiUrl  = (localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
 
     btnAdminLogin.disabled = true;
     btnAdminLogin.textContent = '⏳ กำลังตรวจสอบ...';
 
-    try {
-      const res  = await fetch(apiUrl, {
-        method : 'POST',
-        body   : JSON.stringify({ action: 'verifyAdmin', code: code.trim() })
-      });
-      const data = await res.json();
+    let verified = false;
 
-      if (data.success) {
-        sessionStorage.setItem(SESSION_KEY, '1');
-        showAdminContent();
-        if (!API_URL) {
-          statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
+    if (apiUrl) {
+      try {
+        const res  = await fetch(apiUrl, {
+          method: 'POST',
+          body  : JSON.stringify({ action: 'verifyAdmin', code: trimmed })
+        });
+        const data = await res.json();
+
+        if (data.success === true) {
+          verified = true;
+        } else if (data.error && String(data.error).includes('Unknown action')) {
+          // GAS เก่า → fallback local
+          verified = (trimmed === LOCAL_FALLBACK_CODE);
         } else {
-          initModels();
+          verified = false;
+          alert('❌ ' + (data.error || 'รหัสแอดมินไม่ถูกต้อง'));
         }
-      } else {
-        alert('❌ ' + (data.error || 'รหัสแอดมินไม่ถูกต้อง'));
+      } catch (err) {
+        // Network error → fallback local
+        verified = (trimmed === LOCAL_FALLBACK_CODE);
+        if (!verified) alert('❌ เชื่อมต่อ server ไม่ได้ และรหัสสำรองไม่ถูกต้อง');
       }
-    } catch (err) {
-      alert('❌ เชื่อมต่อ server ไม่ได้: ' + err.message);
-    } finally {
-      btnAdminLogin.disabled = false;
-      btnAdminLogin.textContent = 'ยืนยันรหัสแอดมิน';
+    } else {
+      // ไม่มี API URL → fallback local
+      verified = (trimmed === LOCAL_FALLBACK_CODE);
+      if (!verified) alert('❌ รหัสแอดมินไม่ถูกต้อง');
     }
+
+    if (verified) {
+      sessionStorage.setItem(SESSION_KEY, '1');
+      showAdminContent();
+      if (!API_URL) {
+        statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
+      } else {
+        initModels();
+      }
+    }
+
+    btnAdminLogin.disabled = false;
+    btnAdminLogin.textContent = 'ยืนยันรหัสแอดมิน';
   });
+
 
   // --------- Logout ---------
   function doLogout() {

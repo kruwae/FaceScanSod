@@ -199,46 +199,67 @@
     window.location.replace("index.html");
   }
 
-  // --------- Login (ตรวจรหัสที่ server GAS) ---------
+  // --------- Login ---------
+  // ลำดับการตรวจสอบ:
+  //  1. เรียก verifyAdmin จาก GAS (ถ้ามี API URL และ GAS รองรับ)
+  //  2. ถ้า GAS เก่า (Unknown action) หรือ network error → fallback local code
+  //  3. ถ้าไม่มี API URL → fallback local code เท่านั้น
+  const LOCAL_FALLBACK_CODE = "2569"; // รหัสสำรอง (ใช้จนกว่าจะ deploy GAS ใหม่)
+
   adminLoginBtn.addEventListener("click", async function () {
     const code = prompt("กรอกรหัสผู้ดูแลระบบ");
     if (code === null || code.trim() === "") return;
 
-    const apiUrl = getApiUrl();
-
-    // ถ้ายังไม่มี API URL → fallback ตรวจ hardcode ชั่วคราว (ครั้งแรก setup)
-    if (!apiUrl) {
-      showMsg("⚠️ ยังไม่ได้ตั้งค่า API URL — กรุณากรอก URL ด้านล่างแล้วลองอีกครั้ง", MSG_ERROR);
-      contentBox.classList.remove("hidden");
-      gateBox.style.display = "none";
-      sessionStorage.setItem(SESSION_KEY, "1");
-      return;
-    }
+    const trimmed = code.trim();
+    const apiUrl  = getApiUrl();
 
     adminLoginBtn.disabled = true;
     adminLoginBtn.textContent = "⏳ กำลังตรวจสอบ...";
 
-    try {
-      const res  = await fetch(apiUrl, {
-        method : "POST",
-        body   : JSON.stringify({ action: "verifyAdmin", code: code.trim() })
-      });
-      const data = await res.json();
+    let verified = false;
 
-      if (data.success) {
-        sessionStorage.setItem(SESSION_KEY, "1");
-        showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
-        syncGate();
-        loadFromServer();
-      } else {
-        alert("❌ " + (data.error || "รหัสผู้ดูแลไม่ถูกต้อง"));
+    if (apiUrl) {
+      try {
+        const res  = await fetch(apiUrl, {
+          method: "POST",
+          body  : JSON.stringify({ action: "verifyAdmin", code: trimmed })
+        });
+        const data = await res.json();
+
+        if (data.success === true) {
+          // GAS ใหม่ — ตรวจสอบสำเร็จ
+          verified = true;
+        } else if (data.error && String(data.error).includes("Unknown action")) {
+          // GAS เก่า ยังไม่ได้ deploy ใหม่ → fallback local
+          verified = (trimmed === LOCAL_FALLBACK_CODE);
+          if (verified) showMsg("⚠️ ใช้รหัสสำรอง (กรุณา deploy GAS ใหม่)", "");
+        } else {
+          // Server ตอบว่า รหัสผิด
+          verified = false;
+          alert("❌ " + (data.error || "รหัสผู้ดูแลไม่ถูกต้อง"));
+        }
+      } catch (err) {
+        // Network error → fallback local
+        verified = (trimmed === LOCAL_FALLBACK_CODE);
+        if (!verified) alert("❌ เชื่อมต่อ server ไม่ได้ และรหัสสำรองไม่ถูกต้อง");
       }
-    } catch (err) {
-      alert("❌ เชื่อมต่อ server ไม่ได้: " + err.message);
-    } finally {
-      adminLoginBtn.disabled = false;
-      adminLoginBtn.textContent = "ปลดล็อกผู้ดูแล";
+    } else {
+      // ไม่มี API URL → fallback local เท่านั้น
+      verified = (trimmed === LOCAL_FALLBACK_CODE);
+      if (!verified) alert("❌ รหัสไม่ถูกต้อง");
     }
+
+    if (verified) {
+      sessionStorage.setItem(SESSION_KEY, "1");
+      if (!document.getElementById("msg").innerText) {
+        showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
+      }
+      syncGate();
+      if (apiUrl) loadFromServer();
+    }
+
+    adminLoginBtn.disabled = false;
+    adminLoginBtn.textContent = "ปลดล็อกผู้ดูแล";
   });
 
   adminLogoutBtn.addEventListener("click", hardLogout);

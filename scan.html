@@ -412,10 +412,11 @@
     </div>
   </div>
 
-  <!-- Dropdown เลือกหน่วยบริการ (แสดงเสมอหลัง GPS พร้อม) -->
+  <!-- Dropdown เลือกหน่วยบริการ -->
   <div class="location-selector" id="locationSelector">
     <label>🏥 เลือกหน่วยบริการที่ต้องการเช็คอิน</label>
     <select id="locationSelect"></select>
+    <button id="btnConfirmLocation" style="margin-top:10px;width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-family:'Sarabun',sans-serif;font-size:15px;font-weight:700;cursor:pointer;display:none;">✅ ยืนยันหน่วยบริการ → ตรวจสอบ GPS</button>
   </div>
 
   <!-- GPS Info Card: แสดงพิกัดที่เลือก + สถานะอยู่ในพื้นที่หรือไม่ -->
@@ -504,8 +505,7 @@
   }
 
   // ===== Init Bootstrap =====
-  // ROOT-CAUSE FIX: ไม่รอ 'load' event เพราะ face-api.js (7MB CDN) ทำให้รอนานมาก
-  // GPS phase ไม่ต้องการ faceapi → เริ่มได้ทันที, face-api.js จะพร้อมเมื่อถึง initFaceSystem()
+  // ลำดับใหม่: 1.กล้อง → 2.เลือกสาขา → 3.GPS → 4.AI
   function _bootstrap() {
     if (!API_URL) {
       showError('ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่า</a>');
@@ -517,44 +517,54 @@
       showGpsGuide(0);
     });
   }
-  // เริ่มทันที (script อยู่ท้าย body, DOM พร้อมแล้ว)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _bootstrap);
   } else {
-    setTimeout(_bootstrap, 0); // ถ้า DOM พร้อมแล้ว → เริ่มใน next tick
+    setTimeout(_bootstrap, 0);
+  }
+
+  // ----- checkCamera: ทดสอบสิทธิ์กล้องแล้วปล่อย stream ทันที -----
+  async function checkCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(t => t.stop());
+      return true;
+    } catch (e) {
+      console.warn('[Camera]', e.message);
+      return false;
+    }
+  }
+
+  // ----- waitForLocationConfirm: รอ user กดปุ่ม ยืนยัน -----
+  function waitForLocationConfirm() {
+    return new Promise(resolve => {
+      const btn = document.getElementById('btnConfirmLocation');
+      if (!btn) { resolve(); return; }
+      btn.style.display = 'block';
+      btn.onclick = () => {
+        btn.style.display = 'none';
+        const sel = locationSelect.options[locationSelect.selectedIndex];
+        if (sel && sel.dataset.locJson) {
+          currentLocation = JSON.parse(sel.dataset.locJson);
+        }
+        resolve();
+      };
+    });
   }
 
   async function init() {
-    // ===== FIX: อัปเดต status ทันทีที่ init() เริ่ม (ก่อน await ใดๆ) =====
-    mainStatus.innerText = '🔄 กำลังตรวจสอบ GPS...';
+    mainStatus.innerText = '🔄 กำลังเตรียมระบบ...';
     mainStatus.style.color = '#94a3b8';
 
-    // ADD: Inject mesh toggle button — SAFE: ตรวจว่า MeshService โหลดสำเร็จก่อน
+    // Inject mesh toggle (safe)
     if (typeof MeshService !== 'undefined') {
       try { MeshService.injectToggleButton(document.getElementById('statusAreaRoot')); } catch(_) {}
     }
-    // ===== WATCHDOG: ถ้าค้างเกิน 22 วินาที → แสดงแผนสำรองอัตโนมัติ =====
-    const watchdogTimer = setTimeout(() => {
-      if (!document.getElementById('gpsGuide') ||
-          document.getElementById('gpsGuide').style.display !== 'block') {
-        showError('⏰ GPS ใช้เวลานานเกินไป — กรุณาเลือกแผนสำรอง');
-        showGpsGuide(3);  // timeout error code
-        console.warn('[GPS Watchdog] Triggered after 22s timeout');
-      }
-    }, 22000);
 
-    // bind ปุ่มแผนสำรองใน gpsGuide panel
-    bindIpButton();
-    bindSkipButton();
-    bindWifiButton();
-    bindContactAdminButton();
-
-    // ===== ตรวจ Mesh Mode ก่อน (ADD: Mesh Module integration) =====
-    if (typeof MeshService !== 'undefined' && MeshService.isEnabled()) {
-      console.log('[Mesh Mode] ON — switching to offline mode');
-      clearTimeout(watchdogTimer);
+    // ===== Mesh Mode bypass =====
+    if (meshEnabled()) {
       MeshService.showBanner();
-      // โหลด location list จาก localStorage ที่ sync ไว้ก่อนหน้า
       const cachedLocations = MeshService.getCachedLocations();
       if (cachedLocations.length > 0) {
         allLocations = cachedLocations;
@@ -575,11 +585,77 @@
       return;
     }
 
-    // ===== ตรวจ permission ก่อน → แจ้ง user ทันที =====
-    let permState = 'unknown';
+    // Bind fallback buttons
+    bindIpButton(); bindSkipButton(); bindWifiButton(); bindContactAdminButton();
+
+    // Watchdog 60s (รอ กล้อง+เลือกสาขา+GPS)
+    const watchdogTimer = setTimeout(() => {
+      if (!document.getElementById('gpsGuide') ||
+          document.getElementById('gpsGuide').style.display !== 'block') {
+        showError('⏰ ใช้เวลานานเกินไป — กรุณาเลือกแผนสำรอง');
+        showGpsGuide(3);
+      }
+    }, 60000);
+
+    // ===== PHASE 1: ตรวจสอบกล้อง =====
+    mainStatus.innerText = '1/4 ตรวจสอบกล้อง...';
+    const camOk = await checkCamera();
+    if (!camOk) {
+      clearTimeout(watchdogTimer);
+      showError('❌ เข้าถึงกล้องไม่ได้ — กรุณาอนุญาตสิทธิ์กล้องในเบราว์เซอร์แล้วรีเฟรช');
+      return;
+    }
+    mainStatus.innerText = '✅ กล้องพร้อม — กำลังโหลดรายการหน่วยบริการ...';
+    mainStatus.style.color = '#34d399';
+
+    // ===== PHASE 2: โหลดรายการสาขา + แสดง dropdown =====
+    let cfg = {};
     try {
-      permState = await checkGeolocationPermission();
-    } catch (_) { permState = 'unknown'; }
+      cfg = await fetch(API_URL + '?action=getConfig').then(r => r.json());
+      fallbackSettings = cfg.fallbackSettings || fallbackSettings;
+      applyFallbackPolicy();
+    } catch (e) {
+      clearTimeout(watchdogTimer);
+      showError('เชื่อมต่อ API ไม่ได้: ' + e.message);
+      return;
+    }
+    const locations = Array.isArray(cfg.locations)
+      ? cfg.locations.filter(l => l.enabled !== false) : [];
+    allLocations = locations;
+
+    if (locations.length === 0) {
+      clearTimeout(watchdogTimer);
+      gpsStatus.innerHTML = '<span style="color:#34d399">📍 ไม่จำกัดพื้นที่</span>';
+      currentLocation = null;
+      initFaceSystem();
+      return;
+    }
+
+    // แสดง dropdown ก่อน — ยังไม่มีระยะ GPS
+    locationSelect.innerHTML = '';
+    locations.forEach(loc => {
+      const opt = document.createElement('option');
+      opt.value = loc.id || loc.name;
+      opt.textContent = '📌 ' + loc.name;
+      opt.dataset.locJson = JSON.stringify(loc);
+      locationSelect.appendChild(opt);
+    });
+    locationSelector.style.display = 'block';
+    mainStatus.innerText = '2/4 เลือกหน่วยบริการ แล้วกด "ยืนยัน"';
+    mainStatus.style.color = '#a5b4fc';
+
+    if (typeof MeshService !== 'undefined') {
+      try { MeshService.cacheLocations(locations); } catch(_) {}
+    }
+
+    await waitForLocationConfirm();
+
+    // ===== PHASE 3: ตรวจสอบ GPS =====
+    mainStatus.innerText = '3/4 กำลังตรวจสอบ GPS...';
+    mainStatus.style.color = '#94a3b8';
+
+    let permState = 'unknown';
+    try { permState = await checkGeolocationPermission(); } catch(_) {}
 
     if (permState === 'unsupported') {
       clearTimeout(watchdogTimer);
@@ -587,25 +663,23 @@
       showGpsGuide(0);
       return;
     }
-    if (permState === 'prompt') {
-      if (gpsPermBanner) gpsPermBanner.style.display = 'block';
+    if (permState === 'prompt' && gpsPermBanner) {
+      gpsPermBanner.style.display = 'block';
       mainStatus.innerText = '⏳ รอการอนุญาต GPS... (กรุณากด Allow)';
     }
     if (permState === 'denied') {
       clearTimeout(watchdogTimer);
       showError('❗ ถูกปฏิเสธสิทธิ์ GPS — ดูวิธีแก้ไขด้านล่าง หรือใช้แผนสำรอง');
       showGpsGuide(1);
-      return;  // กลับ แต่ guide + fallback buttons ยังแสดงอยู่
+      return;
     }
 
     try {
-      mainStatus.innerText = '1/4 รอสัญญาณ GPS... (สูงสุด 15 วิ)';
       await checkGPS();
       clearTimeout(watchdogTimer);
     } catch (e) {
       clearTimeout(watchdogTimer);
       showError(e.message);
-      // gpsGuide ถูก showGpsGuide() เรียกใน checkGPS error handler แล้ว
     }
   }
 
@@ -850,83 +924,77 @@
     }
   }
 
-  // ----- Main GPS Check -----
+  // ----- Main GPS Check (Phase 3 — called after location selected in Phase 2) -----
   function checkGPS() {
     return new Promise((resolve, reject) => {
-      // 1. ตรวจว่าอุปกรณ์รองรับ GPS
       if (!navigator.geolocation) {
-        reject(new Error('❌ อุปกรณ์นี้ไม่รองรับ GPS\nกรุณาใช้อุปกรณ์ที่รองรับ GPS หรือ browser ที่ทันสมัย'));
+        reject(new Error('❌ อุปกรณ์นี้ไม่รองรับ GPS'));
         return;
       }
-      mainStatus.innerText = '1/4 รอสัญญาณ GPS... (อาจใช้เวลา 10-15 วิ)';
+      mainStatus.innerText = '3/4 รอสัญญาณ GPS... (อาจใช้เวลา 10-15 วิ)';
 
       navigator.geolocation.getCurrentPosition(
         async pos => {
           hideGpsGuide();
-          gpsPermBanner.style.display = 'none';
+          if (gpsPermBanner) gpsPermBanner.style.display = 'none';
           currentLat = pos.coords.latitude;
           currentLng = pos.coords.longitude;
-          try {
-            const config    = await fetch(API_URL + '?action=getConfig').then(r => r.json());
-            fallbackSettings = config.fallbackSettings || fallbackSettings;
-            applyFallbackPolicy();
-            const locations = Array.isArray(config.locations)
-            const config    = await fetch(API_URL + '?action=getConfig').then(r => r.json());
-            fallbackSettings = config.fallbackSettings || fallbackSettings;
-            applyFallbackPolicy();
-            const locations = Array.isArray(config.locations)
-              ? config.locations.filter(l => l.enabled !== false) : [];
 
-            if (locations.length === 0) {
-              gpsStatus.innerHTML = '<span style="color:#34d399">📍 GPS: ไม่จำกัดพื้นที่</span>';
-              currentLocation = null;
-              resolve(); initFaceSystem(); return;
-            }
-
-            allLocations = locations;
-            const withDist = locations.map(loc => ({
-              ...loc,
-              distKm: haversineKm(currentLat, currentLng, parseFloat(loc.lat), parseFloat(loc.lng))
-            }));
-            withDist.sort((a, b) => a.distKm - b.distKm);
-
-            locationSelect.innerHTML = '';
-            withDist.forEach(loc => {
-              const radiusKm = (parseFloat(loc.radius) || 100) / 1000;
-              const inRange  = loc.distKm <= radiusKm;
-              const opt = document.createElement('option');
-              opt.value = loc.id || loc.name;
-              opt.textContent = (inRange ? '✅ ' : '📌 ') + loc.name
-                + ' — ' + (loc.distKm * 1000).toFixed(0) + ' ม.';
-              opt.dataset.locJson = JSON.stringify(loc);
-              if (!inRange) opt.style.color = '#94a3b8';
-              locationSelect.appendChild(opt);
-            });
-
-            const autoSel = withDist.find(l => l.distKm <= (parseFloat(l.radius)||100)/1000) || withDist[0];
-            locationSelect.selectedIndex = withDist.indexOf(autoSel);
-            updateGpsInfoCard(autoSel);
-
-            locationSelect.addEventListener('change', function () {
-              updateGpsInfoCard(JSON.parse(this.options[this.selectedIndex].dataset.locJson));
-            });
-
-            locationSelector.style.display = 'block';
-            // ADD: Cache locations for offline mesh use (safe)
-            if (typeof MeshService !== 'undefined') {
-              try { MeshService.cacheLocations(locations); } catch(_) {}
-            }
+          // allLocations โหลดแล้วใน Phase 2 — ไม่ต้อง fetch ซ้ำ
+          if (allLocations.length === 0) {
+            gpsStatus.innerHTML = '<span style="color:#34d399">📍 ไม่จำกัดพื้นที่</span>';
+            currentLocation = null;
             resolve();
             initFaceSystem();
-          } catch (e) {
-            reject(new Error('เชื่อมต่อ API ไม่ได้: ' + e.message));
+            return;
           }
+
+          const withDist = allLocations.map(loc => ({
+            ...loc,
+            distKm: haversineKm(currentLat, currentLng, parseFloat(loc.lat), parseFloat(loc.lng))
+          }));
+          withDist.sort((a, b) => a.distKm - b.distKm);
+
+          // อัปเดต dropdown ใส่ระยะจริงจาก GPS
+          locationSelect.innerHTML = '';
+          withDist.forEach(loc => {
+            const radiusKm = (parseFloat(loc.radius) || 100) / 1000;
+            const inRange  = loc.distKm <= radiusKm;
+            const opt = document.createElement('option');
+            opt.value = loc.id || loc.name;
+            opt.textContent = (inRange ? '✅ ' : '📌 ') + loc.name
+              + ' — ' + (loc.distKm * 1000).toFixed(0) + ' ม.';
+            opt.dataset.locJson = JSON.stringify(loc);
+            if (!inRange) opt.style.color = '#94a3b8';
+            // คง selection ที่ user เลือกไว้
+            if (currentLocation &&
+                (loc.id || loc.name) === (currentLocation.id || currentLocation.name)) {
+              opt.selected = true;
+            }
+            locationSelect.appendChild(opt);
+          });
+
+          // ใช้สาขาที่ user เลือกไว้ หรือใกล้ที่สุดถ้าไม่มี
+          const matchedLoc = currentLocation
+            ? withDist.find(l => (l.id || l.name) === (currentLocation.id || currentLocation.name))
+            : null;
+          const finalLoc = matchedLoc
+            || withDist.find(l => l.distKm <= (parseFloat(l.radius)||100)/1000)
+            || withDist[0];
+
+          updateGpsInfoCard(finalLoc);
+          locationSelect.addEventListener('change', function () {
+            updateGpsInfoCard(JSON.parse(this.options[this.selectedIndex].dataset.locJson));
+          });
+
+          resolve();
+          initFaceSystem();
         },
-        (err) => {
+        err => {
           const GPS_ERRORS = {
-            1: '❗️ ถูกปฏิเสธสิทธิ์ GPS\nดูวิธีเปิดสิทธิ์ด้านล่าง หรือใช้แผนสำรอง',
-            2: '❗️ ไม่สามารถรับสัญญาณ GPS ในขณะนี้\nลองย้ายออกสู่ที่โล่ หรือใช้แผนสำรอง IP Location',
-            3: '❗️ GPS หมดเวลารอ — สัญญาณอ่อนหรืออยู่ในอาคาร\nลองเปิดหน้าต่าง หรือใช้ IP Location ด้านล่าง',
+            1: '❗ ถูกปฏิเสธสิทธิ์ GPS\nดูวิธีเปิดสิทธิ์ด้านล่าง หรือใช้แผนสำรอง',
+            2: '❗ ไม่สามารถรับสัญญาณ GPS\nลองย้ายออกสู่ที่โล่ หรือใช้แผนสำรอง IP Location',
+            3: '❗ GPS หมดเวลารอ — อยู่ในอาคารหรือสัญญาณอ่อน\nลองใช้ IP Location ด้านล่าง',
           };
           showGpsGuide(err.code);
           reject(new Error(GPS_ERRORS[err.code] || ('GPS Error: ' + err.message)));
@@ -935,7 +1003,6 @@
       );
     });
   }
-
 
   // ===== GPS Fallback Helpers =====
   window._locationMode = 'gps';

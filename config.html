@@ -85,6 +85,7 @@
       <button class="gate-btn secondary" id="btnAdminLogout" type="button">ล้างสถานะ</button>
     </div>
   </div>
+  <a href="index.html" class="back-btn" style="margin-top: 12px;">← กลับเมนูหลัก</a>
 
   <div id="adminContent" class="hidden">
     <div class="admin-header-actions">
@@ -254,17 +255,12 @@
       color: "#e2e8f0",
       inputValidator: (v) => {
         if (!v || !v.trim()) return "กรุณากรอกรหัสก่อน";
-      },
-      customClass: {
-        popup:         "swal-popup-dark",
-        input:         "swal-input-dark",
-        confirmButton: "swal-btn-confirm",
-        cancelButton:  "swal-btn-cancel"
       }
     });
 
     if (!isConfirmed || !code) return;
 
+    // แสดง loading
     Swal.fire({
       title: "⏳ กำลังตรวจสอบ...",
       allowOutsideClick: false,
@@ -278,7 +274,7 @@
     if (result.ok) {
       sessionStorage.setItem(SESSION_KEY, "1");
       syncGate();
-      Swal.fire({
+      await Swal.fire({
         icon: "success",
         title: "✅ เข้าสู่ระบบสำเร็จ",
         text: "ยืนยันผู้ดูแลเรียบร้อย",
@@ -286,10 +282,9 @@
         showConfirmButton: false,
         background: "#1e1b4b",
         color: "#e2e8f0"
-      }).then(() => {
-        showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
-        if (getApiUrl()) loadFromServer();
       });
+      showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
+      if (getApiUrl()) loadFromServer();
     } else {
       Swal.fire({
         icon: "error",

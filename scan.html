@@ -140,6 +140,8 @@
     }
     .btn-ip   { background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#a5b4fc; }
     .btn-ip:hover { background:rgba(99,102,241,0.25); }
+    .btn-wifi { background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.3); color:#93c5fd; }
+    .btn-wifi:hover { background:rgba(59,130,246,0.25); }
     .btn-skip-mild { background:rgba(239,68,68,0.1); border:1px dashed rgba(239,68,68,0.4); color:#fca5a5; }
     .btn-skip-mild:hover { background:rgba(239,68,68,0.18); }
     .gps-permission-banner {
@@ -400,6 +402,7 @@
     <div id="gpsGuideSteps"></div>
     <div class="gps-fallback-title">🔄 แผนสำรอง</div>
     <div class="gps-fallback-row">
+      <button class="btn-gps-fallback btn-wifi" id="btnWifiFallback">📦 ใช้ WiFi Network</button>
       <button class="btn-gps-fallback btn-ip" id="btnIpFallback">📡 ใช้ IP Location (ประมาณระดับเมือง)</button>
       <button class="btn-gps-fallback btn-skip-mild" id="btnSkipFallback">⚠️ ข้ามตรวจสอบ (มีเหตุผล)</button>
     </div>
@@ -498,6 +501,7 @@
     // bind ปุ่มแผนสำรองใน gpsGuide panel
     bindIpButton();
     bindSkipButton();
+    bindWifiButton();
 
     // ตรวจ permission ก่อน → แจ้ง user ทันที
     const permState = await checkGeolocationPermission();
@@ -507,11 +511,9 @@
       return;
     }
     if (permState === 'prompt') {
-      // บอก user ว่าจะมี dialog ขึ้นมา
       if (gpsPermBanner) gpsPermBanner.style.display = 'block';
     }
     if (permState === 'denied') {
-      // ถูกปฏิเสธแล้ว → แสดง guide ทันที ไม่ต้อง call GPS (จะ timeout เปล่าๆ)
       showError('❗ ถูกปฏิเสธสิทธิ์ GPS — ดูวิธีแก้ไขด้านล่าง หรือใช้แผนสำรอง');
       showGpsGuide(1);
       return;
@@ -522,7 +524,6 @@
       await checkGPS();
     } catch (e) {
       showError(e.message);
-      // ปุ่มแผนสำรองถูก bind ไว้แล้วใน gpsGuide panel
     }
   }
 
@@ -824,8 +825,154 @@
     });
   }
 
-  // ===== Load AI =====
 
+  // ===== GPS Fallback Helpers =====
+  let gpsSkipped    = false;
+  let gpsSkipReason = '';
+  window._locationMode = 'gps';
+  window._wifiType     = '';
+
+  // ----- IP Location -----
+  async function getIpLocation() {
+    mainStatus.innerText = '📡 กำลังตรวจสอบตำแหน่งผ่าน IP...';
+    try {
+      const r = await fetch('https://ipapi.co/json/');
+      const d = await r.json();
+      if (d.latitude && d.longitude)
+        return { lat: +d.latitude, lng: +d.longitude, city: d.city || '?', isIp: true };
+    } catch (_) {}
+    try {
+      const r2 = await fetch('https://ip-api.com/json/?fields=lat,lon,city');
+      const d2 = await r2.json();
+      if (d2.lat && d2.lon)
+        return { lat: d2.lat, lng: d2.lon, city: d2.city || '?', isIp: true };
+    } catch (_) {}
+    return null;
+  }
+
+  // ----- Bind Skip Button -----
+  function bindSkipButton() {
+    const btn = document.getElementById('btnSkipFallback');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      const reason = prompt(
+        '⚠️ คำเตือน — การข้าม GPS จะถูกบันทึกและผู้ดูแลสามารถตรวจสอบได้\n\n' +
+        'ระบุเหตุผล (เช่น GPS ขัดข้อง, อยู่ในอาคาร):'
+      );
+      if (reason === null) return;
+      if (!reason.trim()) { alert('❌ กรุณาระบุเหตุผล'); return; }
+      if (!confirm(
+        '⛔ ยืนยันการข้ามตรวจสอบ GPS?\nเหตุ: "' + reason.trim() + '"\n\n' +
+        '⚠️ บันทึกจะถูก Flag "GPS ไม่ยืนยัน" เพื่อให้ผู้ดูแลตรวจสอบ'
+      )) return;
+      gpsSkipped    = true;
+      gpsSkipReason = reason.trim();
+      window._locationMode = 'skipped';
+      currentLat = null; currentLng = null; currentLocation = null;
+      hideGpsGuide();
+      mainStatus.innerText = '⚠️ ข้าม GPS — เหตุผล: ' + gpsSkipReason;
+      mainStatus.style.color = '#f59e0b';
+      gpsStatus.innerHTML = '<span style="color:#f87171">⚠️ GPS ไม่ยืนยัน — บันทึกจะถูก Flag</span>';
+      initFaceSystem();
+    });
+  }
+
+  // ----- Bind IP Button -----
+  function bindIpButton() {
+    const btn = document.getElementById('btnIpFallback');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; btn.innerText = '⏳ กำลังค้นหา...';
+      const ipLoc = await getIpLocation();
+      if (!ipLoc) {
+        btn.disabled = false; btn.innerText = '📡 ใช้ IP Location';
+        alert('❌ ไม่สามารถรับ IP Location ได้ ลองสัญญาณ Internet');
+        return;
+      }
+      currentLat = ipLoc.lat; currentLng = ipLoc.lng;
+      window._locationMode = 'ip';
+      gpsStatus.innerHTML = `<span style="color:#f59e0b">📡 IP Location: ${ipLoc.city} (ไม่แม่น)</span>`;
+      gpsAlertBox.style.display = 'none';
+      hideGpsGuide();
+      try {
+        const config    = await fetch(API_URL + '?action=getConfig').then(r => r.json());
+        const locations = Array.isArray(config.locations)
+          ? config.locations.filter(l => l.enabled !== false) : [];
+        if (locations.length > 0) {
+          allLocations = locations;
+          const withDist = locations.map(loc => ({
+            ...loc,
+            distKm: haversineKm(currentLat, currentLng, parseFloat(loc.lat), parseFloat(loc.lng))
+          }));
+          withDist.sort((a, b) => a.distKm - b.distKm);
+          locationSelect.innerHTML = '';
+          withDist.forEach(loc => {
+            const opt = document.createElement('option');
+            opt.value = loc.id || loc.name;
+            opt.textContent = '📌 ' + loc.name + ' — ประมาณ ' + (loc.distKm * 1000).toFixed(0) + ' ม.';
+            opt.dataset.locJson = JSON.stringify(loc);
+            locationSelect.appendChild(opt);
+          });
+          locationSelect.addEventListener('change', function () {
+            currentLocation = JSON.parse(this.options[this.selectedIndex].dataset.locJson);
+          });
+          currentLocation = withDist[0];
+          locationSelector.style.display = 'block';
+          mainStatus.innerText = '⚠️ ใช้ตำแหน่งประมาณ (IP) — ไม่ตรวจรัศมี';
+          mainStatus.style.color = '#f59e0b';
+        }
+      } catch (_) {}
+      initFaceSystem();
+    });
+  }
+
+  // ----- Bind WiFi Button -----
+  function bindWifiButton() {
+    const btn = document.getElementById('btnWifiFallback');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      const connType = conn ? (conn.type || conn.effectiveType || 'wifi') : 'unknown';
+
+      if (!confirm(
+        '📶 ยืนยันการใช้ WiFi Network เป็นหลักฐานตำแหน่ง?\n\n' +
+        'Network: ' + connType + '\n\n' +
+        '⚠️ บันทึกจะถูก Flag "WiFi Location"\n' +
+        'ควรใช้เมื่ออยู่ในอาคารสำนักงานจริงเท่านั้น'
+      )) return;
+
+      currentLat = null; currentLng = null;
+      window._locationMode = 'wifi';
+      window._wifiType     = connType;
+      hideGpsGuide();
+      gpsStatus.innerHTML = `<span style="color:#93c5fd">📶 WiFi Location (${connType})</span>`;
+      mainStatus.innerText = '📶 ใช้ WiFi Network เป็นตำแหน่ง';
+      mainStatus.style.color = '#93c5fd';
+      gpsAlertBox.style.display = 'none';
+      try {
+        const config    = await fetch(API_URL + '?action=getConfig').then(r => r.json());
+        const locations = Array.isArray(config.locations)
+          ? config.locations.filter(l => l.enabled !== false) : [];
+        if (locations.length > 0) {
+          allLocations = locations;
+          locationSelect.innerHTML = '';
+          locations.forEach(loc => {
+            const opt = document.createElement('option');
+            opt.value = loc.id || loc.name;
+            opt.textContent = '📶 ' + loc.name;
+            opt.dataset.locJson = JSON.stringify(loc);
+            locationSelect.appendChild(opt);
+          });
+          locationSelect.addEventListener('change', function () {
+            currentLocation = JSON.parse(this.options[this.selectedIndex].dataset.locJson);
+          });
+          currentLocation = locations[0];
+          locationSelector.style.display = 'block';
+        }
+      } catch (_) {}
+      initFaceSystem();
+    });
+  }
 
   // ===== Load AI =====
   async function initFaceSystem() {
@@ -977,13 +1124,13 @@
     btn.disabled  = true;
     btn.innerText = 'กำลังบันทึก...';
 
-    // คำนวณ gpsStatus
+    // คำนวณ gpsStatus จาก _locationMode
+    const mode = window._locationMode || 'gps';
     let gpsStatus_val = 'ok';
-    if (gpsSkipped) {
-      gpsStatus_val = 'skipped';
-    } else if (!currentLat && !currentLocation) {
-      gpsStatus_val = 'no_locations';
-    }
+    if      (mode === 'skipped') gpsStatus_val = 'skipped';
+    else if (mode === 'wifi')    gpsStatus_val = 'wifi';
+    else if (mode === 'ip')      gpsStatus_val = 'ip';
+    else if (!currentLat && !currentLocation) gpsStatus_val = 'no_locations';
 
     try {
       const res = await fetch(API_URL, {
@@ -994,13 +1141,15 @@
           lat:           currentLat,
           lng:           currentLng,
           locationName:  currentLocation ? currentLocation.name : '',
-          gpsStatus:     gpsStatus_val,          // 'ok' | 'skipped' | 'no_locations'
-          gpsSkipReason: gpsSkipped ? gpsSkipReason : '',
+          gpsStatus:     gpsStatus_val,          // 'ok' | 'wifi' | 'ip' | 'skipped' | 'no_locations'
+          gpsSkipReason: gpsSkipped ? gpsSkipReason : (mode === 'wifi' ? 'WiFi:' + window._wifiType : ''),
           userAgent:     navigator.userAgent      // ช่วย audit device
         })
       });
       const data = await res.json();
-      const flagNote = gpsSkipped ? '\n\u26a0️ บันทึก GPS ไม่ยืนยัน (เหตุ: ' + gpsSkipReason + ')' : '';
+      const flagNote = gpsSkipped
+        ? '\n⚠️ บันทึก GPS ไม่ยืนยัน (เหตุ: ' + gpsSkipReason + ')'
+        : (mode === 'wifi' ? '\n📶 ใช้ WiFi Location' : mode === 'ip' ? '\n📡 ใช้ IP Location' : '');
       alert('✅ ' + (data.message || 'บันทึกเวลาสำเร็จ') + flagNote);
       window.location.replace('index.html');
     } catch (e) {

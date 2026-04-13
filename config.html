@@ -614,6 +614,48 @@
         <p class="note">แต่ละตำแหน่งรองรับชื่อหน่วยบริการ พิกัด Latitude/Longitude และรัศมีที่อนุญาตแยกกันได้</p>
       </div>
 
+      <!-- ===== เวลาทำงาน ===== -->
+      <div class="card" style="margin-top:0">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(245,158,11,0.15);color:#fcd34d">⏰</div>
+          <span class="section-title-text">กำหนดเวลาทำงาน</span>
+        </div>
+
+        <div class="input-row" style="margin-bottom:12px">
+          <div>
+            <label>เวลาเริ่มงาน</label>
+            <input type="time" id="workStartTime" value="08:30">
+          </div>
+          <div>
+            <label>ถือว่ามาสายหลัง</label>
+            <input type="time" id="workLateThreshold" value="08:30">
+          </div>
+        </div>
+        <div class="input-row" style="margin-bottom:12px">
+          <div>
+            <label>เวลาเลิกงาน (ออก)</label>
+            <input type="time" id="workEndTime" value="16:30">
+          </div>
+          <div>
+            <label style="visibility:hidden">—</label>
+            <div style="font-size:0.78em;color:#64748b;padding-top:8px">⚠️ สายหลัง = เวลาเริ่มงาน + ✅</div>
+          </div>
+        </div>
+
+        <!-- Special Dates Override -->
+        <div style="margin-top:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <label style="margin-bottom:0">⭐ วันที่มีคำสั่งพิเศษ</label>
+            <button type="button" onclick="addSpecialDate()"
+              style="padding:6px 12px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);color:#fcd34d;border-radius:8px;font-family:Sarabun,sans-serif;font-size:12px;font-weight:600;cursor:pointer">
+              + เพิ่มวันพิเศษ
+            </button>
+          </div>
+          <div id="specialDatesBox"></div>
+          <p class="note">เช่น วันทัศนศึกษา รับส่งเอกสาร — กำหนดเวลาแตกต่างจากปกติได้</p>
+        </div>
+      </div>
+
       <button class="btn btn-save" onclick="saveAll()">💾 บันทึกการตั้งค่าทั้งหมด</button>
       <div id="msg"></div>
 
@@ -818,6 +860,7 @@
       fetch(apiUrl + '?action=getConfig')
         .then(r => r.json())
         .then(config => {
+          // โหลด locations
           locationsBox.innerHTML = '';
           const locations = Array.isArray(config.locations) ? config.locations : [];
           if (locations.length === 0) {
@@ -825,21 +868,70 @@
           } else {
             locations.forEach(loc => addLocation(loc));
           }
+          // โหลด workTimes
+          if (config.workTimes) {
+            const wt = config.workTimes;
+            if (wt.startTime)     document.getElementById('workStartTime').value     = wt.startTime;
+            if (wt.lateThreshold) document.getElementById('workLateThreshold').value = wt.lateThreshold;
+            if (wt.endTime)       document.getElementById('workEndTime').value        = wt.endTime;
+            // special dates
+            const sdBox = document.getElementById('specialDatesBox');
+            sdBox.innerHTML = '';
+            (wt.specialDates || []).forEach(sd => addSpecialDate(sd));
+          }
           showMsg('✅ โหลดข้อมูลจากเซิร์ฟเวอร์แล้ว', MSG_SUCCESS);
         })
         .catch(err => showMsg('❌ โหลดข้อมูลไม่สำเร็จ: ' + err.message, MSG_ERROR));
     }
 
+    // ===== Special Dates =====
+    function addSpecialDate(sd = {}) {
+      const sdBox = document.getElementById('specialDatesBox');
+      const row   = document.createElement('div');
+      row.style.cssText = 'display:grid;grid-template-columns:1fr 90px 90px 90px auto;gap:8px;margin-bottom:8px;align-items:end;';
+      row.innerHTML = `
+        <div><label style='font-size:0.75em;color:#64748b'>วัน/เดือน/ปี (YYYY-MM-DD)</label>
+          <input type='date' class='sd-date' value='${sd.date || ''}' style='width:100%'></div>
+        <div><label style='font-size:0.75em;color:#64748b'>เริ่มงาน</label>
+          <input type='time' class='sd-start' value='${sd.startTime || '08:30'}'></div>
+        <div><label style='font-size:0.75em;color:#64748b'>สายหลัง</label>
+          <input type='time' class='sd-late' value='${sd.lateThreshold || '08:30'}'></div>
+        <div><label style='font-size:0.75em;color:#64748b'>เลิกงาน</label>
+          <input type='time' class='sd-end' value='${sd.endTime || '16:30'}'></div>
+        <div style='padding-bottom:1px'>
+          <input type='text' class='sd-note' value='${escapeHtml(sd.note || '')}'
+            placeholder='หมายเหตุ' style='width:100px'>
+          <button type='button' style='padding:8px 10px;background:rgba(239,68,68,0.12);border:none;color:#fca5a5;border-radius:8px;cursor:pointer;margin-left:4px;font-family:Sarabun,sans-serif;font-size:12px' onclick='this.closest("div").parentElement.remove()'>ลบ</button>
+        </div>`;
+      sdBox.appendChild(row);
+    }
+
+    function collectSpecialDates() {
+      return [...document.querySelectorAll('#specialDatesBox > div')].map(row => ({
+        date:          row.querySelector('.sd-date').value,
+        startTime:     row.querySelector('.sd-start').value,
+        lateThreshold: row.querySelector('.sd-late').value,
+        endTime:       row.querySelector('.sd-end').value,
+        note:          row.querySelector('.sd-note').value.trim()
+      })).filter(sd => sd.date);
+    }
+
     function saveAll() {
-      const apiUrl = document.getElementById('apiUrl').value.trim();
+      const apiUrl    = document.getElementById('apiUrl').value.trim();
       const locations = collectLocations();
+      const workTimes = {
+        startTime:     document.getElementById('workStartTime').value     || '08:30',
+        lateThreshold: document.getElementById('workLateThreshold').value || '08:30',
+        endTime:       document.getElementById('workEndTime').value        || '16:30',
+        specialDates:  collectSpecialDates()
+      };
       if (!apiUrl) return showMsg('❌ กรุณากรอก API URL', MSG_ERROR);
       if (locations.length === 0) return showMsg('❌ กรุณาเพิ่มอย่างน้อย 1 ตำแหน่ง', MSG_ERROR);
       localStorage.setItem('gasApiUrl', apiUrl);
       showMsg('⏳ กำลังบันทึก...', '');
       fetch(apiUrl, {
         method: 'POST',
-        body: JSON.stringify({ action: 'saveConfig', apiUrl, locations, updatedBy: 'admin' })
+        body: JSON.stringify({ action: 'saveConfig', apiUrl, locations, workTimes, updatedBy: 'admin' })
       })
         .then(r => r.json())
         .then(data => showMsg('✅ ' + (data.message || 'บันทึกสำเร็จ'), MSG_SUCCESS))

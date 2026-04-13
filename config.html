@@ -677,32 +677,18 @@
         </div>
       </div>
 
-      <!-- ===== ตั้งค่าเริ่มต้น staffOS ===== -->
-      <div class="card" style="margin-top:0">
-        <div class="section-header">
-          <div class="section-icon cyan">📍</div>
-          <span class="section-title-text">พื้นที่ GPS หลายตำแหน่ง</span>
-        </div>
-        <div id="locations" class="locations"></div>
-        <div class="location-toolbar">
-          <button class="btn btn-add" type="button" onclick="addLocation()">+ เพิ่มตำแหน่ง</button>
-          <button class="btn btn-preview" type="button" onclick="loadFromServer()">โหลดจากเซิร์ฟเวอร์</button>
-        </div>
-        <p class="note">แต่ละตำแหน่งรองรับชื่อหน่วยบริการ พิกัด Latitude/Longitude และรัศมีที่อนุญาตแยกกันได้</p>
-      </div>
-
       <div class="card" style="margin-top:0">
         <div class="section-header">
           <div class="section-icon" style="background:rgba(239,68,68,0.15);color:#fca5a5">🛟</div>
-          <span class="section-title-text">สิทธิ์แผนสำรองกรณี GPS ใช้งานไม่ได้</span>
+          <span class="section-title-text">แผนสำรองเมื่อ GPS ใช้งานไม่ได้</span>
         </div>
         <label>เปิดใช้งานแผนสำรอง</label>
         <input type="text" id="fallbackEnabled" placeholder="true / false" value="false">
-        <p class="note">ค่าเริ่มต้นแนะนำคือ <code>false</code> เพื่อให้ระบบยึด GPS เป็นหลัก และให้แอดมินเป็นผู้เปิดใช้เฉพาะกรณีจำเป็น</p>
+        <p class="note">หากเปิดเป็น <code>true</code> หน้า scan จะแสดงปุ่มแผนสำรองเมื่อค้นหา GPS ไม่ได้</p>
 
-        <label>ข้อความปุ่มติดต่อผู้ดูแล</label>
-        <input type="text" id="fallbackContactText" placeholder="กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง">
-        <p class="note">ข้อความนี้จะแสดงในหน้า scan เมื่อ GPS ใช้งานไม่ได้และยังไม่เปิดสิทธิ์แผนสำรอง</p>
+        <label>ข้อความสำหรับผู้ใช้</label>
+        <input type="text" id="fallbackContactText" placeholder="หาก GPS ใช้งานไม่ได้ ให้ใช้ปุ่มแผนสำรองหรือโหมดออฟไลน์">
+        <p class="note">ข้อความนี้ใช้เป็นข้อความอธิบายสำหรับสถานะ fallback ในหน้า scan</p>
       </div>
 
       <a href="index.html" class="btn-back">← กลับเมนูหลัก</a>

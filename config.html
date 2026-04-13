@@ -76,11 +76,18 @@
 
   <div id="adminGate" class="gate">
     <div class="gate-title">ต้องยืนยันสิทธิ์ผู้ดูแลก่อน</div>
-    <div class="gate-desc">กรอกรหัสผู้ดูแลเพื่อปลดล็อกหน้า ตั้งค่าระบบจะจำสถานะไว้เฉพาะอุปกรณ์นี้</div>
+    <div class="gate-desc">กรอกรหัสผู้ดูแลเพื่อปลดล็อกหน้าตั้งค่าระบบ</div>
+    <div style="margin:14px 0 12px">
+      <input type="password" id="adminCodeInput"
+        placeholder="รหัสผู้ดูแลระบบ"
+        autocomplete="current-password"
+        style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:12px;color:#e2e8f0;font-size:15px;font-family:'Sarabun',sans-serif;outline:none;">
+    </div>
     <div class="gate-actions">
-      <button class="gate-btn primary" id="btnAdminLogin" type="button">ปลดล็อกผู้ดูแล</button>
+      <button class="gate-btn primary" id="btnAdminLogin" type="button">🔓 ปลดล็อกผู้ดูแล</button>
       <button class="gate-btn secondary" id="btnAdminLogout" type="button">ล้างสถานะ</button>
     </div>
+    <div id="gateMsg" style="margin-top:10px;font-size:0.87em;font-weight:600;text-align:center;min-height:18px"></div>
   </div>
 
   <div id="adminContent" class="hidden">
@@ -206,15 +213,26 @@
   //  3. ถ้าไม่มี API URL → fallback local code เท่านั้น
   const LOCAL_FALLBACK_CODE = "2569"; // รหัสสำรอง (ใช้จนกว่าจะ deploy GAS ใหม่)
 
+  // กด Enter ใน input = submit
+  document.getElementById("adminCodeInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") adminLoginBtn.click();
+  });
+
   adminLoginBtn.addEventListener("click", async function () {
-    const code = prompt("กรอกรหัสผู้ดูแลระบบ");
-    if (code === null || code.trim() === "") return;
+    const codeInput = document.getElementById("adminCodeInput");
+    const gateMsg   = document.getElementById("gateMsg");
+    const trimmed   = (codeInput.value || "").trim();
 
-    const trimmed = code.trim();
-    const apiUrl  = getApiUrl();
+    if (!trimmed) {
+      gateMsg.innerHTML = '<span style="color:#fbbf24">⚠️ กรุณากรอกรหัส</span>';
+      codeInput.focus();
+      return;
+    }
 
+    const apiUrl = getApiUrl();
     adminLoginBtn.disabled = true;
     adminLoginBtn.textContent = "⏳ กำลังตรวจสอบ...";
+    gateMsg.innerText = "";
 
     let verified = false;
 
@@ -227,39 +245,35 @@
         const data = await res.json();
 
         if (data.success === true) {
-          // GAS ใหม่ — ตรวจสอบสำเร็จ
           verified = true;
         } else if (data.error && String(data.error).includes("Unknown action")) {
-          // GAS เก่า ยังไม่ได้ deploy ใหม่ → fallback local
+          // GAS เก่า → fallback local
           verified = (trimmed === LOCAL_FALLBACK_CODE);
           if (verified) showMsg("⚠️ ใช้รหัสสำรอง (กรุณา deploy GAS ใหม่)", "");
         } else {
-          // Server ตอบว่า รหัสผิด
-          verified = false;
-          alert("❌ " + (data.error || "รหัสผู้ดูแลไม่ถูกต้อง"));
+          gateMsg.innerHTML = '<span style="color:#f87171">❌ ' + (data.error || "รหัสผู้ดูแลไม่ถูกต้อง") + '</span>';
         }
       } catch (err) {
         // Network error → fallback local
         verified = (trimmed === LOCAL_FALLBACK_CODE);
-        if (!verified) alert("❌ เชื่อมต่อ server ไม่ได้ และรหัสสำรองไม่ถูกต้อง");
+        if (!verified) gateMsg.innerHTML = '<span style="color:#f87171">❌ เชื่อมต่อ server ไม่ได้</span>';
       }
     } else {
-      // ไม่มี API URL → fallback local เท่านั้น
+      // ไม่มี API URL → fallback local
       verified = (trimmed === LOCAL_FALLBACK_CODE);
-      if (!verified) alert("❌ รหัสไม่ถูกต้อง");
+      if (!verified) gateMsg.innerHTML = '<span style="color:#f87171">❌ รหัสไม่ถูกต้อง</span>';
     }
 
     if (verified) {
+      codeInput.value = "";
       sessionStorage.setItem(SESSION_KEY, "1");
-      if (!document.getElementById("msg").innerText) {
-        showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
-      }
+      showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
       syncGate();
       if (apiUrl) loadFromServer();
     }
 
     adminLoginBtn.disabled = false;
-    adminLoginBtn.textContent = "ปลดล็อกผู้ดูแล";
+    adminLoginBtn.textContent = "🔓 ปลดล็อกผู้ดูแล";
   });
 
   adminLogoutBtn.addEventListener("click", hardLogout);

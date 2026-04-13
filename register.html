@@ -296,7 +296,12 @@
     <div class="admin-lock__badge">🔒</div>
     <h2>Admin Only</h2>
     <p>หน้านี้สำหรับผู้ดูแลระบบเท่านั้น<br>กรุณายืนยันรหัสแอดมินก่อนเข้าใช้งาน</p>
-    <button class="btn-admin btn-admin-login" id="btnAdminLogin">ยืนยันรหัสแอดมิน</button>
+    <input type="password" id="adminCodeInput"
+      placeholder="รหัสแอดมิน"
+      autocomplete="current-password"
+      style="width:100%;padding:13px 16px;margin:14px 0 10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:12px;color:#e2e8f0;font-size:15px;font-family:'Sarabun',sans-serif;outline:none;text-align:center;letter-spacing:4px;">
+    <div id="lockMsg" style="min-height:20px;margin-bottom:10px;font-size:0.87em;font-weight:600;text-align:center"></div>
+    <button class="btn-admin btn-admin-login" id="btnAdminLogin">🔓 ยืนยันรหัสแอดมิน</button>
   </div>
 
   <!-- ===== เนื้อหาหลัก (แสดงหลังยืนยัน) ===== -->
@@ -380,18 +385,30 @@
     }
   });
 
+  // กด Enter ใน input เพื่อ submit
+  document.getElementById('adminCodeInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') btnAdminLogin.click();
+  });
+
   // --------- Login ---------
   const LOCAL_FALLBACK_CODE = '2569'; // รหัสสำรอง
 
   btnAdminLogin.addEventListener('click', async function () {
-    const code = prompt('กรอกรหัสแอดมิน');
-    if (code === null || code.trim() === '') return;
+    const codeInput = document.getElementById('adminCodeInput');
+    const lockMsg   = document.getElementById('lockMsg');
+    const trimmed   = (codeInput.value || '').trim();
 
-    const trimmed = code.trim();
+    if (!trimmed) {
+      lockMsg.innerHTML = '<span style="color:#fbbf24">⚠️ กรุณากรอกรหัส</span>';
+      codeInput.focus();
+      return;
+    }
+
     const apiUrl  = (localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
 
     btnAdminLogin.disabled = true;
     btnAdminLogin.textContent = '⏳ กำลังตรวจสอบ...';
+    lockMsg.innerText = '';
 
     let verified = false;
 
@@ -409,21 +426,21 @@
           // GAS เก่า → fallback local
           verified = (trimmed === LOCAL_FALLBACK_CODE);
         } else {
-          verified = false;
-          alert('❌ ' + (data.error || 'รหัสแอดมินไม่ถูกต้อง'));
+          lockMsg.innerHTML = '<span style="color:#f87171">❌ ' + (data.error || 'รหัสแอดมินไม่ถูกต้อง') + '</span>';
         }
       } catch (err) {
         // Network error → fallback local
         verified = (trimmed === LOCAL_FALLBACK_CODE);
-        if (!verified) alert('❌ เชื่อมต่อ server ไม่ได้ และรหัสสำรองไม่ถูกต้อง');
+        if (!verified) lockMsg.innerHTML = '<span style="color:#f87171">❌ เชื่อมต่อ server ไม่ได้</span>';
       }
     } else {
       // ไม่มี API URL → fallback local
       verified = (trimmed === LOCAL_FALLBACK_CODE);
-      if (!verified) alert('❌ รหัสแอดมินไม่ถูกต้อง');
+      if (!verified) lockMsg.innerHTML = '<span style="color:#f87171">❌ รหัสแอดมินไม่ถูกต้อง</span>';
     }
 
     if (verified) {
+      codeInput.value = '';
       sessionStorage.setItem(SESSION_KEY, '1');
       showAdminContent();
       if (!API_URL) {
@@ -434,7 +451,7 @@
     }
 
     btnAdminLogin.disabled = false;
-    btnAdminLogin.textContent = 'ยืนยันรหัสแอดมิน';
+    btnAdminLogin.textContent = '🔓 ยืนยันรหัสแอดมิน';
   });
 
 

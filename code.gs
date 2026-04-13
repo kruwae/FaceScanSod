@@ -4,6 +4,9 @@
 //           Execute as: Me | Who has access: Anyone
 // ============================================================
 
+// ============================================================
+//  doGet — read-only actions
+// ============================================================
 function doGet(e) {
   const action = e.parameter.action;
   let result;
@@ -14,6 +17,8 @@ function doGet(e) {
     result = getKnownFaces();
   } else if (action === 'getLocations') {
     result = getLocations();
+  } else if (action === 'initSetup') {
+    result = initSetup();
   } else {
     result = { error: 'Unknown action: ' + action };
   }
@@ -23,6 +28,9 @@ function doGet(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// ============================================================
+//  doPost — write / verify actions
+// ============================================================
 function doPost(e) {
   let data;
   try {
@@ -42,6 +50,10 @@ function doPost(e) {
     result = logAttendance(data.name, data.lat, data.lng, data.matchScore, data.distance, data.device, data.locationName);
   } else if (action === 'saveConfig') {
     result = saveConfig(data.apiUrl, data.locations, data.updatedBy);
+  } else if (action === 'verifyAdmin') {
+    result = verifyAdmin(data.code);
+  } else if (action === 'changeAdminCode') {
+    result = changeAdminCode(data.currentCode, data.newCode);
   } else {
     result = { error: 'Unknown action: ' + action };
   }
@@ -51,6 +63,9 @@ function doPost(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// ============================================================
+//  Sheet Helpers
+// ============================================================
 function ensureSheetWithHeaders(ss, sheetName, headers) {
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) sheet = ss.insertSheet(sheetName);
@@ -107,10 +122,123 @@ function normalizeLocation(loc, index) {
     name: loc.name || ('Location ' + (index + 1)),
     lat: parseFloat(loc.lat),
     lng: parseFloat(loc.lng),
-    radius: parseFloat(loc.radius || 0.5)
+    radius: parseFloat(loc.radius || 100)  // radius หน่วยเมตร
   };
 }
 
+// ============================================================
+//  staffOS Sheet — Admin Credentials
+//  สร้าง / ตรวจสอบ sheet พร้อม admin เริ่มต้นถ้ายังไม่มี
+// ============================================================
+var STAFFOS_SHEET   = 'staffOS';
+var STAFFOS_HEADERS = ['Username', 'Code', 'Role', 'Status', 'Note', 'Created At', 'Updated At'];
+var DEFAULT_ADMIN_CODE = '2569';
+
+/**
+ * initSetup — เรียก 1 ครั้งหลัง deploy เพื่อสร้าง staffOS sheet
+ * URL: ?action=initSetup
+ */
+function initSetup() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
+  var sheet = result.sheet;
+  var hm    = result.headerMap;
+
+  // ตรวจว่ามี admin แล้วหรือยัง
+  var data = sheet.getDataRange().getValues();
+  var hasAdmin = false;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][hm['Role'] - 1] || '').toLowerCase() === 'admin') {
+      hasAdmin = true;
+      break;
+    }
+  }
+
+  if (!hasAdmin) {
+    var row = sheet.getLastRow() + 1;
+    var now = new Date();
+    setRowByHeaders(sheet, row, hm, {
+      'Username'   : 'admin',
+      'Code'       : DEFAULT_ADMIN_CODE,
+      'Role'       : 'admin',
+      'Status'     : 'active',
+      'Note'       : 'Default admin — เปลี่ยนรหัสหลัง deploy',
+      'Created At' : now,
+      'Updated At' : now
+    });
+    return { success: true, created: true, message: 'สร้าง staffOS sheet และ admin เริ่มต้นเรียบร้อย (รหัส: ' + DEFAULT_ADMIN_CODE + ')' };
+  }
+
+  return { success: true, created: false, message: 'staffOS sheet พร้อมใช้งาน แอดมินมีอยู่แล้ว' };
+}
+
+/**
+ * verifyAdmin — ตรวจสอบรหัสฝั่ง server (ไม่ส่งรหัสกลับมาที่ client)
+ * ส่ง: { action: 'verifyAdmin', code: '...' }
+ * รับ: { success: true } หรือ { success: false, error: '...' }
+ */
+function verifyAdmin(code) {
+  if (!code) return { success: false, error: 'กรุณากรอกรหัส' };
+
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(STAFFOS_SHEET);
+
+  // ถ้ายังไม่มี sheet → สร้างและตรวจกับ default code
+  if (!sheet) {
+    initSetup();
+    sheet = ss.getSheetByName(STAFFOS_SHEET);
+  }
+
+  var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
+  var hm     = result.headerMap;
+  var data   = result.sheet.getDataRange().getValues();
+
+  for (var i = 1; i < data.length; i++) {
+    var row    = data[i];
+    var role   = String(row[hm['Role']   - 1] || '').toLowerCase();
+    var status = String(row[hm['Status'] - 1] || '').toLowerCase();
+    var stored = String(row[hm['Code']   - 1] || '');
+
+    if (role === 'admin' && status === 'active' && stored === String(code).trim()) {
+      return { success: true };
+    }
+  }
+
+  return { success: false, error: 'รหัสแอดมินไม่ถูกต้องหรือบัญชีถูกระงับ' };
+}
+
+/**
+ * changeAdminCode — เปลี่ยนรหัสแอดมิน
+ * ส่ง: { action: 'changeAdminCode', currentCode: '...', newCode: '...' }
+ */
+function changeAdminCode(currentCode, newCode) {
+  if (!currentCode || !newCode) return { success: false, error: 'ข้อมูลไม่ครบ' };
+  if (String(newCode).trim().length < 4) return { success: false, error: 'รหัสใหม่ต้องมีอย่างน้อย 4 ตัวอักษร' };
+
+  var ss     = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
+  var sheet  = result.sheet;
+  var hm     = result.headerMap;
+  var data   = sheet.getDataRange().getValues();
+
+  for (var i = 1; i < data.length; i++) {
+    var row    = data[i];
+    var role   = String(row[hm['Role']   - 1] || '').toLowerCase();
+    var status = String(row[hm['Status'] - 1] || '').toLowerCase();
+    var stored = String(row[hm['Code']   - 1] || '');
+
+    if (role === 'admin' && status === 'active' && stored === String(currentCode).trim()) {
+      sheet.getRange(i + 1, hm['Code']).setValue(String(newCode).trim());
+      sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
+      return { success: true, message: 'เปลี่ยนรหัสแอดมินเรียบร้อย' };
+    }
+  }
+  return { success: false, error: 'รหัสปัจจุบันไม่ถูกต้อง' };
+}
+
+// ============================================================
+//  Users
+// ============================================================
 function registerUser(name, faceDescriptor, registeredBy, status) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const schema = ['Name', 'Face Descriptor', 'Registered At', 'Registered By', 'Status'];
@@ -128,7 +256,7 @@ function registerUser(name, faceDescriptor, registeredBy, status) {
     'Status': status || 'active'
   });
 
-  return { success: true, message: 'บันทึกข้อมูลหน้ารายเรียบร้อย' };
+  return { success: true, message: 'บันทึกข้อมูลใบหน้าเรียบร้อย' };
 }
 
 function getKnownFaces() {
@@ -160,6 +288,9 @@ function getKnownFaces() {
   return users;
 }
 
+// ============================================================
+//  Locations (read)
+// ============================================================
 function getLocations() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Config');
@@ -171,7 +302,7 @@ function getLocations() {
   const locations = [];
   for (let i = 1; i < values.length; i++) {
     const row = values[i];
-    const enabled = String(row[4] || 'TRUE').toLowerCase();
+    const enabled = String(row[5] || 'true').toLowerCase();
     if (enabled === 'false' || enabled === '0') continue;
 
     locations.push({
@@ -179,13 +310,16 @@ function getLocations() {
       name: row[1] || ('Location ' + i),
       lat: parseFloat(row[2]),
       lng: parseFloat(row[3]),
-      radius: parseFloat(row[4] || 0.5)
+      radius: parseFloat(row[4] || 100),   // หน่วยเมตร
+      enabled: true
     });
   }
-
   return locations;
 }
 
+// ============================================================
+//  Attendance Log
+// ============================================================
 function logAttendance(name, lat, lng, matchScore, distance, device, locationName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const schema = ['Name', 'Time', 'Date', 'Latitude', 'Longitude', 'Google Map Link', 'Match Score', 'Distance', 'Device', 'Location'];
@@ -216,6 +350,9 @@ function logAttendance(name, lat, lng, matchScore, distance, device, locationNam
   return { success: true, message: 'บันทึกเวลาเสร็จสิ้น' };
 }
 
+// ============================================================
+//  Config — Save / Load
+// ============================================================
 function saveConfig(apiUrl, locations, updatedBy) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('Config');
@@ -261,7 +398,7 @@ function getConfig() {
         name: row[1] || ('Location ' + i),
         lat: parseFloat(row[2]) || 0,
         lng: parseFloat(row[3]) || 0,
-        radius: parseFloat(row[4]) || 0.5,
+        radius: parseFloat(row[4]) || 100,  // หน่วยเมตร
         enabled: row[5] !== false
       });
     }

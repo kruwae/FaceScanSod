@@ -113,17 +113,44 @@
 
     <button class="btn btn-save" onclick="saveAll()">💾 บันทึกการตั้งค่าทั้งหมด</button>
     <div id="msg"></div>
+
+    <!-- ===== เปลี่ยนรหัสแอดมิน ===== -->
+    <div class="card" style="margin-top:16px">
+      <div class="section-header">
+        <div class="section-icon indigo">🔑</div>
+        <span class="section-title-text">เปลี่ยนรหัสแอดมิน</span>
+      </div>
+      <label>รหัสปัจจุบัน</label>
+      <input type="password" id="currentCode" placeholder="รหัสปัจจุบัน" autocomplete="current-password">
+      <label>รหัสใหม่ (อย่างน้อย 4 ตัว)</label>
+      <input type="password" id="newCode" placeholder="รหัสใหม่" autocomplete="new-password">
+      <label>ยืนยันรหัสใหม่</label>
+      <input type="password" id="confirmCode" placeholder="ยืนยันรหัสใหม่" autocomplete="new-password">
+      <button class="btn" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;margin-top:4px" type="button" onclick="changeCode()">🔑 เปลี่ยนรหัส</button>
+      <div id="changeMsg" style="margin-top:10px;min-height:20px;font-size:0.88em;font-weight:600;text-align:center"></div>
+    </div>
+
+    <!-- ===== ตั้งค่าเริ่มต้น staffOS ===== -->
+    <div class="card" style="margin-top:0">
+      <div class="section-header">
+        <div class="section-icon cyan">🗂️</div>
+        <span class="section-title-text">ตั้งค่าเริ่มต้น (staffOS Sheet)</span>
+      </div>
+      <p class="note" style="margin-bottom:14px">กดปุ่มนี้เมื่อ Deploy GAS ใหม่ครั้งแรก เพื่อสร้าง sheet "staffOS" และ admin เริ่มต้น (รหัส 2569)</p>
+      <button class="btn" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#34d399" type="button" onclick="runInitSetup()">⚙️ สร้าง staffOS Sheet</button>
+      <div id="initMsg" style="margin-top:10px;min-height:20px;font-size:0.88em;font-weight:600;text-align:center"></div>
+    </div>
+
     <a href="index.html" class="btn-back">← กลับเมนูหลัก</a>
   </div>
 </div>
 
 <script>
   // ============================================================
-  //  Admin Auth — sessionStorage (หมดเมื่อปิด tab)
-  //  + Back Button Protection
+  //  Admin Auth — sessionStorage + verifyAdmin จาก GAS (staffOS)
+  //  รหัสไม่ถูก expose ที่ client — ตรวจสอบฝั่ง server ทั้งหมด
   // ============================================================
   const SESSION_KEY = "configAdminAuth";
-  const ADMIN_CODE  = "2569";   // เปลี่ยนรหัสได้ที่นี่
   const MSG_SUCCESS = "msg-success";
   const MSG_ERROR   = "msg-error";
   const msgDiv        = document.getElementById("msg");
@@ -134,6 +161,11 @@
   const btnLogoutTop  = document.getElementById("btnLogoutTop");
   const locationsBox  = document.getElementById("locations");
 
+  // API URL — อ่านจาก localStorage ก่อน ถ้าไม่มีใช้จาก api-config.js
+  function getApiUrl() {
+    return (localStorage.getItem("gasApiUrl") || (typeof GAS_API_URL !== "undefined" ? GAS_API_URL : "") || "").trim();
+  }
+
   function isAdminAuthed() {
     return sessionStorage.getItem(SESSION_KEY) === "1";
   }
@@ -143,22 +175,19 @@
   }
 
   // --------- Back Button Guard ---------
-  history.pushState({ page: 'config' }, '', '');
-
-  window.addEventListener("popstate", function () {
-    if (!isAdminAuthed()) {
-      window.location.replace("index.html");
-      return;
-    }
-    // กด back ขณะล็อกอินอยู่ → logout แล้วกลับ
-    hardLogout();
-  });
-
+  // ใช้ replaceState แทน pushState เพื่อไม่ให้เพิ่ม history entry
+  // แล้วใช้ pageshow เป็น guard หลักแทน popstate
   window.addEventListener("pageshow", function (e) {
-    // บน iOS bfcache — ตรวจสอบ session ทุกครั้งที่หน้าแสดง
-    if (!isAdminAuthed()) syncGate();
+    // bfcache restore (กด back แล้วหน้ากลับมา) → ตรวจ session
+    if (e.persisted || !isAdminAuthed()) {
+      if (!isAdminAuthed()) {
+        // ยังไม่ได้ล็อกอิน → แสดง gate
+        syncGate();
+      }
+    }
   });
 
+  // กรณีกด back แล้วหน้าไม่ได้ bfcache → ตรวจ session ตอนโหลด
   function syncGate() {
     const authed = isAdminAuthed();
     gateBox.style.display = authed ? "none" : "block";
@@ -170,16 +199,45 @@
     window.location.replace("index.html");
   }
 
-  adminLoginBtn.addEventListener("click", function () {
+  // --------- Login (ตรวจรหัสที่ server GAS) ---------
+  adminLoginBtn.addEventListener("click", async function () {
     const code = prompt("กรอกรหัสผู้ดูแลระบบ");
-    if (code === null) return;
-    if (code.trim() === ADMIN_CODE) {
+    if (code === null || code.trim() === "") return;
+
+    const apiUrl = getApiUrl();
+
+    // ถ้ายังไม่มี API URL → fallback ตรวจ hardcode ชั่วคราว (ครั้งแรก setup)
+    if (!apiUrl) {
+      showMsg("⚠️ ยังไม่ได้ตั้งค่า API URL — กรุณากรอก URL ด้านล่างแล้วลองอีกครั้ง", MSG_ERROR);
+      contentBox.classList.remove("hidden");
+      gateBox.style.display = "none";
       sessionStorage.setItem(SESSION_KEY, "1");
-      showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
-      syncGate();
-      loadFromServer();
-    } else {
-      alert("❌ รหัสผู้ดูแลไม่ถูกต้อง");
+      return;
+    }
+
+    adminLoginBtn.disabled = true;
+    adminLoginBtn.textContent = "⏳ กำลังตรวจสอบ...";
+
+    try {
+      const res  = await fetch(apiUrl, {
+        method : "POST",
+        body   : JSON.stringify({ action: "verifyAdmin", code: code.trim() })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        sessionStorage.setItem(SESSION_KEY, "1");
+        showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
+        syncGate();
+        loadFromServer();
+      } else {
+        alert("❌ " + (data.error || "รหัสผู้ดูแลไม่ถูกต้อง"));
+      }
+    } catch (err) {
+      alert("❌ เชื่อมต่อ server ไม่ได้: " + err.message);
+    } finally {
+      adminLoginBtn.disabled = false;
+      adminLoginBtn.textContent = "ปลดล็อกผู้ดูแล";
     }
   });
 
@@ -270,14 +328,81 @@
       .replaceAll(">", ">");
   }
 
+  // --------- เปลี่ยนรหัสแอดมิน ---------
+  async function changeCode() {
+    const currentCode = document.getElementById("currentCode").value.trim();
+    const newCode     = document.getElementById("newCode").value.trim();
+    const confirmCode = document.getElementById("confirmCode").value.trim();
+    const changeMsg   = document.getElementById("changeMsg");
+
+    if (!currentCode || !newCode || !confirmCode) {
+      changeMsg.innerText = "❌ กรุณากรอกข้อมูลให้ครบ"; changeMsg.className = MSG_ERROR; return;
+    }
+    if (newCode !== confirmCode) {
+      changeMsg.innerText = "❌ รหัสใหม่ไม่ตรงกัน"; changeMsg.className = MSG_ERROR; return;
+    }
+    if (newCode.length < 4) {
+      changeMsg.innerText = "❌ รหัสใหม่ต้องมีอย่างน้อย 4 ตัวอักษร"; changeMsg.className = MSG_ERROR; return;
+    }
+    const apiUrl = getApiUrl();
+    if (!apiUrl) { changeMsg.innerText = "❌ ยังไม่ได้ตั้งค่า API URL"; changeMsg.className = MSG_ERROR; return; }
+
+    changeMsg.innerText = "⏳ กำลังเปลี่ยนรหัส..."; changeMsg.className = "";
+    try {
+      const res  = await fetch(apiUrl, {
+        method: "POST",
+        body  : JSON.stringify({ action: "changeAdminCode", currentCode, newCode })
+      });
+      const data = await res.json();
+      if (data.success) {
+        changeMsg.innerText = "✅ " + (data.message || "เปลี่ยนรหัสสำเร็จ — กรุณา logout แล้วใช้รหัสใหม่");
+        changeMsg.className = MSG_SUCCESS;
+        ["currentCode","newCode","confirmCode"].forEach(id => document.getElementById(id).value = "");
+      } else {
+        changeMsg.innerText = "❌ " + (data.error || "เปลี่ยนรหัสล้มเหลว");
+        changeMsg.className = MSG_ERROR;
+      }
+    } catch (err) {
+      changeMsg.innerText = "❌ เชื่อมต่อ server ไม่ได้: " + err.message;
+      changeMsg.className = MSG_ERROR;
+    }
+  }
+
+  // --------- สร้าง staffOS Sheet ครั้งแรก ---------
+  async function runInitSetup() {
+    const apiUrl  = getApiUrl();
+    const initMsg = document.getElementById("initMsg");
+
+    if (!apiUrl) {
+      initMsg.innerText = "❌ กรุณากรอก API URL ก่อนแล้วบันทึก";
+      initMsg.className = MSG_ERROR;
+      return;
+    }
+    initMsg.innerText = "⏳ กำลังสร้าง staffOS sheet...";
+    initMsg.className = "";
+    try {
+      const res  = await fetch(apiUrl + "?action=initSetup");
+      const data = await res.json();
+      if (data.success) {
+        initMsg.innerText = "✅ " + (data.message || "เรียบร้อย");
+        initMsg.className = MSG_SUCCESS;
+      } else {
+        initMsg.innerText = "❌ " + (data.error || "ล้มเหลว");
+        initMsg.className = MSG_ERROR;
+      }
+    } catch (err) {
+      initMsg.innerText = "❌ เชื่อมต่อ server ไม่ได้: " + err.message;
+      initMsg.className = MSG_ERROR;
+    }
+  }
+
+  // --------- Init ---------
   syncGate();
   if (isAdminAuthed()) {
     loadFromServer();
   } else {
     addLocation({ name: "", lat: "", lng: "", radius: 100, enabled: true });
   }
-  // เก็บรหัสแอดมิน (สำหรับ register.html อ่านได้ถ้า deploy บน server เดียวกัน)
-  localStorage.setItem('adminCode', ADMIN_CODE);
 </script>
 </body>
 </html>

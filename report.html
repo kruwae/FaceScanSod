@@ -526,19 +526,19 @@
 
   function processLogs(logs, startDate, endDate) {
     const map = {};
-    const startText = startDate || '';
-    const endText = endDate || '';
+    const startObj = parseSheetDate(startDate);
+    const endObj = parseSheetDate(endDate);
 
     logs.forEach(log => {
-      const rawName = log['Name'] || log.name || 'ไม่ระบุ';
+      const rawName = (log['Name'] || log.name || 'ไม่ระบุ').toString().trim();
       const rawDate = (log['Date'] || log.date || '').toString().replace(/^'/, '').trim();
       const rawTime = (log['Time'] || log.time || '').toString().trim();
-
-      if (!rawDate) return;
-      if (startText && rawDate < startText) return;
-      if (endText && rawDate > endText) return;
-
       const parsedDate = parseSheetDate(rawDate);
+
+      if (!rawDate || !parsedDate) return;
+      if (startObj && parsedDate < startObj) return;
+      if (endObj && parsedDate > endObj) return;
+
       const dateKey = rawDate;
       const key = rawName + '|' + dateKey;
 
@@ -546,9 +546,7 @@
         map[key] = {
           name: rawName,
           date: dateKey,
-          displayDate: parsedDate
-            ? parsedDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
-            : rawDate,
+          displayDate: parsedDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }),
           checkIn: null,
           checkOut: null,
           locationName: log['Location'] || log.locationName || '',
@@ -561,7 +559,9 @@
       map[key].logs.push(log);
 
       const minutes = timeToMinutes(rawTime);
-      const endMin = timeToMinutes((workTimes.specialDates || []).find(s => s.date === isoFromDmy(rawDate))?.endTime || workTimes.endTime);
+      const specialIso = isoFromDmy(rawDate);
+      const specialDate = (workTimes.specialDates || []).find(s => s.date === specialIso);
+      const endMin = timeToMinutes((specialDate && specialDate.endTime) || workTimes.endTime);
 
       if (!map[key].checkIn || minutes < map[key].checkIn.minutes) {
         map[key].checkIn = { timeStr: rawTime || '-', minutes: minutes };
@@ -570,7 +570,7 @@
         map[key].gpsSkipReason = log['GPS Skip Reason'] || log.gpsSkipReason || map[key].gpsSkipReason;
       }
 
-      if (rawTime && minutes >= endMin) {
+      if (rawTime && Number.isFinite(minutes) && minutes >= endMin) {
         if (!map[key].checkOut || minutes > map[key].checkOut.minutes) {
           map[key].checkOut = { timeStr: rawTime, minutes: minutes };
         }

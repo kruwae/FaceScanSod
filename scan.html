@@ -100,6 +100,42 @@
       text-align: center;
     }
 
+    /* Location Selector */
+    .location-selector {
+      display: none;
+      width: 100%;
+      margin-bottom: 14px;
+    }
+    .location-selector label {
+      display: block;
+      font-size: 0.8em;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .location-selector select {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      color: #e2e8f0;
+      font-size: 14px;
+      font-family: 'Sarabun', sans-serif;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      cursor: pointer;
+    }
+    .location-selector select option {
+      background: #1a1a3e;
+      color: #e2e8f0;
+    }
+
     /* Scanner Container */
     .video-container {
       position: relative;
@@ -219,6 +255,14 @@
       font-size: 15px; font-weight: 600;
       margin-bottom: 6px;
     }
+    .loc-badge {
+      background: rgba(99,102,241,0.12);
+      border: 1px solid rgba(99,102,241,0.25);
+      color: #a5b4fc;
+      padding: 5px 16px; border-radius: 20px;
+      font-size: 13px; font-weight: 600;
+      margin-bottom: 8px;
+    }
     .score-text { color: #475569; font-size: 13px; margin-bottom: 20px; }
 
     .btn {
@@ -269,7 +313,13 @@
   </div>
 
   <div id="gps-alert-box" class="gps-alert">
-    ⚠️ คุณอยู่นอกพื้นที่ที่กำหนด!<br>กรุณาเข้าใกล้จุดเช็คอินแล้วรีเฟรชหน้าจอ
+    ⚠️ คุณอยู่นอกพื้นที่ที่กำหนดทุกสาขา!<br>กรุณาเข้าใกล้จุดเช็คอินแล้วรีเฟรชหน้าจอ
+  </div>
+
+  <!-- ตัวเลือกสถานที่ (แสดงเมื่อ GPS อยู่ในหลายพื้นที่พร้อมกัน) -->
+  <div class="location-selector" id="locationSelector">
+    <label>📍 เลือกหน่วยบริการที่ต้องการเช็คอิน</label>
+    <select id="locationSelect"></select>
   </div>
 
   <button id="btnStart" onclick="startCamera()">📷 แตะเพื่อเริ่มสแกน</button>
@@ -295,6 +345,7 @@
     <p class="modal-title">ตรวจพบบุคคล</p>
     <div class="user-name" id="modalName">...</div>
     <div id="modalTime" class="time-badge">00:00</div>
+    <div id="modalLocation" class="loc-badge" style="display:none"></div>
     <div id="modalScore" class="score-text"></div>
     <button class="btn btn-confirm" id="btnConfirm" onclick="confirmAttendance()">✅ ยืนยันเข้างาน</button>
     <button class="btn btn-cancel" onclick="cancelAttendance()">ไม่ใช่ฉัน</button>
@@ -310,14 +361,18 @@
   const gpsStatus      = document.getElementById('gps-status');
   const gpsAlertBox    = document.getElementById('gps-alert-box');
   const btnStart       = document.getElementById('btnStart');
+  const locationSelector = document.getElementById('locationSelector');
+  const locationSelect   = document.getElementById('locationSelect');
 
   const MATCH_THRESHOLD = 0.45;
 
-  let knownFaces   = [];
-  let scanInterval = null;
-  let currentMatch = null;
-  let currentLat   = null;
-  let currentLng   = null;
+  let knownFaces       = [];
+  let scanInterval     = null;
+  let currentMatch     = null;
+  let currentLat       = null;
+  let currentLng       = null;
+  let currentLocation  = null;   // { id, name, lat, lng, radius }
+  let allLocations     = [];     // locations[] from server config
 
   // ===== Init =====
   if (!API_URL) {
@@ -335,7 +390,7 @@
     }
   }
 
-  // ===== GPS =====
+  // ===== GPS + Multi-Location =====
   function checkGPS() {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
@@ -349,26 +404,72 @@
 
           try {
             const config = await fetch(API_URL + '?action=getConfig').then(r => r.json());
+            const locations = Array.isArray(config.locations) ? config.locations.filter(l => l.enabled !== false) : [];
 
-            if (!config.lat || !config.lng || config.radius == 0) {
+            // ไม่มีตำแหน่งกำหนด → อนุญาตทุกที่
+            if (locations.length === 0) {
               gpsStatus.innerHTML = '<span style="color:#34d399">📍 GPS: ไม่จำกัดพื้นที่</span>';
+              currentLocation = null;
               resolve();
               initFaceSystem();
               return;
             }
 
-            const dist = haversineKm(currentLat, currentLng, config.lat, config.lng);
+            allLocations = locations;
 
-            if (dist <= config.radius) {
-              gpsStatus.innerHTML = '<span style="color:#34d399">📍 GPS: OK (ห่างเป้าหมาย ' + dist.toFixed(3) + ' km)</span>';
-              resolve();
-              initFaceSystem();
-            } else {
-              gpsStatus.innerHTML = '<span style="color:#f87171">📍 GPS: ห่างเกินไป (' + dist.toFixed(3) + ' km / กำหนด ' + config.radius + ' km)</span>';
+            // หาตำแหน่งที่อยู่ในรัศมี
+            const matched = [];
+            locations.forEach(loc => {
+              const radiusKm = (parseFloat(loc.radius) || 100) / 1000; // radius เป็นเมตร → km
+              const dist = haversineKm(currentLat, currentLng, parseFloat(loc.lat), parseFloat(loc.lng));
+              if (dist <= radiusKm) {
+                matched.push({ ...loc, distKm: dist });
+              }
+            });
+
+            if (matched.length === 0) {
+              // ไม่อยู่ในพื้นที่ใดเลย → หาที่ใกล้ที่สุดเพื่อแสดง
+              const nearest = locations.reduce((a, b) => {
+                const da = haversineKm(currentLat, currentLng, parseFloat(a.lat), parseFloat(a.lng));
+                const db = haversineKm(currentLat, currentLng, parseFloat(b.lat), parseFloat(b.lng));
+                return da < db ? a : b;
+              });
+              const nearDist = haversineKm(currentLat, currentLng, parseFloat(nearest.lat), parseFloat(nearest.lng));
+              const nearRadius = (parseFloat(nearest.radius) || 100) / 1000;
+              gpsStatus.innerHTML = '<span style="color:#f87171">📍 ห่างกว่าสาขาที่ใกล้ที่สุด "' + nearest.name + '" ' + (nearDist * 1000).toFixed(0) + ' ม. (กำหนด ' + (nearRadius * 1000).toFixed(0) + ' ม.)</span>';
               gpsAlertBox.style.display = 'block';
               mainStatus.innerText = '⛔ ไม่อนุญาตให้สแกน';
               overlayStatus.innerText = 'Out of Range';
+              return;
             }
+
+            if (matched.length === 1) {
+              // อยู่ในพื้นที่เดียว → เลือกอัตโนมัติ
+              currentLocation = matched[0];
+              gpsStatus.innerHTML = '<span style="color:#34d399">📍 GPS OK — ' + currentLocation.name + ' (' + (currentLocation.distKm * 1000).toFixed(0) + ' ม.)</span>';
+            } else {
+              // อยู่ในหลายพื้นที่ → ให้ผู้ใช้เลือก
+              matched.sort((a, b) => a.distKm - b.distKm);
+              locationSelect.innerHTML = '';
+              matched.forEach(loc => {
+                const opt = document.createElement('option');
+                opt.value = loc.id || loc.name;
+                opt.textContent = loc.name + ' (' + (loc.distKm * 1000).toFixed(0) + ' ม.)';
+                opt.dataset.locJson = JSON.stringify(loc);
+                locationSelect.appendChild(opt);
+              });
+              // เลือกอัตโนมัติตำแหน่งใกล้ที่สุด
+              currentLocation = matched[0];
+              locationSelect.addEventListener('change', function () {
+                const selected = this.options[this.selectedIndex];
+                currentLocation = JSON.parse(selected.dataset.locJson);
+              });
+              locationSelector.style.display = 'block';
+              gpsStatus.innerHTML = '<span style="color:#f59e0b">📍 พบ ' + matched.length + ' สาขา — เลือกด้านบน</span>';
+            }
+
+            resolve();
+            initFaceSystem();
           } catch (e) {
             reject(new Error('เชื่อมต่อ API ไม่ได้: ' + e.message));
           }
@@ -416,6 +517,12 @@
 
   // ===== Camera =====
   function startCamera() {
+    // ตรวจสอบ GPS อีกครั้งก่อนเปิดกล้อง (กรณีมีหลายสาขา ต้องเลือกไว้แล้ว)
+    if (locationSelector.style.display !== 'none') {
+      const selected = locationSelect.options[locationSelect.selectedIndex];
+      if (selected) currentLocation = JSON.parse(selected.dataset.locJson);
+    }
+
     btnStart.style.display = 'none';
     mainStatus.innerText   = 'กำลังเปิดกล้อง...';
     mainStatus.style.color = '#94a3b8';
@@ -484,6 +591,14 @@
     const pct = ((1 - match.distance) * 100).toFixed(1);
     document.getElementById('modalScore').innerText = 'ความเหมือน: ' + pct + '%';
 
+    const modalLoc = document.getElementById('modalLocation');
+    if (currentLocation) {
+      modalLoc.innerText = '📍 ' + currentLocation.name;
+      modalLoc.style.display = 'block';
+    } else {
+      modalLoc.style.display = 'none';
+    }
+
     confirmModal.style.display = 'flex';
     mainStatus.innerText = 'กรุณายืนยัน...';
   }
@@ -493,14 +608,26 @@
     btn.disabled   = true;
     btn.innerText  = 'กำลังบันทึก...';
 
+    // อัปเดต currentLocation จาก select (กรณีผู้ใช้เปลี่ยนใจหลัง modal เปิด)
+    if (locationSelector.style.display !== 'none') {
+      const selected = locationSelect.options[locationSelect.selectedIndex];
+      if (selected) currentLocation = JSON.parse(selected.dataset.locJson);
+    }
+
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'logAttendance', name: currentMatch, lat: currentLat, lng: currentLng })
+        body: JSON.stringify({
+          action: 'logAttendance',
+          name: currentMatch,
+          lat: currentLat,
+          lng: currentLng,
+          locationName: currentLocation ? currentLocation.name : ''
+        })
       });
       const data = await res.json();
       alert('✅ ' + (data.message || 'บันทึกเวลาสำเร็จ'));
-      window.location.href = 'index.html';
+      window.location.replace('index.html');
     } catch (e) {
       alert('❌ บันทึกล้มเหลว: ' + e.message);
       btn.disabled  = false;

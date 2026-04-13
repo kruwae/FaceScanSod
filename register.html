@@ -43,6 +43,7 @@
       display: none;
     }
 
+    /* ===== Admin Lock Screen ===== */
     .admin-lock {
       width: 100%;
       max-width: 460px;
@@ -107,10 +108,16 @@
       box-shadow: 0 10px 28px rgba(99,102,241,0.4);
     }
 
-    /* Header */
+    /* ===== Header & Navigation ===== */
     .page-header {
       text-align: center;
       margin-bottom: 24px;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
     }
     .back-btn {
       display: inline-flex; align-items: center; gap: 6px;
@@ -119,9 +126,24 @@
       background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.1);
       transition: all 0.25s ease;
-      margin-bottom: 16px;
     }
     .back-btn:hover { color: #e2e8f0; background: rgba(255,255,255,0.1); }
+
+    .logout-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 0.88em; font-weight: 600;
+      padding: 7px 14px; border-radius: 20px;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .logout-btn:hover {
+      background: rgba(239,68,68,0.2);
+      border-color: rgba(239,68,68,0.5);
+    }
 
     h2 {
       font-size: 1.6em; font-weight: 700;
@@ -268,69 +290,120 @@
   </style>
 </head>
 <body>
+
+  <!-- ===== หน้าล็อก (แสดงเมื่อยังไม่ได้ยืนยัน) ===== -->
   <div class="admin-lock" id="adminLock">
     <div class="admin-lock__badge">🔒</div>
     <h2>Admin Only</h2>
     <p>หน้านี้สำหรับผู้ดูแลระบบเท่านั้น<br>กรุณายืนยันรหัสแอดมินก่อนเข้าใช้งาน</p>
-    <button class="btn-admin btn-admin-login" onclick="requestAdminAccess()">ยืนยันรหัสแอดมิน</button>
+    <button class="btn-admin btn-admin-login" id="btnAdminLogin">ยืนยันรหัสแอดมิน</button>
   </div>
 
+  <!-- ===== เนื้อหาหลัก (แสดงหลังยืนยัน) ===== -->
   <div class="container" id="adminContent">
-  <div class="page-header">
-    <a href="index.html" class="back-btn">← กลับ</a>
-    <h2>👤 ลงทะเบียนใบหน้า</h2>
-    <p class="instruction">บันทึก 3 มุม: หน้าตรง / หันซ้ายเล็กน้อย / หันขวาเล็กน้อย<br>เพื่อความแม่นยำสูงสุด</p>
-  </div>
-
-  <div class="step-dots">
-    <div class="dot" id="dot1"></div>
-    <div class="dot" id="dot2"></div>
-    <div class="dot" id="dot3"></div>
-  </div>
-
-  <div id="status">
-    <span class="spinner"></span> กำลังโหลด AI Model...
-  </div>
-
-  <div class="video-wrapper">
-    <video id="video" autoplay muted playsinline></video>
-  </div>
-
-  <div class="form-section">
-    <div class="input-group">
-      <input type="text" id="username" placeholder="ชื่อ-นามสกุลพนักงาน">
+    <div class="page-header">
+      <div class="header-top">
+        <a href="index.html" class="back-btn">← กลับ</a>
+        <button class="logout-btn" id="btnLogout">🔓 ออกจากระบบ</button>
+      </div>
+      <h2>👤 ลงทะเบียนใบหน้า</h2>
+      <p class="instruction">บันทึก 3 มุม: หน้าตรง / หันซ้ายเล็กน้อย / หันขวาเล็กน้อย<br>เพื่อความแม่นยำสูงสุด</p>
     </div>
 
-    <button id="btnSave" onclick="saveFace()" disabled>
-      📸 บันทึกใบหน้า <span id="saveCount" class="count-badge">0</span>
-    </button>
+    <div class="step-dots">
+      <div class="dot" id="dot1"></div>
+      <div class="dot" id="dot2"></div>
+      <div class="dot" id="dot3"></div>
+    </div>
 
-    <div id="msg"></div>
+    <div id="status">
+      <span class="spinner"></span> กำลังโหลด AI Model...
+    </div>
+
+    <div class="video-wrapper">
+      <video id="video" autoplay muted playsinline></video>
+    </div>
+
+    <div class="form-section">
+      <div class="input-group">
+        <input type="text" id="username" placeholder="ชื่อ-นามสกุลพนักงาน" autocomplete="off">
+      </div>
+
+      <button id="btnSave" onclick="saveFace()" disabled>
+        📸 บันทึกใบหน้า <span id="saveCount" class="count-badge">0</span>
+      </button>
+
+      <div id="msg"></div>
+    </div>
   </div>
-</div>
 
 <script>
-  const API_URL   = localStorage.getItem('gasApiUrl') || GAS_API_URL;
-  const video     = document.getElementById('video');
-  const statusDiv = document.getElementById('status');
-  const btnSave   = document.getElementById('btnSave');
-  const msgDiv    = document.getElementById('msg');
-  const countSpan = document.getElementById('saveCount');
-  const adminLock = document.getElementById('adminLock');
-  const adminContent = document.getElementById('adminContent');
-  let saveCounter = 0;
-  const ADMIN_CODE = '2569';
+  // ============================================================
+  //  Admin Auth — ใช้ sessionStorage (หมดอายุเมื่อปิด tab)
+  //  + ป้องกัน back button วนกลับเข้ามาได้
+  // ============================================================
+  const SESSION_KEY  = 'registerAdminAuth';
+  const API_URL      = localStorage.getItem('gasApiUrl') || GAS_API_URL;
 
-  function isAdminAuthenticated() {
-    return localStorage.getItem('faceScanAdminAuth') === '1';
+  const adminLock    = document.getElementById('adminLock');
+  const adminContent = document.getElementById('adminContent');
+  const btnAdminLogin = document.getElementById('btnAdminLogin');
+  const btnLogout    = document.getElementById('btnLogout');
+  const video        = document.getElementById('video');
+  const statusDiv    = document.getElementById('status');
+  const btnSave      = document.getElementById('btnSave');
+  const msgDiv       = document.getElementById('msg');
+  const countSpan    = document.getElementById('saveCount');
+
+  let saveCounter = 0;
+
+  // --------- ตรวจสอบสถานะ auth ---------
+  function isAuthed() {
+    return sessionStorage.getItem(SESSION_KEY) === '1';
   }
 
-  function requestAdminAccess() {
+  function showAdminContent() {
+    adminLock.style.display    = 'none';
+    adminContent.style.display = 'block';
+  }
+
+  function showLockScreen() {
+    adminContent.style.display = 'none';
+    adminLock.style.display    = 'block';
+  }
+
+  // --------- ป้องกัน Back Button ---------
+  // เพิ่ม history entry สำหรับหน้านี้ ทำให้ back ครั้งแรก = pop state (ไม่ออก)
+  history.pushState({ page: 'register' }, '', '');
+
+  window.addEventListener('popstate', function (e) {
+    if (!isAuthed()) {
+      // ยังไม่ได้ล็อกอิน → ออกไปหน้าหลักเลย
+      window.location.replace('index.html');
+      return;
+    }
+    // ล็อกอินอยู่แต่กด back → log out แล้วไป index
+    doLogout();
+  });
+
+  window.addEventListener('pageshow', function (e) {
+    // รองรับ bfcache (back-forward cache) บน iOS/Safari
+    if (!isAuthed()) {
+      showLockScreen();
+    }
+  });
+
+  // --------- Login ---------
+  btnAdminLogin.addEventListener('click', function () {
     const code = prompt('กรอกรหัสแอดมิน');
     if (code === null) return;
 
+    // เปรียบเทียบกับ config key ที่เก็บใน localStorage (ตรงกับ config.html)
+    // ค่า default คือ '2569' — เปลี่ยนได้ผ่าน config.html
+    const ADMIN_CODE = localStorage.getItem('adminCode') || '2569';
+
     if (code.trim() === ADMIN_CODE) {
-      localStorage.setItem('faceScanAdminAuth', '1');
+      sessionStorage.setItem(SESSION_KEY, '1');
       showAdminContent();
       if (!API_URL) {
         statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
@@ -338,16 +411,25 @@
         initModels();
       }
     } else {
-      alert('รหัสแอดมินไม่ถูกต้อง');
+      alert('❌ รหัสแอดมินไม่ถูกต้อง');
     }
+  });
+
+  // --------- Logout ---------
+  function doLogout() {
+    sessionStorage.removeItem(SESSION_KEY);
+    // หยุดกล้องก่อน
+    if (video.srcObject) {
+      video.srcObject.getTracks().forEach(t => t.stop());
+      video.srcObject = null;
+    }
+    window.location.replace('index.html');
   }
 
-  function showAdminContent() {
-    adminLock.style.display = 'none';
-    adminContent.style.display = 'block';
-  }
+  btnLogout.addEventListener('click', doLogout);
 
-  if (isAdminAuthenticated()) {
+  // --------- ตรวจสอบ session เมื่อโหลดหน้า ---------
+  if (isAuthed()) {
     showAdminContent();
     if (!API_URL) {
       statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
@@ -356,6 +438,7 @@
     }
   }
 
+  // --------- Step Dots ---------
   function updateDots() {
     [1,2,3].forEach(i => {
       const dot = document.getElementById('dot' + i);
@@ -363,8 +446,10 @@
     });
   }
 
+  // --------- Load AI ---------
   async function initModels() {
     try {
+      statusDiv.innerHTML = '<span class="spinner"></span> กำลังโหลด AI Model...';
       const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
       await Promise.all([
         faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
@@ -389,9 +474,17 @@
       });
   }
 
+  // --------- Save Face ---------
   async function saveFace() {
     const name = document.getElementById('username').value.trim();
     if (!name) return alert('กรุณาใส่ชื่อก่อน');
+
+    // ตรวจสอบ session ยังอยู่ไหม
+    if (!isAuthed()) {
+      alert('หมดสิทธิ์การเข้าถึง กรุณาเข้าสู่ระบบใหม่');
+      doLogout();
+      return;
+    }
 
     btnSave.disabled = true;
     btnSave.innerHTML = '⏳ กำลังประมวลผล... <span class="count-badge">' + saveCounter + '</span>';
@@ -412,13 +505,23 @@
     const descriptorArray = Array.from(detection.descriptor);
 
     try {
-      await fetch(API_URL, {
+      const res = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'registerUser', name, faceDescriptor: descriptorArray, registeredBy: 'admin', status: 'active' })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'registerUser',
+          name,
+          faceDescriptor: descriptorArray,
+          registeredBy: 'admin',
+          status: 'active'
+        })
       });
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
 
       saveCounter++;
-      countSpan.innerText = saveCounter;
+      document.getElementById('saveCount') && (document.getElementById('saveCount').innerText = saveCounter);
       updateDots();
       msgDiv.innerHTML = '<span class="msg-success">✅ บันทึกครั้งที่ ' + saveCounter + ' สำเร็จ! ขยับหน้าเล็กน้อยแล้วกดอีกครั้ง</span>';
       btnSave.disabled = false;

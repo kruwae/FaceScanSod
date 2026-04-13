@@ -8,256 +8,75 @@
   <script src="js/api-config.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Sarabun', sans-serif;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1b2a 100%);
-      color: #e2e8f0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 28px 16px 60px;
-      position: relative;
-    }
-
-    body::before {
-      content: '';
-      position: fixed;
-      width: 400px; height: 400px;
-      background: #06b6d4;
-      border-radius: 50%;
-      filter: blur(100px);
-      opacity: 0.08;
-      top: -100px; right: -100px;
-      pointer-events: none; z-index: 0;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 500px;
-      position: relative; z-index: 1;
-      animation: fadeIn 0.5s ease;
-    }
-
+    body { font-family: 'Sarabun', sans-serif; min-height: 100vh; background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1b2a 100%); color: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding: 28px 16px 60px; position: relative; }
+    body::before { content: ''; position: fixed; width: 420px; height: 420px; background: #06b6d4; border-radius: 50%; filter: blur(110px); opacity: 0.08; top: -120px; right: -100px; pointer-events: none; z-index: 0; }
+    .container { width: 100%; max-width: 760px; position: relative; z-index: 1; }
     .page-header { margin-bottom: 18px; text-align: center; }
-    .back-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      color: #64748b; text-decoration: none; font-size: 0.88em;
-      padding: 6px 12px; border-radius: 20px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      transition: all 0.25s ease;
-      margin-bottom: 14px;
-    }
+    .back-btn { display: inline-flex; align-items: center; gap: 6px; color: #64748b; text-decoration: none; font-size: 0.88em; padding: 6px 12px; border-radius: 20px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); transition: all 0.25s ease; margin-bottom: 14px; }
     .back-btn:hover { color: #e2e8f0; background: rgba(255,255,255,0.1); }
-
-    .admin-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 14px;
-      border-radius: 999px;
-      background: rgba(6,182,212,0.14);
-      border: 1px solid rgba(6,182,212,0.25);
-      color: #a5f3fc;
-      font-size: 0.84em;
-      margin-bottom: 12px;
-    }
-
-    h2 {
-      font-size: 1.6em; font-weight: 700;
-      background: linear-gradient(135deg, #a5b4fc, #e2e8f0);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 6px;
-    }
+    .admin-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: rgba(6,182,212,0.14); border: 1px solid rgba(6,182,212,0.25); color: #a5f3fc; font-size: 0.84em; margin-bottom: 12px; }
+    h2 { font-size: 1.6em; font-weight: 700; background: linear-gradient(135deg, #a5b4fc, #e2e8f0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 6px; }
     .page-subtitle { font-size: 0.83em; color: #94a3b8; line-height: 1.6; }
-
-    .warning-box {
-      background: rgba(245,158,11,0.12);
-      border: 1px solid rgba(245,158,11,0.26);
-      color: #fde68a;
-      border-radius: 16px;
-      padding: 14px 16px;
-      line-height: 1.65;
-      font-size: 0.9em;
-      margin: 16px 0 18px;
-      text-align: left;
-    }
-
-    .access-gate {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 18px;
-      padding: 20px;
-      margin-bottom: 18px;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-    }
-
-    .gate-title {
-      font-size: 1em;
-      font-weight: 700;
-      color: #f8fafc;
-      margin-bottom: 6px;
-    }
-
-    .gate-desc {
-      font-size: 0.88em;
-      color: #94a3b8;
-      line-height: 1.6;
-      margin-bottom: 14px;
-    }
-
-    .gate-actions {
-      display: flex;
-      gap: 10px;
-    }
-
-    .gate-btn {
-      flex: 1;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      font-family: 'Sarabun', sans-serif;
-      font-size: 0.95em;
-      font-weight: 600;
-      padding: 12px 14px;
-      transition: all 0.3s ease;
-    }
-    .gate-btn.primary {
-      background: linear-gradient(135deg, #06b6d4, #0891b2);
-      color: white;
-    }
-    .gate-btn.secondary {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #e2e8f0;
-    }
+    .warning-box { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.26); color: #fde68a; border-radius: 16px; padding: 14px 16px; line-height: 1.65; font-size: 0.9em; margin: 16px 0 18px; text-align: left; }
+    .gate { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 18px; padding: 20px; margin-bottom: 18px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .gate-title { font-size: 1em; font-weight: 700; color: #f8fafc; margin-bottom: 6px; }
+    .gate-desc { font-size: 0.88em; color: #94a3b8; line-height: 1.6; margin-bottom: 14px; }
+    .gate-actions { display: flex; gap: 10px; }
+    .gate-btn { flex: 1; border: none; border-radius: 12px; cursor: pointer; font-family: 'Sarabun', sans-serif; font-size: 0.95em; font-weight: 600; padding: 12px 14px; transition: all 0.3s ease; }
+    .gate-btn.primary { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; }
+    .gate-btn.secondary { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #e2e8f0; }
     .gate-btn:hover { transform: translateY(-1px); }
-
-    .card {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 20px;
-      padding: 24px 22px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      margin-bottom: 16px;
-    }
-
-    .section-header {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 18px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-    }
-    .section-icon {
-      width: 36px; height: 36px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 17px;
-    }
-    .section-icon.indigo  { background: rgba(99,102,241,0.2); }
-    .section-icon.cyan    { background: rgba(6,182,212,0.2);  }
+    .admin-header-actions { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+    .logout-btn { border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.1); color: #fecaca; border-radius: 12px; padding: 10px 14px; font-family: 'Sarabun', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.25s ease; }
+    .logout-btn:hover { background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.42); }
+    .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 24px 22px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); margin-bottom: 16px; }
+    .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+    .section-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+    .section-icon.indigo { background: rgba(99,102,241,0.2); }
+    .section-icon.cyan { background: rgba(6,182,212,0.2); }
     .section-title-text { font-weight: 600; font-size: 0.95em; color: #c7d2fe; }
-
-    label {
-      display: block; font-size: 0.82em; font-weight: 600;
-      color: #94a3b8; margin-bottom: 6px; letter-spacing: 0.03em;
-    }
-    input {
-      width: 100%;
-      padding: 12px 14px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 12px;
-      color: #e2e8f0;
-      font-size: 14px;
-      font-family: 'Sarabun', sans-serif;
-      outline: none;
-      transition: all 0.3s ease;
-      margin-bottom: 14px;
-    }
+    label { display: block; font-size: 0.82em; font-weight: 600; color: #94a3b8; margin-bottom: 6px; letter-spacing: 0.03em; }
+    input { width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; color: #e2e8f0; font-size: 14px; font-family: 'Sarabun', sans-serif; outline: none; transition: all 0.3s ease; margin-bottom: 14px; }
     input::placeholder { color: #334155; }
-    input:focus {
-      border-color: rgba(6,182,212,0.5);
-      background: rgba(6,182,212,0.07);
-      box-shadow: 0 0 0 3px rgba(6,182,212,0.12);
-    }
-
-    .note {
-      font-size: 0.78em; color: #475569;
-      margin-top: -10px; margin-bottom: 14px; line-height: 1.5;
-    }
-
-    .btn {
-      border: none; border-radius: 12px; cursor: pointer;
-      font-family: 'Sarabun', sans-serif; font-size: 15px; font-weight: 600;
-      padding: 13px; width: 100%;
-      transition: all 0.3s ease;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-    }
-    .btn-get-loc {
-      background: linear-gradient(135deg, #0891b2, #06b6d4);
-      color: white;
-      box-shadow: 0 4px 15px rgba(6,182,212,0.3);
-      margin-bottom: 18px;
-    }
-    .btn-save {
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: white;
-      box-shadow: 0 4px 20px rgba(16,185,129,0.3);
-      font-size: 16px; padding: 15px;
-    }
-
-    .btn-back {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 13px; width: 100%; border-radius: 12px;
-      background: transparent;
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #64748b; font-size: 15px; font-weight: 600;
-      font-family: 'Sarabun', sans-serif;
-      text-decoration: none; cursor: pointer;
-      transition: all 0.25s ease;
-      margin-top: 10px;
-    }
+    input:focus { border-color: rgba(6,182,212,0.5); background: rgba(6,182,212,0.07); box-shadow: 0 0 0 3px rgba(6,182,212,0.12); }
+    .note { font-size: 0.78em; color: #475569; margin-top: -10px; margin-bottom: 14px; line-height: 1.5; }
+    .btn { border: none; border-radius: 12px; cursor: pointer; font-family: 'Sarabun', sans-serif; font-size: 15px; font-weight: 600; padding: 13px; width: 100%; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-get-loc { background: linear-gradient(135deg, #0891b2, #06b6d4); color: white; box-shadow: 0 4px 15px rgba(6,182,212,0.3); margin-bottom: 18px; }
+    .btn-save { background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 4px 20px rgba(16,185,129,0.3); font-size: 16px; padding: 15px; }
+    .btn-back { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 13px; width: 100%; border-radius: 12px; background: transparent; border: 1px solid rgba(255,255,255,0.12); color: #64748b; font-size: 15px; font-weight: 600; font-family: 'Sarabun', sans-serif; text-decoration: none; cursor: pointer; transition: all 0.25s ease; margin-top: 10px; }
     .btn-back:hover { color: #e2e8f0; border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.05); }
-
-    .input-row {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-    }
-
-    #msg {
-      margin-top: 14px; min-height: 22px;
-      font-size: 0.9em; font-weight: 600;
-      text-align: center;
-    }
+    .locations { display: flex; flex-direction: column; gap: 14px; }
+    .location-item { border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); border-radius: 16px; padding: 14px; }
+    .location-item__top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .location-item__title { font-weight: 700; color: #f8fafc; font-size: 0.98em; }
+    .location-item__remove { border: none; background: rgba(239,68,68,0.12); color: #fca5a5; border-radius: 10px; padding: 8px 10px; cursor: pointer; font-family: 'Sarabun', sans-serif; font-weight: 600; }
+    .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .small-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+    .location-toolbar { display: flex; gap: 10px; margin-top: 12px; }
+    .location-toolbar .btn { flex: 1; margin: 0; padding: 12px 14px; font-size: 14px; }
+    .btn-add { background: rgba(99,102,241,0.14); border: 1px solid rgba(99,102,241,0.25); color: #c7d2fe; }
+    .btn-preview { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #e2e8f0; }
+    #msg { margin-top: 14px; min-height: 22px; font-size: 0.9em; font-weight: 600; text-align: center; }
     .msg-success { color: #34d399; }
-    .msg-error   { color: #f87171; }
-
+    .msg-error { color: #f87171; }
     .hidden { display: none !important; }
-
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 640px) { .gate-actions, .location-toolbar, .input-row, .small-row { grid-template-columns: 1fr; display: grid; } .admin-header-actions { justify-content: stretch; } .logout-btn { width: 100%; } }
   </style>
 </head>
 <body>
 <div class="container">
-
   <div class="page-header">
     <a href="index.html" class="back-btn">← กลับเมนูหลัก</a>
     <div class="admin-badge">🔒 Admin Only</div>
     <h2>⚙️ ตั้งค่าระบบ</h2>
-    <p class="page-subtitle">กำหนด Web App URL, จุดเช็คอิน GPS และค่าควบคุมระบบ</p>
-    <div class="warning-box">
-      หน้านี้สำหรับผู้ดูแลระบบเท่านั้น การเปลี่ยนค่า API หรือ GPS มีผลต่อการสแกนเข้างานทั้งหมด
-    </div>
+    <p class="page-subtitle">กำหนด Web App URL และตั้งค่าพื้นที่ GPS ได้หลายตำแหน่ง</p>
+    <div class="warning-box">หน้านี้สำหรับผู้ดูแลระบบเท่านั้น การเปลี่ยนค่าจะมีผลต่อการสแกนเข้างานทั้งหมด</div>
   </div>
 
-  <div id="adminGate" class="access-gate">
+  <div id="adminGate" class="gate">
     <div class="gate-title">ต้องยืนยันสิทธิ์ผู้ดูแลก่อน</div>
-    <div class="gate-desc">กรอกรหัสผู้ดูแลเพื่อปลดล็อกหน้าตั้งค่า ระบบจะจำสถานะไว้ในอุปกรณ์นี้</div>
+    <div class="gate-desc">กรอกรหัสผู้ดูแลเพื่อปลดล็อกหน้า ตั้งค่าระบบจะจำสถานะไว้เฉพาะอุปกรณ์นี้</div>
     <div class="gate-actions">
       <button class="gate-btn primary" id="btnAdminLogin" type="button">ปลดล็อกผู้ดูแล</button>
       <button class="gate-btn secondary" id="btnAdminLogout" type="button">ล้างสถานะ</button>
@@ -265,158 +84,200 @@
   </div>
 
   <div id="adminContent" class="hidden">
+    <div class="admin-header-actions">
+      <button class="logout-btn" id="btnLogoutTop" type="button">ออกจากระบบ</button>
+    </div>
+
     <div class="card">
       <div class="section-header">
         <div class="section-icon indigo">🔗</div>
         <span class="section-title-text">Google Apps Script API</span>
       </div>
-
       <label>WEB APP URL</label>
       <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec">
-      <p class="note">Deploy GAS แล้วนำ URL มาวางที่นี่ (Execute as: Me / Anyone can access)</p>
+      <p class="note">Deploy GAS แล้ววาง URL ที่นี่ ระบบจะใช้ URL นี้เป็นค่าเริ่มต้น</p>
     </div>
 
     <div class="card">
       <div class="section-header">
         <div class="section-icon cyan">📍</div>
-        <span class="section-title-text">จุดเช็คอิน GPS</span>
+        <span class="section-title-text">พื้นที่ GPS หลายตำแหน่ง</span>
       </div>
-
-      <button class="btn btn-get-loc" onclick="getCurrentLocation()">
-        📍 ดึงตำแหน่งปัจจุบันของฉัน
-      </button>
-
-      <div class="input-row">
-        <div>
-          <label>LATITUDE</label>
-          <input type="number" step="any" id="lat" placeholder="13.7563">
-        </div>
-        <div>
-          <label>LONGITUDE</label>
-          <input type="number" step="any" id="lng" placeholder="100.5018">
-        </div>
+      <div id="locations" class="locations"></div>
+      <div class="location-toolbar">
+        <button class="btn btn-add" type="button" onclick="addLocation()">+ เพิ่มตำแหน่ง</button>
+        <button class="btn btn-preview" type="button" onclick="loadFromServer()">โหลดจากเซิร์ฟเวอร์</button>
       </div>
-
-      <label>รัศมีที่ยอมรับ (กิโลเมตร)</label>
-      <input type="number" step="0.01" id="radius" placeholder="เช่น 0.1 คือ 100 เมตร">
-      <p class="note">* ใส่ 0 หากไม่ต้องการจำกัดพื้นที่</p>
+      <p class="note">แต่ละตำแหน่งรองรับชื่อหน่วยบริการ พิกัด Latitude/Longitude และรัศมีที่อนุญาตแยกกันได้</p>
     </div>
 
-    <button class="btn btn-save" onclick="saveAll()">
-      💾 บันทึกการตั้งค่าทั้งหมด
-    </button>
+    <button class="btn btn-save" onclick="saveAll()">💾 บันทึกการตั้งค่าทั้งหมด</button>
     <div id="msg"></div>
-
     <a href="index.html" class="btn-back">← กลับเมนูหลัก</a>
   </div>
 </div>
 
 <script>
-  const ADMIN_KEY = 'faceScanAdminAuth';
-  const ADMIN_CODE = '2569';
-  const msgDiv = document.getElementById('msg');
-  const gateBox = document.getElementById('adminGate');
-  const contentBox = document.getElementById('adminContent');
-  const adminLoginBtn = document.getElementById('btnAdminLogin');
-  const adminLogoutBtn = document.getElementById('btnAdminLogout');
+  // ============================================================
+  //  Admin Auth — sessionStorage (หมดเมื่อปิด tab)
+  //  + Back Button Protection
+  // ============================================================
+  const SESSION_KEY = "configAdminAuth";
+  const ADMIN_CODE  = "2569";   // เปลี่ยนรหัสได้ที่นี่
+  const MSG_SUCCESS = "msg-success";
+  const MSG_ERROR   = "msg-error";
+  const msgDiv        = document.getElementById("msg");
+  const gateBox       = document.getElementById("adminGate");
+  const contentBox    = document.getElementById("adminContent");
+  const adminLoginBtn = document.getElementById("btnAdminLogin");
+  const adminLogoutBtn = document.getElementById("btnAdminLogout");
+  const btnLogoutTop  = document.getElementById("btnLogoutTop");
+  const locationsBox  = document.getElementById("locations");
 
   function isAdminAuthed() {
-    return localStorage.getItem(ADMIN_KEY) === 'true';
+    return sessionStorage.getItem(SESSION_KEY) === "1";
   }
+
+  function clearAdminState() {
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+
+  // --------- Back Button Guard ---------
+  history.pushState({ page: 'config' }, '', '');
+
+  window.addEventListener("popstate", function () {
+    if (!isAdminAuthed()) {
+      window.location.replace("index.html");
+      return;
+    }
+    // กด back ขณะล็อกอินอยู่ → logout แล้วกลับ
+    hardLogout();
+  });
+
+  window.addEventListener("pageshow", function (e) {
+    // บน iOS bfcache — ตรวจสอบ session ทุกครั้งที่หน้าแสดง
+    if (!isAdminAuthed()) syncGate();
+  });
 
   function syncGate() {
     const authed = isAdminAuthed();
-    gateBox.style.display = authed ? 'none' : 'block';
-    contentBox.classList.toggle('hidden', !authed);
+    gateBox.style.display = authed ? "none" : "block";
+    contentBox.classList.toggle("hidden", !authed);
   }
 
-  adminLoginBtn.addEventListener('click', function () {
-    const code = prompt('กรอกรหัสผู้ดูแลระบบ');
+  function hardLogout() {
+    clearAdminState();
+    window.location.replace("index.html");
+  }
+
+  adminLoginBtn.addEventListener("click", function () {
+    const code = prompt("กรอกรหัสผู้ดูแลระบบ");
     if (code === null) return;
     if (code.trim() === ADMIN_CODE) {
-      localStorage.setItem(ADMIN_KEY, 'true');
-      alert('✅ ยืนยันผู้ดูแลเรียบร้อย');
+      sessionStorage.setItem(SESSION_KEY, "1");
+      showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
       syncGate();
-      loadSavedValues();
+      loadFromServer();
     } else {
-      alert('❌ รหัสผู้ดูแลไม่ถูกต้อง');
+      alert("❌ รหัสผู้ดูแลไม่ถูกต้อง");
     }
   });
 
-  adminLogoutBtn.addEventListener('click', function () {
-    localStorage.removeItem(ADMIN_KEY);
-    alert('✅ ล้างสถานะผู้ดูแลแล้ว');
-    syncGate();
-  });
+  adminLogoutBtn.addEventListener("click", hardLogout);
+  btnLogoutTop.addEventListener("click", hardLogout);
 
-  function loadSavedValues() {
-    const savedUrl = localStorage.getItem('gasApiUrl') || GAS_API_URL;
-    document.getElementById('apiUrl').value = savedUrl || '';
-    if (savedUrl) {
-      loadGpsConfig(savedUrl);
-    }
+  function createLocationItem(location = {}) {
+    const wrap = document.createElement("div");
+    wrap.className = "location-item";
+    wrap.innerHTML = "<div class='location-item__top'><div class='location-item__title'>ตำแหน่งหน่วยบริการ</div><button class='location-item__remove' type='button'>ลบ</button></div><label>ชื่อสถานที่</label><input type='text' class='loc-name' placeholder='เช่น โรงพยาบาลอำเภอเมือง' value='" + escapeHtml(location.name || "") + "'><div class='input-row'><div><label>Latitude</label><input type='number' step='any' class='loc-lat' placeholder='13.7563' value='" + escapeHtml(location.lat ?? "") + "'></div><div><label>Longitude</label><input type='number' step='any' class='loc-lng' placeholder='100.5018' value='" + escapeHtml(location.lng ?? "") + "'></div></div><div class='small-row'><div><label>รัศมี (เมตร)</label><input type='number' step='1' class='loc-radius' placeholder='100' value='" + escapeHtml(location.radius ?? 100) + "'></div><div><label>เปิดใช้งาน</label><input type='text' class='loc-enabled' placeholder='true / false' value='" + escapeHtml(location.enabled === false ? "false" : "true") + "'></div></div>";
+    wrap.querySelector(".location-item__remove").addEventListener("click", () => wrap.remove());
+    return wrap;
   }
 
-  function loadGpsConfig(apiUrl) {
-    fetch(apiUrl + '?action=getConfig')
+  function addLocation(location = {}) {
+    locationsBox.appendChild(createLocationItem(location));
+  }
+
+  function collectLocations() {
+    return [...document.querySelectorAll(".location-item")].map((item, idx) => ({
+      id: item.dataset.id || ("loc-" + (idx + 1)),
+      name: item.querySelector(".loc-name").value.trim(),
+      lat: item.querySelector(".loc-lat").value.trim(),
+      lng: item.querySelector(".loc-lng").value.trim(),
+      radius: item.querySelector(".loc-radius").value.trim(),
+      enabled: String(item.querySelector(".loc-enabled").value || "true").toLowerCase() !== "false"
+    })).filter(loc => loc.name || loc.lat || loc.lng);
+  }
+
+  function loadFromServer() {
+    const apiUrl = (localStorage.getItem("gasApiUrl") || GAS_API_URL || "").trim();
+    if (!apiUrl) {
+      showMsg("❌ ยังไม่ได้ตั้งค่า API URL", MSG_ERROR);
+      return;
+    }
+
+    document.getElementById("apiUrl").value = apiUrl;
+    fetch(apiUrl + "?action=getConfig")
       .then(r => r.json())
       .then(config => {
-        document.getElementById('lat').value = config.lat || '';
-        document.getElementById('lng').value = config.lng || '';
-        document.getElementById('radius').value = config.radius || '0.5';
+        locationsBox.innerHTML = "";
+        const locations = Array.isArray(config.locations) ? config.locations : [];
+        if (locations.length === 0) {
+          addLocation({ name: "สำนักงานใหญ่", lat: "", lng: "", radius: 100, enabled: true });
+        } else {
+          locations.forEach(loc => addLocation(loc));
+        }
+        showMsg("✅ โหลดข้อมูลจากเซิร์ฟเวอร์แล้ว", MSG_SUCCESS);
       })
-      .catch(() => {});
+      .catch(err => showMsg("❌ โหลดข้อมูลไม่สำเร็จ: " + err.message, MSG_ERROR));
   }
 
-  function getCurrentLocation() {
-    if (!navigator.geolocation) return alert('Browser นี้ไม่รองรับ Geolocation');
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        document.getElementById('lat').value = pos.coords.latitude;
-        document.getElementById('lng').value = pos.coords.longitude;
-        alert('✅ ดึงพิกัดเรียบร้อย');
-      },
-      err => alert('❌ ไม่สามารถดึงตำแหน่งได้: ' + err.message)
-    );
-  }
+  function saveAll() {
+    const apiUrl = document.getElementById("apiUrl").value.trim();
+    const locations = collectLocations();
 
-  async function saveAll() {
-    const apiUrl = document.getElementById('apiUrl').value.trim();
-    const lat = document.getElementById('lat').value;
-    const lng = document.getElementById('lng').value;
-    const radius = document.getElementById('radius').value;
+    if (!apiUrl) return showMsg("❌ กรุณากรอก API URL", MSG_ERROR);
+    if (locations.length === 0) return showMsg("❌ กรุณาเพิ่มอย่างน้อย 1 ตำแหน่ง", MSG_ERROR);
 
-    if (!apiUrl) return showMsg('❌ กรุณากรอก API URL', 'error');
-    if (!lat || !lng || !radius) return showMsg('❌ กรุณากรอกข้อมูล GPS ให้ครบ', 'error');
+    localStorage.setItem("gasApiUrl", apiUrl);
+    showMsg("⏳ กำลังบันทึก...", "");
 
-    localStorage.setItem('gasApiUrl', apiUrl);
-    showMsg('⏳ กำลังบันทึก...', '');
-
-    try {
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'saveConfig',
-          lat,
-          lng,
-          radius,
-          updatedBy: 'admin'
-        })
-      });
-      const data = await res.json();
-      showMsg('✅ ' + (data.message || 'บันทึกสำเร็จ'), 'success');
-    } catch (e) {
-      showMsg('❌ เชื่อมต่อ API ไม่ได้: ' + e.message, 'error');
-    }
+    fetch(apiUrl, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "saveConfig",
+        apiUrl,
+        locations,
+        updatedBy: "admin"
+      })
+    })
+      .then(r => r.json())
+      .then(data => showMsg("✅ " + (data.message || "บันทึกสำเร็จ"), MSG_SUCCESS))
+      .catch(err => showMsg("❌ เชื่อมต่อ API ไม่ได้: " + err.message, MSG_ERROR));
   }
 
   function showMsg(text, type) {
     msgDiv.innerText = text;
-    msgDiv.className = type === 'success' ? 'msg-success' : type === 'error' ? 'msg-error' : '';
+    msgDiv.className = type || "";
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&", "&")
+      .replaceAll('"', """)
+      .replaceAll("'", "'")
+      .replaceAll("<", "<")
+      .replaceAll(">", ">");
   }
 
   syncGate();
-  loadSavedValues();
+  if (isAdminAuthed()) {
+    loadFromServer();
+  } else {
+    addLocation({ name: "", lat: "", lng: "", radius: 100, enabled: true });
+  }
+  // เก็บรหัสแอดมิน (สำหรับ register.html อ่านได้ถ้า deploy บน server เดียวกัน)
+  localStorage.setItem('adminCode', ADMIN_CODE);
 </script>
 </body>
 </html>

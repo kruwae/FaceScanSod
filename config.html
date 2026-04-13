@@ -173,6 +173,70 @@
       transform: translateY(-1px);
     }
 
+    /* inline password input inside gate */
+    .gate-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      padding: 4px 10px 4px 14px;
+      transition: border-color 0.25s;
+    }
+    .gate-input-wrap:focus-within {
+      border-color: rgba(6,182,212,0.55);
+      background: rgba(6,182,212,0.07);
+      box-shadow: 0 0 0 3px rgba(6,182,212,0.12);
+    }
+    .gate-input-wrap input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #e2e8f0;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 15px;
+      padding: 10px 0;
+      margin: 0;
+      outline: none;
+      box-shadow: none;
+    }
+    .gate-input-wrap input::placeholder { color: #475569; }
+    .gate-toggle-pw {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px;
+      line-height: 1;
+      color: #64748b;
+    }
+    .gate-error {
+      font-size: 0.82em;
+      color: #f87171;
+      min-height: 18px;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .btn-admin {
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 0.95em;
+      font-weight: 600;
+      padding: 12px 14px;
+      transition: all 0.3s ease;
+    }
+    .btn-admin-login {
+      flex: 1;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: white;
+      box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+    }
+    .btn-admin-login:hover { transform: translateY(-1px); opacity: 0.92; }
+
     .admin-header-actions {
       display: flex;
       justify-content: flex-end;
@@ -476,11 +540,25 @@
     </div>
 
     <div id="adminGate" class="gate">
-      <div class="gate-title">ต้องยืนยันสิทธิ์ผู้ดูแลก่อน</div>
+      <div class="gate-title">🔐 ยืนยันสิทธิ์ผู้ดูแลก่อน</div>
       <div class="gate-desc">กรอกรหัสผู้ดูแลเพื่อปลดล็อกหน้าตั้งค่าระบบ</div>
+
+      <!-- Inline password input (ใช้แทน popup กรณี keyboard ไม่ขึ้น) -->
+      <div class="gate-input-wrap">
+        <input type="password" id="gatePasswordInput"
+               placeholder="🔑 รหัสผู้ดูแลระบบ"
+               autocomplete="current-password"
+               inputmode="numeric"
+               onkeydown="if(event.key==='Enter') document.getElementById('btnAdminLogin').click()">
+        <button class="gate-toggle-pw" type="button" tabindex="-1"
+                onclick="(function(){var i=document.getElementById('gatePasswordInput');i.type=i.type==='password'?'text':'password';})()">
+          👁
+        </button>
+      </div>
+      <div class="gate-error" id="gateError"></div>
+
       <div class="gate-actions">
-        <!--<button class="gate-btn primary" id="btnAdminLogin" type="button">🔓 ปลดล็อกผู้ดูแล</button>-->
-        <button class="btn-admin btn-admin-login" id="btnAdminLogin">🔓 ยืนยันรหัสแอดมิน</button>
+        <button class="btn-admin btn-admin-login" id="btnAdminLogin" type="button">🔓 ยืนยันรหัสแอดมิน</button>
         <button class="gate-btn secondary" id="btnAdminLogout" type="button">ล้างสถานะ</button>
       </div>
     </div>
@@ -644,6 +722,35 @@
     }
 
     adminLoginBtn.addEventListener("click", async function () {
+      const gateInput = document.getElementById("gatePasswordInput");
+      const gateError = document.getElementById("gateError");
+      const inlineCode = gateInput ? gateInput.value : "";
+
+      // ถ้ามีรหัสใน inline input → ใช้เลยไม่ต้อง popup
+      if (inlineCode && inlineCode.trim()) {
+        gateError.innerText = "";
+        adminLoginBtn.disabled = true;
+        adminLoginBtn.innerText = "⏳ กำลังตรวจสอบ...";
+
+        const result = await verifyCode(inlineCode);
+        adminLoginBtn.disabled = false;
+        adminLoginBtn.innerText = "🔓 ยืนยันรหัสแอดมิน";
+
+        if (result.ok) {
+          sessionStorage.setItem(SESSION_KEY, "1");
+          syncGate();
+          if (gateInput) gateInput.value = "";
+          showMsg("✅ ยืนยันผู้ดูแลเรียบร้อย", MSG_SUCCESS);
+          if (getApiUrl()) loadFromServer();
+        } else {
+          gateError.innerText = "❌ รหัสไม่ถูกต้อง กรุณาลองใหม่";
+          gateInput.value = "";
+          gateInput.focus();
+        }
+        return;
+      }
+
+      // Fallback → Swal popup (สำหรับกรณีที่ใช้งานได้ปกติ)
       const { value: code, isConfirmed } = await Swal.fire({
         title: "🔐 ยืนยันผู้ดูแลระบบ",
         input: "password",
@@ -664,7 +771,6 @@
 
       if (!isConfirmed || !code) return;
 
-      // แสดง loading
       Swal.fire({
         title: "⏳ กำลังตรวจสอบ...",
         allowOutsideClick: false,

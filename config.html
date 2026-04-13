@@ -457,6 +457,41 @@
       gap: 12px;
     }
 
+    .maps-input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      align-items: stretch;
+    }
+    .maps-input-row input {
+      flex: 1;
+      padding: 10px 12px;
+      background: rgba(16,185,129,0.06);
+      border: 1px dashed rgba(16,185,129,0.35);
+      border-radius: 10px;
+      color: #e2e8f0;
+      font-size: 13px;
+      font-family: 'Sarabun', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .maps-input-row input:focus { border-color: rgba(16,185,129,0.7); }
+    .maps-input-row input::placeholder { color: #475569; font-size: 12px; }
+    .btn-parse-maps {
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.25s;
+    }
+    .btn-parse-maps:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,0.35); }
+
     .location-toolbar {
       display: flex;
       gap: 10px;
@@ -670,10 +705,93 @@
         .replaceAll('>', '&gt;');
     }
 
+    // แปลง Google Maps URL → lat/lng
+    function parseGoogleMapsUrl(url) {
+      if (!url) return null;
+      // รูปแบบที่ 1: https://www.google.com/maps/place/.../@13.7563,100.5018,17z
+      let m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (m) return { lat: m[1], lng: m[2] };
+      // รูปแบบที่ 2: https://maps.google.com/?q=13.7563,100.5018
+      m = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (m) return { lat: m[1], lng: m[2] };
+      // รูปแบบที่ 3: ll=13.7563,100.5018
+      m = url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (m) return { lat: m[1], lng: m[2] };
+      // รูปแบบที่ 4: !3d13.7563!4d100.5018
+      m = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+      if (m) return { lat: m[1], lng: m[2] };
+      return null;
+    }
+
     function createLocationItem(location = {}) {
       const wrap = document.createElement('div');
       wrap.className = 'location-item';
-      wrap.innerHTML = "<div class='location-item__top'><div class='location-item__title'>ตำแหน่งหน่วยบริการ</div><button class='location-item__remove' type='button'>ลบ</button></div><label>ชื่อสถานที่</label><input type='text' class='loc-name' placeholder='เช่น โรงพยาบาลอำเภอเมือง' value='" + escapeHtml(location.name || '') + "'><div class='input-row'><div><label>Latitude</label><input type='number' step='any' class='loc-lat' placeholder='13.7563' value='" + escapeHtml(location.lat ?? '') + "'></div><div><label>Longitude</label><input type='number' step='any' class='loc-lng' placeholder='100.5018' value='" + escapeHtml(location.lng ?? '') + "'></div></div><div class='small-row'><div><label>รัศมี (เมตร)</label><input type='number' step='1' class='loc-radius' placeholder='100' value='" + escapeHtml(location.radius ?? 100) + "'></div><div><label>เปิดใช้งาน</label><input type='text' class='loc-enabled' placeholder='true / false' value='" + escapeHtml(location.enabled === false ? 'false' : 'true') + "'></div></div>";
+
+      const latVal  = escapeHtml(location.lat  ?? '');
+      const lngVal  = escapeHtml(location.lng  ?? '');
+      const radVal  = escapeHtml(location.radius ?? 100);
+      const enVal   = escapeHtml(location.enabled === false ? 'false' : 'true');
+      const nameVal = escapeHtml(location.name || '');
+
+      wrap.innerHTML = `
+        <div class='location-item__top'>
+          <div class='location-item__title'>🏥 ตำแหน่งหน่วยบริการ</div>
+          <button class='location-item__remove' type='button'>ลบ</button>
+        </div>
+
+        <label style='font-size:0.75em;color:#10b981;margin-bottom:4px;display:block'>
+          🗺️ วาง Google Maps URL แล้วกด Parse (จะดึงพิกัดอัตโนมัติ)
+        </label>
+        <div class='maps-input-row'>
+          <input type='url' class='loc-maps-url'
+                 placeholder='วาง URL จาก Google Maps เช่น https://maps.google.com/...'>
+          <button class='btn-parse-maps' type='button'>📍 Parse</button>
+        </div>
+
+        <label>ชื่อสถานที่</label>
+        <input type='text' class='loc-name' placeholder='เช่น โรงพยาบาลอำเภอเมือง' value='${nameVal}'>
+
+        <div class='input-row'>
+          <div>
+            <label>Latitude</label>
+            <input type='number' step='any' class='loc-lat' placeholder='13.7563' value='${latVal}'>
+          </div>
+          <div>
+            <label>Longitude</label>
+            <input type='number' step='any' class='loc-lng' placeholder='100.5018' value='${lngVal}'>
+          </div>
+        </div>
+
+        <div class='small-row'>
+          <div>
+            <label>รัศมี (เมตร)</label>
+            <input type='number' step='1' class='loc-radius' placeholder='100' value='${radVal}'>
+          </div>
+          <div>
+            <label>เปิดใช้งาน</label>
+            <input type='text' class='loc-enabled' placeholder='true / false' value='${enVal}'>
+          </div>
+        </div>
+      `;
+
+      // ปุ่ม Parse
+      wrap.querySelector('.btn-parse-maps').addEventListener('click', function () {
+        const url    = wrap.querySelector('.loc-maps-url').value.trim();
+        const coords = parseGoogleMapsUrl(url);
+        if (coords) {
+          wrap.querySelector('.loc-lat').value = coords.lat;
+          wrap.querySelector('.loc-lng').value = coords.lng;
+          wrap.querySelector('.loc-maps-url').value = '';
+          wrap.querySelector('.loc-maps-url').placeholder = '✅ ดึงพิกัดสำเร็จ: ' + coords.lat + ', ' + coords.lng;
+        } else {
+          alert('⚠️ ไม่พบพิกัดใน URL นี้\nตัวอย่าง URL ที่รองรับ:\nhttps://www.google.com/maps/place/.../@13.756,100.501,...\nhttps://maps.google.com/?q=13.756,100.501');
+        }
+      });
+
+      wrap.querySelector('.loc-maps-url').addEventListener('paste', function (e) {
+        setTimeout(() => wrap.querySelector('.btn-parse-maps').click(), 80);
+      });
+
       wrap.querySelector('.location-item__remove').addEventListener('click', () => wrap.remove());
       return wrap;
     }
@@ -795,91 +913,6 @@
     requireAuth();          // redirect ถ้าไม่มี session
     if (getApiUrl()) loadFromServer();
     else addLocation({ name: '', lat: '', lng: '', radius: 100, enabled: true });
-  </script>
-</body>
-
-        .replaceAll("&", "&")
-        .replaceAll('"', """)
-          .replaceAll("'", "'")
-          .replaceAll("<", "<")
-          .replaceAll(">", ">");
-    }
-
-    // --------- เปลี่ยนรหัสแอดมิน ---------
-    async function changeCode() {
-      const currentCode = document.getElementById("currentCode").value.trim();
-      const newCode = document.getElementById("newCode").value.trim();
-      const confirmCode = document.getElementById("confirmCode").value.trim();
-      const changeMsg = document.getElementById("changeMsg");
-
-      if (!currentCode || !newCode || !confirmCode) {
-        changeMsg.innerText = "❌ กรุณากรอกข้อมูลให้ครบ"; changeMsg.className = MSG_ERROR; return;
-      }
-      if (newCode !== confirmCode) {
-        changeMsg.innerText = "❌ รหัสใหม่ไม่ตรงกัน"; changeMsg.className = MSG_ERROR; return;
-      }
-      if (newCode.length < 4) {
-        changeMsg.innerText = "❌ รหัสใหม่ต้องมีอย่างน้อย 4 ตัวอักษร"; changeMsg.className = MSG_ERROR; return;
-      }
-      const apiUrl = getApiUrl();
-      if (!apiUrl) { changeMsg.innerText = "❌ ยังไม่ได้ตั้งค่า API URL"; changeMsg.className = MSG_ERROR; return; }
-
-      changeMsg.innerText = "⏳ กำลังเปลี่ยนรหัส..."; changeMsg.className = "";
-      try {
-        const res = await fetch(apiUrl, {
-          method: "POST",
-          body: JSON.stringify({ action: "changeAdminCode", currentCode, newCode })
-        });
-        const data = await res.json();
-        if (data.success) {
-          changeMsg.innerText = "✅ " + (data.message || "เปลี่ยนรหัสสำเร็จ — กรุณา logout แล้วใช้รหัสใหม่");
-          changeMsg.className = MSG_SUCCESS;
-          ["currentCode", "newCode", "confirmCode"].forEach(id => document.getElementById(id).value = "");
-        } else {
-          changeMsg.innerText = "❌ " + (data.error || "เปลี่ยนรหัสล้มเหลว");
-          changeMsg.className = MSG_ERROR;
-        }
-      } catch (err) {
-        changeMsg.innerText = "❌ เชื่อมต่อ server ไม่ได้: " + err.message;
-        changeMsg.className = MSG_ERROR;
-      }
-    }
-
-    // --------- สร้าง staffOS Sheet ครั้งแรก ---------
-    async function runInitSetup() {
-      const apiUrl = getApiUrl();
-      const initMsg = document.getElementById("initMsg");
-
-      if (!apiUrl) {
-        initMsg.innerText = "❌ กรุณากรอก API URL ก่อนแล้วบันทึก";
-        initMsg.className = MSG_ERROR;
-        return;
-      }
-      initMsg.innerText = "⏳ กำลังสร้าง staffOS sheet...";
-      initMsg.className = "";
-      try {
-        const res = await fetch(apiUrl + "?action=initSetup");
-        const data = await res.json();
-        if (data.success) {
-          initMsg.innerText = "✅ " + (data.message || "เรียบร้อย");
-          initMsg.className = MSG_SUCCESS;
-        } else {
-          initMsg.innerText = "❌ " + (data.error || "ล้มเหลว");
-          initMsg.className = MSG_ERROR;
-        }
-      } catch (err) {
-        initMsg.innerText = "❌ เชื่อมต่อ server ไม่ได้: " + err.message;
-        initMsg.className = MSG_ERROR;
-      }
-    }
-
-    // --------- Init ---------
-    syncGate();
-    if (isAdminAuthed()) {
-      loadFromServer();
-    } else {
-      addLocation({ name: "", lat: "", lng: "", radius: 100, enabled: true });
-    }
   </script>
 </body>
 

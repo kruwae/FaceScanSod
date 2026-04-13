@@ -104,7 +104,7 @@
     .location-selector {
       display: none;
       width: 100%;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
     }
     .location-selector label {
       display: block;
@@ -130,11 +130,32 @@
       background-repeat: no-repeat;
       background-position: right 14px center;
       cursor: pointer;
+      transition: border-color 0.25s ease;
     }
-    .location-selector select option {
-      background: #1a1a3e;
-      color: #e2e8f0;
+    .location-selector select:focus { border-color: rgba(99,102,241,0.55); }
+    .location-selector select option { background: #1a1a3e; color: #e2e8f0; }
+
+    /* GPS Info Card */
+    .gps-info-card {
+      display: none;
+      width: 100%;
+      margin-bottom: 12px;
+      background: rgba(16,185,129,0.07);
+      border: 1px solid rgba(16,185,129,0.2);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 0.8em;
+      line-height: 1.8;
     }
+    .gps-info-card.out-range {
+      background: rgba(239,68,68,0.08);
+      border-color: rgba(239,68,68,0.3);
+    }
+    .gps-info-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .gps-info-label { color: #64748b; min-width: 60px; }
+    .gps-info-value { color: #e2e8f0; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .gps-dist-ok  { color: #34d399; font-weight: 700; }
+    .gps-dist-bad { color: #f87171; font-weight: 700; }
 
     /* Scanner Container */
     .video-container {
@@ -316,10 +337,34 @@
     ⚠️ คุณอยู่นอกพื้นที่ที่กำหนดทุกสาขา!<br>กรุณาเข้าใกล้จุดเช็คอินแล้วรีเฟรชหน้าจอ
   </div>
 
-  <!-- ตัวเลือกสถานที่ (แสดงเมื่อ GPS อยู่ในหลายพื้นที่พร้อมกัน) -->
+  <!-- Dropdown เลือกหน่วยบริการ (แสดงเสมอหลัง GPS พร้อม) -->
   <div class="location-selector" id="locationSelector">
-    <label>📍 เลือกหน่วยบริการที่ต้องการเช็คอิน</label>
+    <label>🏥 เลือกหน่วยบริการที่ต้องการเช็คอิน</label>
     <select id="locationSelect"></select>
+  </div>
+
+  <!-- GPS Info Card: แสดงพิกัดที่เลือก + สถานะอยู่ในพื้นที่หรือไม่ -->
+  <div class="gps-info-card" id="gpsInfoCard">
+    <div class="gps-info-row">
+      <span class="gps-info-label">📍 สถานที่</span>
+      <span class="gps-info-value" id="infoLocName">—</span>
+    </div>
+    <div class="gps-info-row">
+      <span class="gps-info-label">Latitude</span>
+      <span class="gps-info-value" id="infoLocLat">—</span>
+    </div>
+    <div class="gps-info-row">
+      <span class="gps-info-label">Longitude</span>
+      <span class="gps-info-value" id="infoLocLng">—</span>
+    </div>
+    <div class="gps-info-row">
+      <span class="gps-info-label">รัศมี</span>
+      <span class="gps-info-value" id="infoLocRadius">—</span>
+    </div>
+    <div class="gps-info-row" style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px">
+      <span class="gps-info-label">ห่าง</span>
+      <span id="infoLocDist">—</span>
+    </div>
   </div>
 
   <button id="btnStart" onclick="startCamera()">📷 แตะเพื่อเริ่มสแกน</button>
@@ -390,84 +435,100 @@
     }
   }
 
-  // ===== GPS + Multi-Location =====
+  // ===== GPS + Location Selector =====
+  const gpsInfoCard = document.getElementById('gpsInfoCard');
+
+  function updateGpsInfoCard(loc) {
+    if (!loc) { gpsInfoCard.style.display = 'none'; return; }
+    const distKm = haversineKm(currentLat, currentLng, parseFloat(loc.lat), parseFloat(loc.lng));
+    const distM  = (distKm * 1000).toFixed(0);
+    const radius = parseFloat(loc.radius) || 100;
+    const inRange = distKm <= radius / 1000;
+
+    document.getElementById('infoLocName').innerText   = loc.name || '—';
+    document.getElementById('infoLocLat').innerText    = parseFloat(loc.lat).toFixed(6);
+    document.getElementById('infoLocLng').innerText    = parseFloat(loc.lng).toFixed(6);
+    document.getElementById('infoLocRadius').innerText = radius + ' ม.';
+
+    const distEl = document.getElementById('infoLocDist');
+    if (inRange) {
+      distEl.innerHTML = '<span class="gps-dist-ok">✅ ' + distM + ' ม. — อยู่ในพื้นที่</span>';
+      gpsInfoCard.classList.remove('out-range');
+    } else {
+      distEl.innerHTML = '<span class="gps-dist-bad">⛔ ' + distM + ' ม. — นอกพื้นที่ (กำหนด ' + radius + ' ม.)</span>';
+      gpsInfoCard.classList.add('out-range');
+    }
+    gpsInfoCard.style.display = 'block';
+
+    // อัปเดต currentLocation เฉพาะเมื่ออยู่ในพื้นที่
+    currentLocation = inRange ? loc : null;
+
+    // อัปเดต overlay / alert
+    if (inRange) {
+      gpsAlertBox.style.display = 'none';
+      gpsStatus.innerHTML = '<span style="color:#34d399">📍 GPS OK — ' + loc.name + ' (' + distM + ' ม.)</span>';
+    } else {
+      gpsAlertBox.innerHTML = '⛔ ไม่อนุญาตให้สแกน — อยู่ห่างจาก "' + loc.name + '" ' + distM + ' ม. (กำหนด ' + radius + ' ม.)';
+      gpsAlertBox.style.display = 'block';
+      gpsStatus.innerHTML = '<span style="color:#f87171">📍 นอกพื้นที่ "' + loc.name + '" (' + distM + ' ม.)</span>';
+    }
+  }
+
   function checkGPS() {
     return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Browser ไม่รองรับ GPS'));
-        return;
-      }
+      if (!navigator.geolocation) { reject(new Error('Browser ไม่รองรับ GPS')); return; }
       navigator.geolocation.getCurrentPosition(
         async pos => {
           currentLat = pos.coords.latitude;
           currentLng = pos.coords.longitude;
-
           try {
-            const config = await fetch(API_URL + '?action=getConfig').then(r => r.json());
-            const locations = Array.isArray(config.locations) ? config.locations.filter(l => l.enabled !== false) : [];
+            const config    = await fetch(API_URL + '?action=getConfig').then(r => r.json());
+            const locations = Array.isArray(config.locations)
+              ? config.locations.filter(l => l.enabled !== false)
+              : [];
 
             // ไม่มีตำแหน่งกำหนด → อนุญาตทุกที่
             if (locations.length === 0) {
               gpsStatus.innerHTML = '<span style="color:#34d399">📍 GPS: ไม่จำกัดพื้นที่</span>';
               currentLocation = null;
-              resolve();
-              initFaceSystem();
-              return;
+              resolve(); initFaceSystem(); return;
             }
 
             allLocations = locations;
 
-            // หาตำแหน่งที่อยู่ในรัศมี
-            const matched = [];
-            locations.forEach(loc => {
-              const radiusKm = (parseFloat(loc.radius) || 100) / 1000; // radius เป็นเมตร → km
-              const dist = haversineKm(currentLat, currentLng, parseFloat(loc.lat), parseFloat(loc.lng));
-              if (dist <= radiusKm) {
-                matched.push({ ...loc, distKm: dist });
-              }
+            // คำนวณระยะห่างทุกสาขา
+            const withDist = locations.map(loc => ({
+              ...loc,
+              distKm: haversineKm(currentLat, currentLng, parseFloat(loc.lat), parseFloat(loc.lng))
+            }));
+            withDist.sort((a, b) => a.distKm - b.distKm); // เรียงใกล้→ไกล
+
+            // สร้าง dropdown ทุกสาขา
+            locationSelect.innerHTML = '';
+            withDist.forEach(loc => {
+              const radiusKm = (parseFloat(loc.radius) || 100) / 1000;
+              const inRange  = loc.distKm <= radiusKm;
+              const opt = document.createElement('option');
+              opt.value = loc.id || loc.name;
+              opt.textContent = (inRange ? '✅ ' : '📌 ') + loc.name
+                + ' — ' + (loc.distKm * 1000).toFixed(0) + ' ม.';
+              opt.dataset.locJson = JSON.stringify(loc);
+              if (!inRange) opt.style.color = '#94a3b8';
+              locationSelect.appendChild(opt);
             });
 
-            if (matched.length === 0) {
-              // ไม่อยู่ในพื้นที่ใดเลย → หาที่ใกล้ที่สุดเพื่อแสดง
-              const nearest = locations.reduce((a, b) => {
-                const da = haversineKm(currentLat, currentLng, parseFloat(a.lat), parseFloat(a.lng));
-                const db = haversineKm(currentLat, currentLng, parseFloat(b.lat), parseFloat(b.lng));
-                return da < db ? a : b;
-              });
-              const nearDist = haversineKm(currentLat, currentLng, parseFloat(nearest.lat), parseFloat(nearest.lng));
-              const nearRadius = (parseFloat(nearest.radius) || 100) / 1000;
-              gpsStatus.innerHTML = '<span style="color:#f87171">📍 ห่างกว่าสาขาที่ใกล้ที่สุด "' + nearest.name + '" ' + (nearDist * 1000).toFixed(0) + ' ม. (กำหนด ' + (nearRadius * 1000).toFixed(0) + ' ม.)</span>';
-              gpsAlertBox.style.display = 'block';
-              mainStatus.innerText = '⛔ ไม่อนุญาตให้สแกน';
-              overlayStatus.innerText = 'Out of Range';
-              return;
-            }
+            // เลือกอัตโนมัติ: ใกล้ที่สุดและอยู่ในพื้นที่ ถ้าไม่มีก็เลือกใกล้ที่สุด
+            const autoSel = withDist.find(l => l.distKm <= (parseFloat(l.radius)||100)/1000) || withDist[0];
+            const autoIdx = withDist.indexOf(autoSel);
+            locationSelect.selectedIndex = autoIdx;
+            updateGpsInfoCard(autoSel);
 
-            if (matched.length === 1) {
-              // อยู่ในพื้นที่เดียว → เลือกอัตโนมัติ
-              currentLocation = matched[0];
-              gpsStatus.innerHTML = '<span style="color:#34d399">📍 GPS OK — ' + currentLocation.name + ' (' + (currentLocation.distKm * 1000).toFixed(0) + ' ม.)</span>';
-            } else {
-              // อยู่ในหลายพื้นที่ → ให้ผู้ใช้เลือก
-              matched.sort((a, b) => a.distKm - b.distKm);
-              locationSelect.innerHTML = '';
-              matched.forEach(loc => {
-                const opt = document.createElement('option');
-                opt.value = loc.id || loc.name;
-                opt.textContent = loc.name + ' (' + (loc.distKm * 1000).toFixed(0) + ' ม.)';
-                opt.dataset.locJson = JSON.stringify(loc);
-                locationSelect.appendChild(opt);
-              });
-              // เลือกอัตโนมัติตำแหน่งใกล้ที่สุด
-              currentLocation = matched[0];
-              locationSelect.addEventListener('change', function () {
-                const selected = this.options[this.selectedIndex];
-                currentLocation = JSON.parse(selected.dataset.locJson);
-              });
-              locationSelector.style.display = 'block';
-              gpsStatus.innerHTML = '<span style="color:#f59e0b">📍 พบ ' + matched.length + ' สาขา — เลือกด้านบน</span>';
-            }
+            locationSelect.addEventListener('change', function () {
+              const loc = JSON.parse(this.options[this.selectedIndex].dataset.locJson);
+              updateGpsInfoCard(loc);
+            });
 
+            locationSelector.style.display = 'block';
             resolve();
             initFaceSystem();
           } catch (e) {
@@ -517,10 +578,22 @@
 
   // ===== Camera =====
   function startCamera() {
-    // ตรวจสอบ GPS อีกครั้งก่อนเปิดกล้อง (กรณีมีหลายสาขา ต้องเลือกไว้แล้ว)
-    if (locationSelector.style.display !== 'none') {
-      const selected = locationSelect.options[locationSelect.selectedIndex];
-      if (selected) currentLocation = JSON.parse(selected.dataset.locJson);
+    // Re-sync currentLocation จาก dropdown
+    if (locationSelect.options.length > 0) {
+      const sel = locationSelect.options[locationSelect.selectedIndex];
+      if (sel) {
+        const loc = JSON.parse(sel.dataset.locJson);
+        updateGpsInfoCard(loc);   // อัปเดต currentLocation ใหม่
+      }
+    }
+
+    // ถ้าอยู่นอกพื้นที่ → ห้ามสแกน
+    if (locationSelect.options.length > 0 && !currentLocation) {
+      const sel = locationSelect.options[locationSelect.selectedIndex];
+      const loc = sel ? JSON.parse(sel.dataset.locJson) : null;
+      const name = loc ? loc.name : 'สาขานี้';
+      alert('⛔ คุณอยู่นอกพื้นที่ "' + name + '"\nกรุณาเดินเข้าไปในรัศมีที่กำหนดก่อนสแกน');
+      return;
     }
 
     btnStart.style.display = 'none';

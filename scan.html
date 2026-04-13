@@ -491,11 +491,30 @@
   let currentLocation  = null;   // { id, name, lat, lng, radius }
   let allLocations     = [];     // locations[] from server config
 
-  // ===== Init =====
-  if (!API_URL) {
-    showError('ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่า</a>');
+  // ===== SAFE helper: returns false if MeshService not loaded =====
+  function meshEnabled() {
+    return typeof MeshService !== 'undefined' && MeshService.isEnabled();
+  }
+
+  // ===== Init Bootstrap =====
+  // ROOT-CAUSE FIX: ไม่รอ 'load' event เพราะ face-api.js (7MB CDN) ทำให้รอนานมาก
+  // GPS phase ไม่ต้องการ faceapi → เริ่มได้ทันที, face-api.js จะพร้อมเมื่อถึง initFaceSystem()
+  function _bootstrap() {
+    if (!API_URL) {
+      showError('ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่า</a>');
+      return;
+    }
+    init().catch(function(e) {
+      console.error('[Init crash]', e);
+      showError('เกิดข้อผิดพลาด: ' + e.message + '<br><small>กด F12 ดู Console หรือใช้แผนสำรองด้านล่าง</small>');
+      showGpsGuide(0);
+    });
+  }
+  // เริ่มทันที (script อยู่ท้าย body, DOM พร้อมแล้ว)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _bootstrap);
   } else {
-    window.addEventListener('load', init);
+    setTimeout(_bootstrap, 0); // ถ้า DOM พร้อมแล้ว → เริ่มใน next tick
   }
 
   async function init() {
@@ -503,8 +522,10 @@
     mainStatus.innerText = '🔄 กำลังตรวจสอบ GPS...';
     mainStatus.style.color = '#94a3b8';
 
-    // ADD: Inject mesh toggle button (idempotent — safe to call multiple times)
-    MeshService.injectToggleButton(document.getElementById('statusAreaRoot'));
+    // ADD: Inject mesh toggle button — SAFE: ตรวจว่า MeshService โหลดสำเร็จก่อน
+    if (typeof MeshService !== 'undefined') {
+      try { MeshService.injectToggleButton(document.getElementById('statusAreaRoot')); } catch(_) {}
+    }
     // ===== WATCHDOG: ถ้าค้างเกิน 22 วินาที → แสดงแผนสำรองอัตโนมัติ =====
     const watchdogTimer = setTimeout(() => {
       if (!document.getElementById('gpsGuide') ||
@@ -521,7 +542,7 @@
     bindWifiButton();
 
     // ===== ตรวจ Mesh Mode ก่อน (ADD: Mesh Module integration) =====
-    if (MeshService.isEnabled()) {
+    if (typeof MeshService !== 'undefined' && MeshService.isEnabled()) {
       console.log('[Mesh Mode] ON — switching to offline mode');
       clearTimeout(watchdogTimer);
       MeshService.showBanner();
@@ -858,8 +879,10 @@
             });
 
             locationSelector.style.display = 'block';
-            // ADD: Cache locations for offline mesh use
-            MeshService.cacheLocations(locations);
+            // ADD: Cache locations for offline mesh use (safe)
+            if (typeof MeshService !== 'undefined') {
+              try { MeshService.cacheLocations(locations); } catch(_) {}
+            }
             resolve();
             initFaceSystem();
           } catch (e) {
@@ -1077,7 +1100,7 @@
     }
 
     // ถ้าอยู่นอกพื้นที่ → ห้ามสแกน (Mesh Mode ข้าม check นี้)
-    if (!MeshService.isEnabled() && locationSelect.options.length > 0 && !currentLocation) {
+    if (!meshEnabled() && locationSelect.options.length > 0 && !currentLocation) {
       const sel = locationSelect.options[locationSelect.selectedIndex];
       const loc = sel ? JSON.parse(sel.dataset.locJson) : null;
       const name = loc ? loc.name : 'สาขานี้';
@@ -1150,8 +1173,7 @@
     document.getElementById('modalScore').innerText = 'ความเหมือน: ' + pct + '%';
 
     const modalLoc = document.getElementById('modalLocation');
-    const modeTag  = window._locationMode || 'gps';
-    if (MeshService.isEnabled()) {
+    if (meshEnabled()) {
       modalLoc.innerHTML = '📡 โหมดออฟไลน์ — บันทึกในเครื่อง';
       modalLoc.style.display    = 'block';
       modalLoc.style.background = 'rgba(245,158,11,0.1)';
@@ -1204,7 +1226,7 @@
 
 
     // ADD: Mesh Mode routing — DO NOT MODIFY THE ELSE BRANCH
-    if (MeshService.isEnabled()) {
+    if (meshEnabled()) {
       console.log('[Mesh] Sending locally...');
       try {
         const result = MeshService.sendMeshData(payload);

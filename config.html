@@ -231,11 +231,17 @@
     }
     .btn-admin-login {
       flex: 1;
+      min-width: 0;         /* prevent overflow on small screens */
       background: linear-gradient(135deg, #6366f1, #4f46e5);
       color: white;
       box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+      /* ensure button is always clickable */
+      pointer-events: auto;
+      position: relative;
+      z-index: 1;
     }
     .btn-admin-login:hover { transform: translateY(-1px); opacity: 0.92; }
+    .btn-admin-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
     .admin-header-actions {
       display: flex;
@@ -510,7 +516,13 @@
 
     @media (max-width: 640px) {
 
-      .gate-actions,
+      /* gate-actions ยังคง flex เพื่อไม่ให้ปุ่มหาย */
+      .gate-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
       .location-toolbar,
       .input-row,
       .small-row {

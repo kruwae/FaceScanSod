@@ -165,11 +165,14 @@ var DEFAULT_ADMIN_CODE = '2569';
 var ADMIN_PASSWORD_SALT = 'staffOS-v1';
 var HASH_PREFIX = 'sha256:';
 
+function normalizePasswordInput(password) {
+  return String(password || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+}
+
 function hashPassword(password) {
-  var input = String(password || '');
-  input = input.trim();
+  var input = normalizePasswordInput(password);
   var combined = ADMIN_PASSWORD_SALT ? (ADMIN_PASSWORD_SALT + '|' + input) : input;
-  var bytes = Utilities.newBlob(combined).getBytes();
+  var bytes = Utilities.newBlob(combined, 'text/plain', 'password.txt').getBytes();
   var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
   return HASH_PREFIX + bytesToHex(digest);
 }
@@ -199,6 +202,12 @@ function safeStringEquals(a, b) {
     diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
   }
   return diff === 0;
+}
+
+function safeHashEquals(input, storedHash) {
+  var normalizedInput = normalizePasswordInput(input);
+  var computedHash = hashPassword(normalizedInput);
+  return safeStringEquals(computedHash, String(storedHash || ''));
 }
 
 var TOKEN_CACHE_PREFIX = 'auth_token_';
@@ -433,12 +442,14 @@ function verifyAdmin(code) {
 
     if (role !== 'admin' || status !== 'active') continue;
 
+    var computedHash = hashPassword(input);
+
     if (debugEnabled) {
-      console.log('[verifyAdmin] stored=[' + stored + '] inputHash=[' + hashPassword(input) + ']');
+      console.log('[verifyAdmin] stored=[' + stored + '] inputHash=[' + computedHash + ']');
     }
 
     if (isHashedPassword(stored)) {
-      if (safeStringEquals(stored, hashPassword(input))) {
+      if (safeHashEquals(input, stored)) {
         return { success: true, migrated: true };
       }
     } else {

@@ -166,13 +166,22 @@ var ADMIN_PASSWORD_SALT = 'staffOS-v1';
 var HASH_PREFIX = 'sha256:';
 
 function normalizePasswordInput(password) {
-  return String(password || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  return String(password || '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\u200B/g, '')
+    .replace(/\u200C/g, '')
+    .replace(/\u200D/g, '')
+    .replace(/\uFEFF/g, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .trim();
 }
 
 function hashPassword(password) {
   var input = normalizePasswordInput(password);
   var combined = ADMIN_PASSWORD_SALT ? (ADMIN_PASSWORD_SALT + '|' + input) : input;
-  var bytes = Utilities.newBlob(combined, 'text/plain', 'password.txt').getBytes();
+  var blob = Utilities.newBlob(combined);
+  var bytes = blob.getBytes();
   var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
   return HASH_PREFIX + bytesToHex(digest);
 }
@@ -414,8 +423,7 @@ function initSetup() {
  * รับ: { success: true } หรือ { success: false, error: '...' }
  */
 function verifyAdmin(code) {
-  var input = String(code || '');
-  input = input.trim();
+  var input = normalizePasswordInput(code);
   if (!input) return { success: false, error: 'กรุณากรอกรหัส' };
 
   var ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -449,7 +457,7 @@ function verifyAdmin(code) {
     }
 
     if (isHashedPassword(stored)) {
-      if (safeHashEquals(input, stored)) {
+      if (safeStringEquals(stored, computedHash)) {
         return { success: true, migrated: true };
       }
     } else {

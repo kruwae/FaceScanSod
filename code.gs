@@ -166,7 +166,7 @@ var ADMIN_PASSWORD_SALT = 'staffOS-v1';
 var HASH_PREFIX = 'sha256:';
 var HASH_VERSION_V1 = 'v1';
 var HASH_VERSION_V2 = 'v2';
-var DEFAULT_HASH_VERSION = HASH_VERSION_V2;
+var DEFAULT_HASH_VERSION = HASH_VERSION_V1;
 var DEFAULT_USER_SALT_LENGTH = 16;
 var PASSWORD_ALGORITHM = 'sha256';
 
@@ -199,20 +199,31 @@ function buildPasswordRecord(password, userSalt, version) {
   var input = normalizePasswordInput(password);
   var salt = String(ADMIN_PASSWORD_SALT || '').trim();
   var resolvedVersion = String(version || DEFAULT_HASH_VERSION).toLowerCase();
+
+  if (resolvedVersion === HASH_VERSION_V1) {
+    var legacyBase = salt ? (salt + '|' + input) : input;
+    var legacyBytes = Utilities.newBlob(legacyBase).getBytes();
+    var legacyDigest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, legacyBytes);
+    return {
+      version: HASH_VERSION_V1,
+      salt: '',
+      hash: HASH_PREFIX + bytesToHex(legacyDigest)
+    };
+  }
+
   var recordSalt = String(userSalt || '').trim();
-  if (!recordSalt && resolvedVersion === HASH_VERSION_V2) {
+  if (!recordSalt) {
     recordSalt = createUserSalt(input);
   }
 
   var base = [PASSWORD_ALGORITHM, resolvedVersion, salt, recordSalt, input].join('|');
   var bytes = Utilities.newBlob(base).getBytes();
   var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
-  var hex = bytesToHex(digest);
 
   return {
-    version: resolvedVersion,
+    version: HASH_VERSION_V2,
     salt: recordSalt,
-    hash: resolvedVersion + ':' + HASH_PREFIX + hex
+    hash: HASH_VERSION_V2 + ':' + HASH_PREFIX + bytesToHex(digest)
   };
 }
 
@@ -538,24 +549,12 @@ function verifyAdmin(code) {
     if (version === HASH_VERSION_V1 || parsed.version === HASH_VERSION_V1 || !version) {
       var v1Record = buildPasswordRecord(input, '', HASH_VERSION_V1);
       if (safeStringEquals(normalizeHash(stored), normalizeHash(v1Record.hash)) || safeStringEquals(stored, input)) {
-        var upgradeSalt = createUserSalt(input + '|' + (row[hm['Username'] - 1] || 'admin'));
-        var upgradedRecord = buildPasswordRecord(input, upgradeSalt, HASH_VERSION_V2);
-        sheet.getRange(i + 1, hm['Code']).setValue(upgradedRecord.hash);
-        if (hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
-        if (hm['Hash Salt']) sheet.getRange(i + 1, hm['Hash Salt']).setValue(upgradedRecord.salt);
-        sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
-        return { success: true, migrated: true, hashVersion: HASH_VERSION_V2 };
+        return { success: true, hashVersion: HASH_VERSION_V1 };
       }
     }
 
     if (stored === input) {
-      var legacySalt = createUserSalt(input + '|legacy|' + (row[hm['Username'] - 1] || 'admin'));
-      var legacyUpgraded = buildPasswordRecord(input, legacySalt, HASH_VERSION_V2);
-      sheet.getRange(i + 1, hm['Code']).setValue(legacyUpgraded.hash);
-      if (hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
-      if (hm['Hash Salt']) sheet.getRange(i + 1, hm['Hash Salt']).setValue(legacyUpgraded.salt);
-      sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
-      return { success: true, migrated: true, hashVersion: HASH_VERSION_V2 };
+      return { success: true, hashVersion: HASH_VERSION_V1 };
     }
   }
 

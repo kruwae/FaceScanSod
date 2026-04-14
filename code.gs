@@ -47,7 +47,7 @@ function doPost(e) {
 
   if (action === 'registerUser')         result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status);
   else if (action === 'logAttendance')   result = logAttendance(data);
-  else if (action === 'saveConfig')      result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy);
+  else if (action === 'saveConfig')      result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy, data.token);
   else if (action === 'login')           result = login(data);
   else if (action === 'verifyAdmin')     result = verifyAdmin(data.code);
   else if (action === 'changeAdminCode') result = changeAdminCode(data.currentCode, data.newCode);
@@ -152,13 +152,12 @@ function normalizeLocation(loc, index) {
     name: loc.name || ('Location ' + (index + 1)),
     lat: parseFloat(loc.lat),
     lng: parseFloat(loc.lng),
-    radius: parseFloat(loc.radius || 100)  // radius หน่วยเมตร
+    radius: parseFloat(loc.radius || 100)
   };
 }
 
 // ============================================================
 //  staffOS Sheet — Admin Credentials
-//  สร้าง / ตรวจสอบ sheet พร้อม admin เริ่มต้นถ้ายังไม่มี
 // ============================================================
 var STAFFOS_SHEET   = 'staffOS';
 var STAFFOS_HEADERS = ['Username', 'Code', 'Role', 'Status', 'Note', 'Created At', 'Updated At', 'Email', 'Hash Version', 'Hash Salt'];
@@ -168,6 +167,8 @@ var HASH_PREFIX = 'sha256:';
 var HASH_VERSION_SHA256 = 'sha256';
 var HASH_VERSION_BCRYPT = 'bcrypt';
 var HASH_VERSION_LEGACY = 'legacy';
+var HASH_VERSION_V1 = HASH_VERSION_SHA256;
+var HASH_VERSION_V2 = HASH_VERSION_BCRYPT;
 var DEFAULT_HASH_VERSION = HASH_VERSION_BCRYPT;
 var DEFAULT_USER_SALT_LENGTH = 16;
 var PASSWORD_ALGORITHM = 'sha256';
@@ -249,6 +250,7 @@ function hashPassword(password) {
 function hashPasswordV2(password, userSalt) {
   return buildPasswordRecord(password, userSalt, HASH_VERSION_BCRYPT).hash;
 }
+
 function bytesToHex(bytes) {
   var hex = '';
   for (var i = 0; i < bytes.length; i++) {
@@ -263,9 +265,9 @@ function bytesToHex(bytes) {
 
 function parsePasswordRecord(value) {
   var raw = String(value || '').trim();
-  if (!raw) return { version: HASH_VERSION_V1, salt: '', hash: '' };
+  if (!raw) return { version: HASH_VERSION_LEGACY, salt: '', hash: '' };
 
-  var version = HASH_VERSION_V1;
+  var version = HASH_VERSION_LEGACY;
   var body = raw;
 
   var versionMatch = raw.match(/^(v[12])[:$](.*)$/i);
@@ -524,13 +526,6 @@ function login(params) {
   var token;
 
   if (authMethod === 'google') {
-<<<<<<< HEAD
-    return { status: 'error', message: 'Google login ยังไม่เปิดใช้งานใน backend นี้' };
-  }
-
-  if (authMethod === 'email') {
-    return { status: 'error', message: 'Email login ยังไม่เปิดใช้งานสำหรับ admin' };
-=======
     var googleResult = verifyGoogleIdToken((params && params.idToken) || '');
     if (!googleResult.success) {
       logAction({
@@ -602,7 +597,6 @@ function login(params) {
     });
 
     return { status: 'ok', token: token, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'email' };
->>>>>>> cfc3ae45cdbc9f5c9aa43d120ec95b1517282be4
   }
 
   var code = String((params && params.code) || '').trim();
@@ -619,11 +613,7 @@ function login(params) {
     return { status: 'error', message: (verified && verified.error) || 'Unauthorized' };
   }
 
-<<<<<<< HEAD
   role = 'admin';
-=======
-  role = getUserRole(username);
->>>>>>> cfc3ae45cdbc9f5c9aa43d120ec95b1517282be4
   token = storeToken(generateToken(username, role), username, role);
   logAction({
     username: username,
@@ -653,7 +643,6 @@ function initSetup() {
   var sheet = result.sheet;
   var hm    = result.headerMap;
 
-  // ตรวจว่ามี admin แล้วหรือยัง
   var data = sheet.getDataRange().getValues();
   var hasAdmin = false;
   for (var i = 1; i < data.length; i++) {
@@ -686,11 +675,6 @@ function initSetup() {
   return { success: true, created: false, message: 'staffOS sheet พร้อมใช้งาน แอดมินมีอยู่แล้ว' };
 }
 
-/**
- * verifyAdmin — ตรวจสอบรหัสฝั่ง server (ไม่ส่งรหัสกลับมาที่ client)
- * ส่ง: { action: 'verifyAdmin', code: '...' }
- * รับ: { success: true } หรือ { success: false, error: '...' }
- */
 function verifyAdmin(code) {
   var input = normalizePasswordInput(code);
   if (!input) {
@@ -745,10 +729,6 @@ function verifyAdmin(code) {
   return { success: false, error: 'รหัสแอดมินไม่ถูกต้องหรือบัญชีถูกระงับ' };
 }
 
-/**
- * changeAdminCode — เปลี่ยนรหัสแอดมิน
- * ส่ง: { action: 'changeAdminCode', currentCode: '...', newCode: '...' }
- */
 function changeAdminCode(currentCode, newCode) {
   if (!currentCode || !newCode) return { success: false, error: 'ข้อมูลไม่ครบ' };
   if (String(newCode).trim().length < 4) return { success: false, error: 'รหัสใหม่ต้องมีอย่างน้อย 4 ตัวอักษร' };
@@ -920,13 +900,6 @@ function getLocations(params) {
 // ============================================================
 //  Attendance Log
 // ============================================================
-
-/**
- * logAttendance — บันทึกเวลาเข้าออกงาน
- * payload: { name, lat, lng, locationName, gpsStatus, gpsSkipReason, userAgent,
- *            meshSynced, meshId, meshClientTime, meshFingerprint }
- * เพิ่ม duplicate check: ถ้ายังไม่ลงวันนี้ → append | ถ้าลงแล้ว → flag duplicate
- */
 function logAttendance(payload) {
   var auth = authorize('logAttendance', payload);
   if (!auth.ok) {
@@ -940,7 +913,7 @@ function logAttendance(payload) {
     });
     return { status: 'error', message: auth.error || 'Unauthorized', code: auth.code || 401 };
   }
-  // รองรับ old-style call (positional args) และ new-style (payload object)
+
   var name, lat, lng, locationName, gpsStatus, gpsSkipReason, userAgent;
   var meshSynced, meshId, meshClientTime, meshFingerprint;
 
@@ -957,7 +930,6 @@ function logAttendance(payload) {
     meshClientTime  = payload.meshClientTime || '';
     meshFingerprint = payload.meshFingerprint || '';
   } else {
-    // legacy positional: (name, lat, lng, matchScore, distance, device, locationName)
     name         = arguments[0] || '';
     lat          = arguments[1] || '';
     lng          = arguments[2] || '';
@@ -981,8 +953,6 @@ function logAttendance(payload) {
   const timeStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm:ss');
   const mapLink = (lat && lng) ? 'https://www.google.com/maps?q=' + lat + ',' + lng : '';
 
-  // ===== Duplicate Check =====
-  // ตรวจว่ามีชื่อ+วันที่เดียวกันในวันนี้แล้วหรือยัง
   var isDuplicate = false;
   var allData = sheet.getDataRange().getValues();
   var nameCol = hm['Name'] - 1;
@@ -1046,10 +1016,6 @@ function logAttendance(payload) {
   return { success: true, message: 'บันทึกเวลาเสร็จสิ้น' };
 }
 
-/**
- * getAttendanceLogs — สำหรับ report.html
- * params: { date, name } (optional filters)
- */
 function getAttendanceLogs(params) {
   const auth = authorize('getAttendanceLogs', params);
   if (!auth.ok) {
@@ -1072,12 +1038,10 @@ function getAttendanceLogs(params) {
     var row = {};
     headers.forEach(function(h, idx) { row[h] = data[i][idx]; });
 
-    // filter by date
     if (filterDate) {
       var rowDate = String(row['Date'] || '').replace(/^'/, '').trim();
       if (rowDate !== filterDate) continue;
     }
-    // filter by name
     if (filterName) {
       var rowName = String(row['Name'] || '').toLowerCase();
       if (!rowName.includes(filterName)) continue;
@@ -1090,8 +1054,8 @@ function getAttendanceLogs(params) {
 // ============================================================
 //  Config — Save / Load
 // ============================================================
-function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy) {
-  const auth = authorize('saveConfig', { token: (arguments[5] && arguments[5].token) || '' });
+function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, token) {
+  const auth = authorize('saveConfig', { token: token || '' });
   if (!auth.ok) {
     logAction({
       username: '',

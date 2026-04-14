@@ -7,7 +7,6 @@
   <title>Admin Login | ระบบสแกนหน้า</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
   <style>
@@ -313,7 +312,6 @@
     const googleButton = document.getElementById('googleButton');
     let authMethod = 'code';
     let googleClientReady = false;
-    let googleOneTapShown = false;
     let googlePromptShown = false;
 
     // ---- อ่าน ?to=... จาก URL เพื่อรู้ว่าจะ redirect ไปหน้าไหน ----
@@ -383,6 +381,7 @@
         const timer = setTimeout(() => ctrl.abort(), 15000);
         const res   = await fetch(apiUrl + '?action=login', {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'login', authMethod: 'code', username: 'admin', code: trimmed }),
           signal: ctrl.signal
         });
@@ -440,9 +439,8 @@
 
     function getGoogleClientId() {
       return (
-        document.querySelector('meta[name="google-client-id"]')?.content ||
-        window.GOOGLE_CLIENT_ID ||
         window.GOOGLE_OAUTH_CLIENT_ID ||
+        window.GOOGLE_CLIENT_ID ||
         localStorage.getItem('googleClientId') ||
         ''
       ).trim();
@@ -478,25 +476,10 @@
         locale: 'th'
       });
 
-      if (!googlePromptShown) {
-        google.accounts.id.prompt();
-        googlePromptShown = true;
-      }
+      // ใช้ปุ่ม GIS แทน One Tap เพื่อหลีกเลี่ยง prompt ซ้ำและ race condition
     }
 
     function triggerGoogleAccessPrompt() {
-      if (!window.google || !google.accounts || !google.accounts.id) {
-        Swal.fire({
-          icon: 'info',
-          title: 'กำลังโหลด Google Sign-In',
-          text: 'กรุณารอสักครู่แล้วลองใหม่',
-          confirmButtonColor: '#6366f1',
-          background: '#1e1b4b',
-          color: '#e2e8f0'
-        });
-        return;
-      }
-
       const clientId = getGoogleClientId();
       if (!clientId) {
         Swal.fire({
@@ -511,8 +494,9 @@
       }
 
       setAuthMethod('google');
-      google.accounts.id.prompt();
-      googlePromptShown = true;
+      if (window.google && google.accounts && google.accounts.id) {
+        renderGoogleLogin();
+      }
     }
 
     async function handleGoogleCredentialResponse(response) {
@@ -574,10 +558,6 @@
     }
 
     waitForGoogleScriptReady();
-
-    tabGoogle.addEventListener('click', function () {
-      triggerGoogleAccessPrompt();
-    });
 
     // ---- ปุ่ม Login ----
     btnLogin.addEventListener('click', async function () {

@@ -4,8 +4,10 @@
 // ============================================================
 const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxwhi7a8L9mLZ2MvoKgkalGj-ia5iRTZVYOuh3w24dKv4wQUz_3z0cALdRQv1NpclIL/exec';
 const GOOGLE_OAUTH_CLIENT_ID = '938397636593-gstnelk2u35c6aa8hg0594ja0k40b5su.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = GOOGLE_OAUTH_CLIENT_ID;
 
 if (typeof window !== 'undefined') {
   window.GAS_API_URL = GAS_API_URL;
   window.GOOGLE_OAUTH_CLIENT_ID = GOOGLE_OAUTH_CLIENT_ID;
+  window.GOOGLE_CLIENT_ID = GOOGLE_OAUTH_CLIENT_ID;
 }

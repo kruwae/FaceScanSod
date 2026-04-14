@@ -370,13 +370,26 @@
     window.location.replace('index.html');
   }
 
+  function normalizeCodeInput(value) {
+    return String(value || '')
+      .replace(/\u00A0/g, ' ')
+      .replace(/\u200B/g, '')
+      .replace(/\u200C/g, '')
+      .replace(/\u200D/g, '')
+      .replace(/\uFEFF/g, '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .trim();
+  }
+
   async function verifyCode(code) {
-    if (code.trim() === LOCAL_FALLBACK) return true;
+    const trimmed = normalizeCodeInput(code);
+    if (trimmed === LOCAL_FALLBACK) return true;
     if (!API_URL) return false;
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'verifyAdmin', code: code.trim() })
+        body: JSON.stringify({ action: 'verifyAdmin', code: trimmed })
       });
       const d = await r.json();
       return d.success === true;
@@ -384,7 +397,7 @@
   }
 
   async function doLogin() {
-    const code = document.getElementById('lockCode').value;
+    const code = normalizeCodeInput(document.getElementById('lockCode').value);
     const msg  = document.getElementById('lockMsg');
     if (!code.trim()) { msg.style.color = '#fca5a5'; msg.innerText = 'กรุณากรอกรหัส'; return; }
     msg.style.color = '#94a3b8'; msg.innerText = '⏳ กำลังตรวจสอบ...';

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>วิธีการใช้เว็บแอปนี้</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="js/api-config.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1b2a 100%);
+      color: #e2e8f0;
+      padding: 28px 16px 56px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before, body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::before {
+      width: 360px;
+      height: 360px;
+      background: #6366f1;
+      top: -120px;
+      left: -100px;
+    }
+
+    body::after {
+      width: 320px;
+      height: 320px;
+      background: #06b6d4;
+      right: -90px;
+      bottom: -80px;
+    }
+
+    .page-wrap {
+      width: 100%;
+      max-width: 920px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-card,
+    .content-card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.2);
+    }
+
+    .hero-card {
+      padding: 28px 22px;
+      margin-bottom: 18px;
+      animation: fadeInDown 0.5s ease;
+    }
+
+    .hero-icon {
+      font-size: 42px;
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+
+    h1 {
+      font-size: 1.8em;
+      margin-bottom: 8px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a5b4fc, #e2e8f0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      line-height: 1.8;
+      font-size: 0.95em;
+    }
+
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+      margin: 18px 0 24px;
+    }
+
+    .quick-link {
+      display: block;
+      text-decoration: none;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #e2e8f0;
+      transition: all 0.25s ease;
+    }
+
+    .quick-link:hover {
+      transform: translateY(-2px);
+      background: rgba(255,255,255,0.09);
+      border-color: rgba(255,255,255,0.18);
+    }
+
+    .quick-link strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #f8fafc;
+    }
+
+    .quick-link span {
+      color: #94a3b8;
+      font-size: 0.88em;
+      line-height: 1.6;
+    }
+
+    .content-card {
+      padding: 22px 18px;
+      margin-bottom: 16px;
+      animation: fadeInUp 0.5s ease;
+    }
+
+    h2 {
+      font-size: 1.2em;
+      margin-bottom: 14px;
+      color: #f8fafc;
+    }
+
+    h3 {
+      font-size: 1em;
+      margin: 18px 0 10px;
+      color: #c7d2fe;
+    }
+
+    p, li {
+      color: #cbd5e1;
+      line-height: 1.8;
+      font-size: 0.95em;
+    }
+
+    ol, ul {
+      margin-left: 20px;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    .info-box,
+    .warning-box,
+    .success-box {
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-top: 12px;
+      line-height: 1.8;
+      font-size: 0.92em;
+    }
+
+    .info-box {
+      background: rgba(59,130,246,0.12);
+      border: 1px solid rgba(59,130,246,0.25);
+      color: #dbeafe;
+    }
+
+    .warning-box {
+      background: rgba(245,158,11,0.12);
+      border: 1px solid rgba(245,158,11,0.28);
+      color: #fde68a;
+    }
+
+    .success-box {
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.28);
+      color: #d1fae5;
+    }
+
+    .code-block {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(15,23,42,0.65);
+      border: 1px solid rgba(148,163,184,0.18);
+      color: #e2e8f0;
+      font-size: 0.88em;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .browser-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .browser-card {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .browser-card h3 {
+      margin-top: 0;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .footer-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      color: #e2e8f0;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      padding: 10px 14px;
+      transition: all 0.25s ease;
+    }
+
+    .footer-link:hover {
+      background: rgba(255,255,255,0.1);
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="hero-card">
+      <div class="hero-icon">📘</div>
+      <h1>วิธีการใช้เว็บแอปนี้</h1>
+      <p class="subtitle">
+        คู่มือการใช้งานระบบสแกนเข้างานด้วยใบหน้า + GPS สำหรับทั้งพนักงานและผู้ดูแลระบบ
+        รวมถึงคำแนะนำการแก้ปัญหา Google Login บน Chrome / Safari / iPhone
+      </p>
+
+      <div class="quick-links">
+        <a class="quick-link" href="scan.html">
+          <strong>📷 สแกนเข้างาน</strong>
+          <span>สำหรับพนักงานใช้งานประจำวัน</span>
+        </a>
+        <a class="quick-link" href="login.html?to=register.html">
+          <strong>👤 ลงทะเบียนพนักงาน</strong>
+          <span>สำหรับผู้ดูแลระบบ</span>
+        </a>
+        <a class="quick-link" href="login.html?to=config.html">
+          <strong>⚙️ ตั้งค่าระบบ</strong>
+          <span>ตั้งค่า API และ GPS</span>
+        </a>
+        <a class="quick-link" href="login.html?to=report.html">
+          <strong>📊 ดูรายงาน</strong>
+          <span>ตรวจสอบการลงชื่อเข้าออก</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <h2>เริ่มใช้งานครั้งแรก</h2>
+      <ol>
+        <li>ผู้ดูแลระบบเข้าเมนู <strong>ตั้งค่าระบบ</strong> เพื่อกำหนด GAS API URL และค่าตำแหน่ง GPS</li>
+        <li>ผู้ดูแลระบบเข้าเมนู <strong>ลงทะเบียนพนักงาน</strong> เพื่อบันทึกใบหน้าให้ครบหลายมุม</li>
+        <li>พนักงานเข้าเมนู <strong>สแกนเข้างาน</strong> เพื่อยืนยันตัวตนและลงเวลา</li>
+        <li>ตรวจสอบผลได้ที่เมนู <strong>รายงานการลงชื่อ</strong> และใน Google Sheets</li>
+      </ol>
+
+      <div class="info-box">
+        แนะนำให้ผู้ดูแลระบบเปิดใช้งานครั้งแรกบนคอมพิวเตอร์ก่อน เพื่อให้ตรวจสอบ API, กล้อง, GPS และการล็อกอินได้ง่าย
+      </div>
+    </div>
+
+    <div class="content-card">
+      <h2>คู่มือสำหรับพนักงาน</h2>
+      <ol>
+        <li>เปิดหน้า <strong>สแกนเข้างาน</strong></li>
+        <li>กดอนุญาต <strong>Camera</strong> และ <strong>Location</strong></li>
+        <li>อยู่ในพื้นที่ที่กำหนดตามรัศมี GPS ขององค์กร</li>
+        <li>มองกล้องให้ชัดเจน แสงพอ และไม่ถูกบังใบหน้า</li>
+        <li>เมื่อระบบพบใบหน้าที่ตรงกัน ให้กดยืนยันลงเวลา</li>
+      </ol>
+
+      <div class="warning-box">
+        หากสแกนไม่ผ่าน ให้ตรวจสอบแสง, มุมกล้อง, คุณภาพอินเทอร์เน็ต, และว่าคุณอยู่ในรัศมี GPS ที่กำหนด
+      </div>
+    </div>
+
+    <div class="content-card">
+      <h2>คู่มือสำหรับผู้ดูแลระบบ</h2>
+
+      <h3>1) ตั้งค่าระบบ</h3>
+      <ol>
+        <li>เข้าเมนู <strong>ตั้งค่าระบบ</strong></li>
+        <li>ตรวจสอบว่า <strong>API URL</strong> ถูกต้อง</li>
+        <li>ดึงตำแหน่งปัจจุบันหรือกรอกพิกัดเอง</li>
+        <li>กำหนดรัศมีที่อนุญาตให้เช็คอิน</li>
+        <li>บันทึกการตั้งค่าทั้งหมด</li>
+      </ol>
+
+      <h3>2) ลงทะเบียนพนักงาน</h3>
+      <ol>
+        <li>เข้าเมนู <strong>ลงทะเบียนพนักงาน</strong></li>
+        <li>กรอกชื่อพนักงาน</li>
+        <li>บันทึกใบหน้าอย่างน้อย 3 มุม เช่น ตรง, ซ้ายเล็กน้อย, ขวาเล็กน้อย</li>
+      </ol>
+
+      <h3>3) เข้าสู่ระบบผู้ดูแล</h3>
+      <ul>
+        <li>สามารถเข้าด้วย <strong>รหัสแอดมิน</strong> หรือ <strong>Gmail</strong></li>
+        <li>หาก Google Login ใช้งานไม่ได้บนบางเครื่อง ให้ใช้รหัสแอดมินแทนชั่วคราว</li>
+      </ul>
+    </div>
+
+    <div class="content-card">
+      <h2>การแก้ปัญหา Google Login ใช้ได้บางเครื่อง บางเครื่องใช้ไม่ได้</h2>
+      <p>
+        อาการนี้มักเกิดจากนโยบายของ browser เกี่ยวกับ third-party cookies, popups,
+        cross-site tracking หรือ extension ที่บล็อกการทำงานของ Google Sign-In
+      </p>
+
+      <div class="success-box">
+        ถ้าพบว่าเครื่องหนึ่งใช้ Gmail login ได้ แต่อีกเครื่องใช้ไม่ได้ ทั้งที่เป็นเว็บเดียวกัน
+        แปลว่าส่วนใหญ่ปัญหาอยู่ที่การตั้งค่า browser / device ไม่ใช่รหัสแอดมินหรือ API หลักของระบบ
+      </div>
+
+      <div class="browser-grid">
+        <div class="browser-card">
+          <h3>🔧 Chrome บน Mac</h3>
+          <ol>
+            <li>อัปเดต Chrome ที่ <code>chrome://settings/help</code></li>
+            <li>ไปที่ <code>chrome://settings/cookies</code></li>
+            <li>เปิด <strong>Allow all cookies</strong> ชั่วคราวสำหรับการทดสอบ หรืออย่างน้อยปิดการ block third-party cookies</li>
+            <li>ไปที่ <code>chrome://settings/content/popups</code></li>
+            <li>เพิ่มเว็บของคุณ เช่น <code>https://face-scan-sod.vercel.app</code> เป็น Allowed</li>
+            <li>ไปที่ <code>chrome://settings/content/javascript</code> แล้วตรวจว่า JavaScript เป็น Allowed</li>
+            <li>ลองปิด extension เช่น AdBlock, uBlock, Ghostery, Privacy Badger</li>
+            <li>หากยังไม่ได้ ให้ลอง Incognito และล้าง cache/cookies</li>
+          </ol>
+        </div>
+
+        <div class="browser-card">
+          <h3>📱 Chrome บน iPhone</h3>
+          <ol>
+            <li>ไปที่ <strong>Settings → Chrome</strong></li>
+            <li>เปิด <strong>Allow Cross-Website Tracking</strong></li>
+            <li>จากนั้นไปที่ <strong>Settings → Safari</strong></li>
+            <li>ตั้งค่า <strong>Block All Cookies = OFF</strong></li>
+            <li>ตั้งค่า <strong>Prevent Cross-Site Tracking = OFF</strong> ชั่วคราวเพื่อทดสอบ</li>
+            <li>ตั้งค่า <strong>Block Pop-ups = OFF</strong></li>
+          </ol>
+          <div class="info-box">
+            Chrome บน iPhone ใช้ engine เดียวกับ Safari ดังนั้นต้องดูการตั้งค่าของ Safari ด้วย
+          </div>
+        </div>
+
+        <div class="browser-card">
+          <h3>🍏 Safari บน Mac</h3>
+          <ol>
+            <li>Safari → Settings → Advanced → เปิด <strong>Show Develop menu</strong></li>
+            <li>Safari → Settings → Privacy</li>
+            <li>ตั้งค่า <strong>Block all cookies = OFF</strong></li>
+            <li>ตั้งค่า <strong>Prevent cross-site tracking = OFF</strong> ชั่วคราวเพื่อทดสอบ</li>
+            <li>Safari → Settings → Websites → Pop-up Windows</li>
+            <li>อนุญาตเว็บของคุณเป็น <strong>Allow</strong></li>
+            <li>Develop → <strong>Empty Caches</strong></li>
+          </ol>
+        </div>
+
+        <div class="browser-card">
+          <h3>📱 Safari บน iPhone</h3>
+          <ol>
+            <li>ไปที่ <strong>Settings → Safari</strong></li>
+            <li>ตั้งค่า <strong>Block All Cookies = OFF</strong></li>
+            <li>ตั้งค่า <strong>Prevent Cross-Site Tracking = OFF</strong> ชั่วคราวเพื่อทดสอบ</li>
+            <li>ตั้งค่า <strong>Block Pop-ups = OFF</strong></li>
+            <li>หากยังไม่ได้ ให้เลือก <strong>Clear History and Website Data</strong></li>
+          </ol>
+        </div>
+      </div>
+
+      <h3>โดเมนที่ควรตรวจใน Google Cloud Console</h3>
+      <p>
+        ใน OAuth Client ของ Google ควรมี <strong>Authorized JavaScript origins</strong>
+        ตรงกับโดเมนที่ใช้งานจริง เช่น:
+      </p>
+      <div class="code-block">https://face-scan-sod.vercel.app</div>
+    </div>
+
+    <div class="content-card">
+      <h2>ถ้า Google Login ยังไม่ได้ ให้ทำอย่างไร</h2>
+      <ol>
+        <li>ลองใช้ <strong>รหัสแอดมิน</strong> ก่อน เพื่อให้ทำงานต่อได้ทันที</li>
+        <li>ทดสอบบน Chrome ล่าสุดแบบไม่มี extension</li>
+        <li>อนุญาต cookies, popups และ cross-site tracking ตามคู่มือด้านบน</li>
+        <li>ล้าง cache/cookies แล้วลองใหม่</li>
+        <li>ตรวจว่าใช้งานผ่านโดเมนจริง ไม่ใช่ browser ภายในแอปอื่น</li>
+      </ol>
+    </div>
+
+    <div class="footer-links">
+      <a class="footer-link" href="index.html">← กลับเมนูหลัก</a>
+      <a class="footer-link" href="scan.html">📷 ไปหน้าสแกนเข้างาน</a>
+      <a class="footer-link" href="login.html?to=config.html">⚙️ ไปหน้าตั้งค่าระบบ</a>
+    </div>
+  </div>
+</body>
+</html>

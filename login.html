@@ -7,6 +7,7 @@
   <title>Admin Login | ระบบสแกนหน้า</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
   <style>
@@ -168,6 +169,29 @@
       box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
     }
 
+    .google-login-wrap {
+      width: 100%;
+      margin-bottom: 14px;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      min-height: 48px;
+    }
+
+    .google-login-wrap.active {
+      display: flex;
+    }
+
+    .google-login-note {
+      width: 100%;
+      font-size: 0.84em;
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-top: 8px;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
     .btn-login {
       width: 100%;
       border: none;
@@ -250,15 +274,16 @@
 
     <div class="login-tabs">
       <button type="button" class="login-tab active" id="tabCode">เข้าด้วยรหัส</button>
-      <button type="button" class="login-tab" id="tabEmail">เข้าด้วย Gmail</button>
+      <button type="button" class="login-tab" id="tabGoogle">เข้าด้วย Gmail</button>
     </div>
 
     <div class="login-field active" id="fieldCode">
       <input type="password" id="adminCode" placeholder="รหัสแอดมิน" autocomplete="current-password">
     </div>
 
-    <div class="login-field" id="fieldEmail">
-      <input type="email" id="adminEmail" placeholder="admin@example.com" autocomplete="email">
+    <div class="login-field" id="fieldGoogle">
+      <div id="googleButton" class="google-login-wrap"></div>
+      <div class="google-login-note">ลงชื่อเข้าใช้ด้วยบัญชี Google ที่เป็นอีเมลแอดมินในระบบ</div>
     </div>
 
     <button class="btn-login" id="btnLogin">🔓 ยืนยันรหัสแอดมิน</button>
@@ -280,12 +305,14 @@
     const btnLogin  = document.getElementById('btnLogin');
     const destBadge = document.getElementById('destBadge');
     const tabCode   = document.getElementById('tabCode');
-    const tabEmail  = document.getElementById('tabEmail');
+    const tabGoogle = document.getElementById('tabGoogle');
     const fieldCode = document.getElementById('fieldCode');
-    const fieldEmail = document.getElementById('fieldEmail');
+    const fieldGoogle = document.getElementById('fieldGoogle');
     const adminCode = document.getElementById('adminCode');
-    const adminEmail = document.getElementById('adminEmail');
+    const googleButton = document.getElementById('googleButton');
     let authMethod = 'code';
+    let googleClientReady = false;
+    let googleOneTapShown = false;
 
     // ---- อ่าน ?to=... จาก URL เพื่อรู้ว่าจะ redirect ไปหน้าไหน ----
     const params   = new URLSearchParams(window.location.search);
@@ -301,14 +328,17 @@
     function setAuthMethod(method) {
       authMethod = method;
       tabCode.classList.toggle('active', method === 'code');
-      tabEmail.classList.toggle('active', method === 'email');
+      tabGoogle.classList.toggle('active', method === 'google');
       fieldCode.classList.toggle('active', method === 'code');
-      fieldEmail.classList.toggle('active', method === 'email');
-      btnLogin.textContent = method === 'code' ? '🔓 ยืนยันรหัสแอดมิน' : '🔐 เข้าด้วย Gmail';
+      fieldGoogle.classList.toggle('active', method === 'google');
+      btnLogin.style.display = method === 'code' ? 'flex' : 'none';
+      if (method === 'google') {
+        renderGoogleLogin();
+      }
     }
 
     tabCode.addEventListener('click', () => setAuthMethod('code'));
-    tabEmail.addEventListener('click', () => setAuthMethod('email'));
+    tabGoogle.addEventListener('click', () => setAuthMethod('google'));
     setAuthMethod('code');
 
     // ---- ตรวจสอบ session ----
@@ -326,7 +356,6 @@
               (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
     }
 
-    // ---- ตรวจรหัส (GAS API เท่านั้น — ไม่มี local bypass) ----
     function normalizeCodeInput(value) {
       return String(value || '')
         .replace(/\u00A0/g, ' ')
@@ -373,9 +402,8 @@
       }
     }
 
-    async function loginWithEmail(email) {
-      const trimmed = normalizeCodeInput(email);
-      const apiUrl  = getApiUrl();
+    async function loginWithGoogle(idToken) {
+      const apiUrl = getApiUrl();
 
       if (!apiUrl) {
         return { ok: false, error: 'ยังไม่ได้ตั้งค่า API URL — ไปตั้งค่าที่ config.html ก่อน' };
@@ -387,7 +415,7 @@
         const res   = await fetch(apiUrl + '?action=login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'login', authMethod: 'email', email: trimmed, username: 'admin' }),
+          body: JSON.stringify({ action: 'login', authMethod: 'google', idToken: idToken }),
           signal: ctrl.signal
         });
         clearTimeout(timer);
@@ -399,7 +427,7 @@
           return { ok: true, token: data.token };
         }
 
-        return { ok: false, error: data.message || data.error || 'อีเมลไม่ถูกต้อง' };
+        return { ok: false, error: data.message || data.error || 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ' };
       } catch (e) {
         if (e.name === 'AbortError') {
           return { ok: false, error: 'Server ใช้เวลาตอบนานเกินไป (cold start) — กรุณาลองใหม่อีกครั้ง' };
@@ -408,17 +436,122 @@
       }
     }
 
+    function getGoogleClientId() {
+      return (
+        document.querySelector('meta[name="google-client-id"]')?.content ||
+        window.GOOGLE_CLIENT_ID ||
+        localStorage.getItem('googleClientId') ||
+        ''
+      ).trim();
+    }
+
+    function renderGoogleLogin() {
+      if (!window.google || !googleButton) { return; }
+
+      const clientId = getGoogleClientId();
+      if (!clientId) {
+        googleButton.innerHTML = '<div style="color:#94a3b8;font-size:0.9em;line-height:1.6;">ยังไม่ได้ตั้งค่า Google Client ID</div>';
+        return;
+      }
+
+      if (!googleClientReady) {
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+        googleClientReady = true;
+      }
+
+      googleButton.innerHTML = '';
+      google.accounts.id.renderButton(googleButton, {
+        theme: 'outline',
+        size: 'large',
+        type: 'standard',
+        shape: 'pill',
+        text: 'signin_with',
+        width: 320,
+        locale: 'th'
+      });
+
+      if (!googleOneTapShown) {
+        google.accounts.id.prompt();
+        googleOneTapShown = true;
+      }
+    }
+
+    async function handleGoogleCredentialResponse(response) {
+      if (!response || !response.credential) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ไม่สามารถรับข้อมูลจาก Google ได้',
+          text: 'กรุณาลองเข้าสู่ระบบอีกครั้ง',
+          confirmButtonColor: '#6366f1',
+          background: '#1e1b4b',
+          color: '#e2e8f0'
+        });
+        return;
+      }
+
+      Swal.fire({
+        title: '⏳ กำลังตรวจสอบผ่าน Google...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+        background: '#1e1b4b',
+        color: '#e2e8f0'
+      });
+
+      const result = await loginWithGoogle(response.credential);
+
+      if (result.ok) {
+        try { sessionStorage.setItem(SESSION_KEY, '1'); } catch(e) {}
+        await Swal.fire({
+          icon: 'success',
+          title: '✅ เข้าสู่ระบบสำเร็จ',
+          text: 'กำลังนำท่านไปยังหน้าที่ต้องการ...',
+          timer: 1000,
+          showConfirmButton: false,
+          background: '#1e1b4b',
+          color: '#e2e8f0'
+        });
+        window.location.replace(destPage);
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: '❌ เข้าสู่ระบบไม่สำเร็จ',
+          text: result.error || 'กรุณาตรวจสอบข้อมูลอีกครั้ง',
+          confirmButtonText: 'ลองใหม่',
+          confirmButtonColor: '#6366f1',
+          background: '#1e1b4b',
+          color: '#e2e8f0'
+        });
+      }
+    }
+
+    function waitForGoogleScriptReady() {
+      if (window.google && google.accounts && google.accounts.id) {
+        if (authMethod === 'google') {
+          renderGoogleLogin();
+        }
+        return;
+      }
+      setTimeout(waitForGoogleScriptReady, 200);
+    }
+
+    waitForGoogleScriptReady();
+
     // ---- ปุ่ม Login ----
     btnLogin.addEventListener('click', async function () {
-      const value = authMethod === 'code'
-        ? adminCode.value
-        : adminEmail.value;
+      if (authMethod !== 'code') { return; }
+
+      const value = adminCode.value;
 
       if (!normalizeCodeInput(value)) {
         Swal.fire({
           icon: 'warning',
           title: 'กรุณากรอกข้อมูล',
-          text: authMethod === 'code' ? 'กรอกรหัสแอดมินก่อน' : 'กรอกอีเมลแอดมินก่อน',
+          text: 'กรอกรหัสแอดมินก่อน',
           confirmButtonColor: '#6366f1',
           background: '#1e1b4b',
           color: '#e2e8f0'
@@ -434,9 +567,7 @@
         color: '#e2e8f0'
       });
 
-      const result = authMethod === 'code'
-        ? await loginWithCode(value)
-        : await loginWithEmail(value);
+      const result = await loginWithCode(value);
 
       if (result.ok) {
         try { sessionStorage.setItem(SESSION_KEY, '1'); } catch(e) {}

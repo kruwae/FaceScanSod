@@ -121,6 +121,49 @@ function normalizeLocation(loc, index) {
 var STAFFOS_SHEET   = 'staffOS';
 var STAFFOS_HEADERS = ['Username', 'Code', 'Role', 'Status', 'Note', 'Created At', 'Updated At'];
 var DEFAULT_ADMIN_CODE = '2569';
+var ADMIN_PASSWORD_SALT = 'staffOS-v1';
+var HASH_PREFIX = 'sha256:';
+
+function hashPassword(password) {
+  var input = String(password || '').trim();
+  var combined = ADMIN_PASSWORD_SALT ? (ADMIN_PASSWORD_SALT + '|' + input) : input;
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, combined, Utilities.Charset.UTF_8);
+  return HASH_PREFIX + bytesToHex(bytes);
+}
+
+function bytesToHex(bytes) {
+  var hex = '';
+  for (var i = 0; i < bytes.length; i++) {
+    var value = bytes[i];
+    if (value < 0) value += 256;
+    var h = value.toString(16);
+    if (h.length === 1) h = '0' + h;
+    hex += h;
+  }
+  return hex;
+}
+
+function isHashedPassword(value) {
+  return typeof value === 'string' && value.indexOf(HASH_PREFIX) === 0 && value.length > HASH_PREFIX.length + 32;
+}
+
+function safeStringEquals(a, b) {
+  var left = String(a || '');
+  var right = String(b || '');
+  if (left.length !== right.length) return false;
+  var diff = 0;
+  for (var i = 0; i < left.length; i++) {
+    diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function migrateAdminPasswordIfNeeded(sheet, rowNumber, hm, plainCode) {
+  var hashed = hashPassword(plainCode);
+  sheet.getRange(rowNumber, hm['Code']).setValue(hashed);
+  sheet.getRange(rowNumber, hm['Updated At']).setValue(new Date());
+  return hashed;
+}
 
 /**
  * initSetup — เรียก 1 ครั้งหลัง deploy เพื่อสร้าง staffOS sheet
@@ -147,14 +190,14 @@ function initSetup() {
     var now = new Date();
     setRowByHeaders(sheet, row, hm, {
       'Username'   : 'admin',
-      'Code'       : DEFAULT_ADMIN_CODE,
+      'Code'       : hashPassword(DEFAULT_ADMIN_CODE),
       'Role'       : 'admin',
       'Status'     : 'active',
       'Note'       : 'Default admin — เปลี่ยนรหัสหลัง deploy',
       'Created At' : now,
       'Updated At' : now
     });
-    return { success: true, created: true, message: 'สร้าง staffOS sheet และ admin เริ่มต้นเรียบร้อย (รหัส: ' + DEFAULT_ADMIN_CODE + ')' };
+    return { success: true, created: true, message: 'สร้าง staffOS sheet และ admin เริ่มต้นเรียบร้อย (รหัสเริ่มต้นถูกเก็บแบบเข้ารหัสแล้ว)' };
   }
 
   return { success: true, created: false, message: 'staffOS sheet พร้อมใช้งาน แอดมินมีอยู่แล้ว' };
@@ -171,7 +214,6 @@ function verifyAdmin(code) {
   var ss    = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(STAFFOS_SHEET);
 
-  // ถ้ายังไม่มี sheet → สร้างและตรวจกับ default code
   if (!sheet) {
     initSetup();
     sheet = ss.getSheetByName(STAFFOS_SHEET);
@@ -180,6 +222,7 @@ function verifyAdmin(code) {
   var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
   var hm     = result.headerMap;
   var data   = result.sheet.getDataRange().getValues();
+  var input  = String(code).trim();
 
   for (var i = 1; i < data.length; i++) {
     var row    = data[i];
@@ -187,8 +230,17 @@ function verifyAdmin(code) {
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
     var stored = String(row[hm['Code']   - 1] || '');
 
-    if (role === 'admin' && status === 'active' && stored === String(code).trim()) {
-      return { success: true };
+    if (role !== 'admin' || status !== 'active') continue;
+
+    if (isHashedPassword(stored)) {
+      if (safeStringEquals(stored, hashPassword(input))) {
+        return { success: true, migrated: true };
+      }
+    } else {
+      if (safeStringEquals(stored, input)) {
+        migrateAdminPasswordIfNeeded(result.sheet, i + 1, hm, input);
+        return { success: true, migrated: true };
+      }
     }
   }
 
@@ -208,6 +260,8 @@ function changeAdminCode(currentCode, newCode) {
   var sheet  = result.sheet;
   var hm     = result.headerMap;
   var data   = sheet.getDataRange().getValues();
+  var current = String(currentCode).trim();
+  var nextHash = hashPassword(newCode);
 
   for (var i = 1; i < data.length; i++) {
     var row    = data[i];
@@ -215,8 +269,17 @@ function changeAdminCode(currentCode, newCode) {
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
     var stored = String(row[hm['Code']   - 1] || '');
 
-    if (role === 'admin' && status === 'active' && stored === String(currentCode).trim()) {
-      sheet.getRange(i + 1, hm['Code']).setValue(String(newCode).trim());
+    if (role !== 'admin' || status !== 'active') continue;
+
+    var matched = false;
+    if (isHashedPassword(stored)) {
+      matched = safeStringEquals(stored, hashPassword(current));
+    } else {
+      matched = safeStringEquals(stored, current);
+    }
+
+    if (matched) {
+      sheet.getRange(i + 1, hm['Code']).setValue(nextHash);
       sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
       return { success: true, message: 'เปลี่ยนรหัสแอดมินเรียบร้อย' };
     }

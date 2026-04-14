@@ -357,8 +357,11 @@
 
     // ---- API URL ----
     function getApiUrl() {
-      return (localStorage.getItem('gasApiUrl') ||
-              (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
+      return (
+        localStorage.getItem('gasApiUrl') ||
+        (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') ||
+        (typeof window !== 'undefined' ? (window.GAS_API_URL || '') : '')
+      ).trim();
     }
 
     function normalizeCodeInput(value) {
@@ -384,9 +387,15 @@
       try {
         const ctrl  = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 15000);
+        const formData = new URLSearchParams();
+        formData.set('action', 'login');
+        formData.set('authMethod', 'code');
+        formData.set('username', 'admin');
+        formData.set('code', trimmed);
+
         const res   = await fetch(apiUrl + '?action=login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'login', authMethod: 'code', username: 'admin', code: trimmed }),
           signal: ctrl.signal
         });
@@ -420,7 +429,7 @@
         const timer = setTimeout(() => ctrl.abort(), 15000);
         const res   = await fetch(apiUrl + '?action=login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'login', authMethod: 'google', idToken: idToken }),
           signal: ctrl.signal
         });

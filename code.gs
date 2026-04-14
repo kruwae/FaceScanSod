@@ -179,7 +179,13 @@ function normalizePasswordInput(password) {
 
 function hashPassword(password) {
   var input = normalizePasswordInput(password);
-  var combined = ADMIN_PASSWORD_SALT ? (ADMIN_PASSWORD_SALT + '|' + input) : input;
+  var salt = (typeof ADMIN_PASSWORD_SALT !== 'undefined')
+    ? String(ADMIN_PASSWORD_SALT).trim()
+    : '';
+  var combined = salt ? (salt + '|' + input) : input;
+  console.log('SALT:', ADMIN_PASSWORD_SALT);
+  console.log('INPUT:', input);
+  console.log('COMBINED:', combined);
   var blob = Utilities.newBlob(combined);
   var bytes = blob.getBytes();
   var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);

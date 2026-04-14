@@ -524,11 +524,85 @@ function login(params) {
   var token;
 
   if (authMethod === 'google') {
+<<<<<<< HEAD
     return { status: 'error', message: 'Google login ยังไม่เปิดใช้งานใน backend นี้' };
   }
 
   if (authMethod === 'email') {
     return { status: 'error', message: 'Email login ยังไม่เปิดใช้งานสำหรับ admin' };
+=======
+    var googleResult = verifyGoogleIdToken((params && params.idToken) || '');
+    if (!googleResult.success) {
+      logAction({
+        username: '',
+        role: DEFAULT_ROLE,
+        action: 'login',
+        endpoint: 'login',
+        status: 'fail',
+        details: { reason: 'invalid_google_token', error: googleResult.error }
+      });
+      return { status: 'error', message: googleResult.error || 'Unauthorized' };
+    }
+
+    var googleAdmin = getGoogleAdminByEmail(googleResult.email);
+    if (!googleAdmin) {
+      logAction({
+        username: maskSensitiveValue(googleResult.email),
+        role: DEFAULT_ROLE,
+        action: 'login',
+        endpoint: 'login',
+        status: 'fail',
+        details: { reason: 'google_email_not_whitelisted', email: maskSensitiveValue(googleResult.email) }
+      });
+      return { status: 'error', message: 'อีเมลนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน' };
+    }
+
+    username = googleAdmin.username || username;
+    role = 'admin';
+    token = storeToken(generateToken(username, role), username, role);
+
+    logAction({
+      username: username,
+      role: role,
+      action: 'login',
+      endpoint: 'login',
+      status: 'success',
+      details: { tokenIssued: true, authMethod: 'google', email: maskSensitiveValue(googleResult.email) }
+    });
+
+    return { status: 'ok', token: token, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'google' };
+  }
+
+  if (authMethod === 'email') {
+    var email = String((params && params.email) || '').trim();
+    var verifiedEmail = verifyAdminByEmail(email);
+    if (!verifiedEmail || !verifiedEmail.success) {
+      logAction({
+        username: maskSensitiveValue(email),
+        role: DEFAULT_ROLE,
+        action: 'login',
+        endpoint: 'login',
+        status: 'fail',
+        details: { reason: 'invalid_email_admin', email: maskSensitiveValue(email) }
+      });
+      return { status: 'error', message: (verifiedEmail && verifiedEmail.error) || 'Unauthorized' };
+    }
+
+    username = verifiedEmail.username || username;
+    role = 'admin';
+    token = storeToken(generateToken(username, role), username, role);
+
+    logAction({
+      username: username,
+      role: role,
+      action: 'login',
+      endpoint: 'login',
+      status: 'success',
+      details: { tokenIssued: true, authMethod: 'email' }
+    });
+
+    return { status: 'ok', token: token, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'email' };
+>>>>>>> cfc3ae45cdbc9f5c9aa43d120ec95b1517282be4
   }
 
   var code = String((params && params.code) || '').trim();
@@ -545,7 +619,11 @@ function login(params) {
     return { status: 'error', message: (verified && verified.error) || 'Unauthorized' };
   }
 
+<<<<<<< HEAD
   role = 'admin';
+=======
+  role = getUserRole(username);
+>>>>>>> cfc3ae45cdbc9f5c9aa43d120ec95b1517282be4
   token = storeToken(generateToken(username, role), username, role);
   logAction({
     username: username,

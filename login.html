@@ -312,7 +312,7 @@
     const googleButton = document.getElementById('googleButton');
     let authMethod = 'code';
     let googleClientReady = false;
-    let googlePromptShown = false;
+    let googleButtonRendered = false;
 
     // ---- อ่าน ?to=... จาก URL เพื่อรู้ว่าจะ redirect ไปหน้าไหน ----
     const params   = new URLSearchParams(window.location.search);
@@ -331,6 +331,7 @@
       tabGoogle.classList.toggle('active', method === 'google');
       fieldCode.classList.toggle('active', method === 'code');
       fieldGoogle.classList.toggle('active', method === 'google');
+      if (googleButton) googleButton.classList.toggle('active', method === 'google');
       btnLogin.style.display = method === 'code' ? 'flex' : 'none';
       if (method === 'google') {
         renderGoogleLogin();
@@ -349,11 +350,6 @@
 
     // ถ้า login อยู่แล้ว → ไปเลย
     if (isAuthed()) { window.location.replace(destPage); }
-    window.addEventListener('load', function () {
-      if (authMethod === 'google') {
-        triggerGoogleAccessPrompt();
-      }
-    });
 
     // ---- API URL ----
     function getApiUrl() {
@@ -460,12 +456,19 @@
       ).trim();
     }
 
-    function renderGoogleLogin() {
-      if (!window.google || !googleButton) { return; }
+    function renderGoogleLogin(force) {
+      if (!googleButton) { return; }
 
       const clientId = getGoogleClientId();
       if (!clientId) {
         googleButton.innerHTML = '<div style="color:#94a3b8;font-size:0.9em;line-height:1.6;">ยังไม่ได้ตั้งค่า Google Client ID</div>';
+        googleButtonRendered = false;
+        return;
+      }
+
+      if (!window.google || !google.accounts || !google.accounts.id) {
+        googleButton.innerHTML = '<div style="color:#94a3b8;font-size:0.9em;line-height:1.6;">กำลังโหลด Google Sign-In...</div>';
+        googleButtonRendered = false;
         return;
       }
 
@@ -479,6 +482,8 @@
         googleClientReady = true;
       }
 
+      if (googleButtonRendered && !force) return;
+
       googleButton.innerHTML = '';
       google.accounts.id.renderButton(googleButton, {
         theme: 'outline',
@@ -489,31 +494,7 @@
         width: 320,
         locale: 'th'
       });
-
-      // ใช้ปุ่ม GIS แทน One Tap เพื่อหลีกเลี่ยง prompt ซ้ำและ race condition
-    }
-
-    function triggerGoogleAccessPrompt() {
-      const clientId = getGoogleClientId();
-      if (!clientId) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'ยังไม่ได้ตั้งค่า Google Client ID',
-          text: 'กรุณากำหนด Google Client ID ก่อนใช้งาน',
-          confirmButtonColor: '#6366f1',
-          background: '#1e1b4b',
-          color: '#e2e8f0'
-        });
-        return;
-      }
-
-      setAuthMethod('google');
-      renderGoogleLogin();
-      if (window.google && google.accounts && google.accounts.id) {
-        try {
-          google.accounts.id.prompt();
-        } catch (e) {}
-      }
+      googleButtonRendered = true;
     }
 
     async function handleGoogleCredentialResponse(response) {
@@ -566,12 +547,7 @@
 
     function waitForGoogleScriptReady() {
       if (window.google && google.accounts && google.accounts.id) {
-        if (authMethod === 'google') {
-          renderGoogleLogin();
-          try {
-            google.accounts.id.prompt();
-          } catch (e) {}
-        }
+        renderGoogleLogin(true);
         return;
       }
       setTimeout(waitForGoogleScriptReady, 200);

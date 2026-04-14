@@ -255,11 +255,11 @@ function changeAdminCode(currentCode, newCode) {
   if (!currentCode || !newCode) return { success: false, error: 'ข้อมูลไม่ครบ' };
   if (String(newCode).trim().length < 4) return { success: false, error: 'รหัสใหม่ต้องมีอย่างน้อย 4 ตัวอักษร' };
 
-  var ss     = SpreadsheetApp.getActiveSpreadsheet();
-  var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
-  var sheet  = result.sheet;
-  var hm     = result.headerMap;
-  var data   = sheet.getDataRange().getValues();
+  var ss      = SpreadsheetApp.getActiveSpreadsheet();
+  var result  = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
+  var sheet   = result.sheet;
+  var hm      = result.headerMap;
+  var data    = sheet.getDataRange().getValues();
   var current = String(currentCode).trim();
   var nextHash = hashPassword(newCode);
 
@@ -273,7 +273,7 @@ function changeAdminCode(currentCode, newCode) {
 
     var matched = false;
     if (isHashedPassword(stored)) {
-      matched = safeStringEquals(stored, hashPassword(current));
+      matched = safeStringEquals(hashPassword(current), stored);
     } else {
       matched = safeStringEquals(stored, current);
     }

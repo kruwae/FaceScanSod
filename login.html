@@ -254,8 +254,8 @@
           signal: ctrl.signal
         });
         clearTimeout(timer);
-        const data = await res.json();
-        return data.success === true ? { ok: true } : { ok: false, error: data.error };
+      const data = await res.json();
+      return data.success === true ? { ok: true } : { ok: false, error: data.error || 'รหัสไม่ถูกต้อง' };
       } catch (e) {
         if (e.name === 'AbortError') {
           return { ok: false, error: 'Server ใช้เวลาตอบนานเกินไป (cold start) — กรุณาลองใหม่อีกครั้ง' };

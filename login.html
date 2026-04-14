@@ -111,13 +111,13 @@
     }
 
     .login-tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      display: flex;
       gap: 10px;
       margin-bottom: 18px;
     }
 
     .login-tab {
+      flex: 1;
       border: 1px solid rgba(255,255,255,0.14);
       border-radius: 12px;
       padding: 12px 10px;
@@ -128,6 +128,7 @@
       transition: all 0.25s ease;
       background: rgba(255,255,255,0.04);
       color: #cbd5e1;
+      display: block;
     }
 
     .login-tab.active {

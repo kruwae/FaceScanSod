@@ -160,7 +160,7 @@ function normalizeLocation(loc, index) {
 //  สร้าง / ตรวจสอบ sheet พร้อม admin เริ่มต้นถ้ายังไม่มี
 // ============================================================
 var STAFFOS_SHEET   = 'staffOS';
-var STAFFOS_HEADERS = ['Username', 'Code', 'Role', 'Status', 'Note', 'Created At', 'Updated At', 'Hash Version', 'Hash Salt'];
+var STAFFOS_HEADERS = ['Username', 'Code', 'Role', 'Status', 'Note', 'Created At', 'Updated At', 'Email', 'Hash Version', 'Hash Salt'];
 var DEFAULT_ADMIN_CODE = '2569';
 var ADMIN_PASSWORD_SALT = 'staffOS-v1';
 var HASH_PREFIX = 'sha256:';
@@ -424,8 +424,82 @@ function logout(params) {
   return { status: 'ok', message: 'Logged out' };
 }
 
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function getAdminByEmail(email) {
+  var target = normalizeEmail(email);
+  if (!target) return null;
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
+  var sheet = result.sheet;
+  var hm = result.headerMap;
+  var data = sheet.getDataRange().getValues();
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var role = String(row[hm['Role'] - 1] || '').toLowerCase();
+    var status = String(row[hm['Status'] - 1] || '').toLowerCase();
+    var rowEmail = normalizeEmail(row[hm['Email'] - 1] || '');
+    if (role === 'admin' && status === 'active' && rowEmail === target) {
+      return {
+        rowNumber: i + 1,
+        username: String(row[hm['Username'] - 1] || 'admin').trim(),
+        email: rowEmail,
+        role: 'admin'
+      };
+    }
+  }
+  return null;
+}
+
+function verifyAdminByEmail(email) {
+  var admin = getAdminByEmail(email);
+  if (!admin) {
+    return { success: false, error: 'ไม่พบอีเมลแอดมินหรือบัญชีถูกระงับ' };
+  }
+  return { success: true, username: admin.username, email: admin.email, hashVersion: 'email' };
+}
+
 function login(params) {
   var username = String((params && params.username) || 'admin').trim();
+  var authMethod = String((params && params.authMethod) || 'code').trim().toLowerCase();
+  var role = DEFAULT_ROLE;
+  var token;
+
+  if (authMethod === 'email') {
+    var email = String((params && params.email) || '').trim();
+    var verifiedEmail = verifyAdminByEmail(email);
+    if (!verifiedEmail || !verifiedEmail.success) {
+      logAction({
+        username: maskSensitiveValue(email),
+        role: DEFAULT_ROLE,
+        action: 'login',
+        endpoint: 'login',
+        status: 'fail',
+        details: { reason: 'invalid_email_admin', email: maskSensitiveValue(email) }
+      });
+      return { status: 'error', message: (verifiedEmail && verifiedEmail.error) || 'Unauthorized' };
+    }
+
+    username = verifiedEmail.username || username;
+    role = 'admin';
+    token = storeToken(generateToken(username, role), username, role);
+
+    logAction({
+      username: username,
+      role: role,
+      action: 'login',
+      endpoint: 'login',
+      status: 'success',
+      details: { tokenIssued: true, authMethod: 'email' }
+    });
+
+    return { status: 'ok', token: token, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'email' };
+  }
+
   var code = String((params && params.code) || '').trim();
   var verified = verifyAdmin(code);
   if (!verified || !verified.success) {
@@ -435,22 +509,22 @@ function login(params) {
       action: 'login',
       endpoint: 'login',
       status: 'fail',
-      details: { reason: 'invalid_credentials', username: maskSensitiveValue(username) }
+      details: { reason: 'invalid_credentials', username: maskSensitiveValue(username), authMethod: 'code' }
     });
     return { status: 'error', message: (verified && verified.error) || 'Unauthorized' };
   }
 
-  var role = getUserRole(username);
-  var token = storeToken(generateToken(username, role), username, role);
+  role = getUserRole(username);
+  token = storeToken(generateToken(username, role), username, role);
   logAction({
     username: username,
     role: role,
     action: 'login',
     endpoint: 'login',
     status: 'success',
-    details: { tokenIssued: true }
+    details: { tokenIssued: true, authMethod: 'code' }
   });
-  return { status: 'ok', token: token, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS };
+  return { status: 'ok', token: token, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'code' };
 }
 
 function migrateAdminPasswordIfNeeded(sheet, rowNumber, hm, plainCode) {
@@ -493,6 +567,7 @@ function initSetup() {
       'Note'        : 'Default admin — เปลี่ยนรหัสหลัง deploy',
       'Created At'  : now,
       'Updated At'  : now,
+      'Email'       : '',
       'Hash Version': adminRecord.version,
       'Hash Salt'   : adminRecord.salt
     });
@@ -601,6 +676,7 @@ function changeAdminCode(currentCode, newCode) {
       sheet.getRange(i + 1, hm['Code']).setValue(newRecord.hash);
       if (hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
       if (hm['Hash Salt']) sheet.getRange(i + 1, hm['Hash Salt']).setValue(newRecord.salt);
+      if (hm['Email']) sheet.getRange(i + 1, hm['Email']).setValue(String(row[hm['Email'] - 1] || '').trim());
       sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
       return { success: true, message: 'เปลี่ยนรหัสแอดมินเรียบร้อย', hashVersion: HASH_VERSION_V2 };
     }

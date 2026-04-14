@@ -110,6 +110,63 @@
       margin-bottom: 24px;
     }
 
+    .login-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .login-tab {
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      padding: 12px 10px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      background: rgba(255,255,255,0.04);
+      color: #cbd5e1;
+    }
+
+    .login-tab.active {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(99,102,241,0.32);
+    }
+
+    .login-field {
+      width: 100%;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .login-field.active {
+      display: block;
+    }
+
+    .login-field input {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      padding: 15px 16px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 15px;
+      background: rgba(15,23,42,0.35);
+      color: #e2e8f0;
+      outline: none;
+    }
+
+    .login-field input::placeholder {
+      color: #64748b;
+    }
+
+    .login-field input:focus {
+      border-color: rgba(99,102,241,0.7);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
+    }
+
     .btn-login {
       width: 100%;
       border: none;
@@ -190,6 +247,19 @@
 
     <div class="dest-badge" id="destBadge">🔗 กำลังโหลด...</div>
 
+    <div class="login-tabs">
+      <button type="button" class="login-tab active" id="tabCode">เข้าด้วยรหัส</button>
+      <button type="button" class="login-tab" id="tabEmail">เข้าด้วย Gmail</button>
+    </div>
+
+    <div class="login-field active" id="fieldCode">
+      <input type="password" id="adminCode" placeholder="รหัสแอดมิน" autocomplete="current-password">
+    </div>
+
+    <div class="login-field" id="fieldEmail">
+      <input type="email" id="adminEmail" placeholder="admin@example.com" autocomplete="email">
+    </div>
+
     <button class="btn-login" id="btnLogin">🔓 ยืนยันรหัสแอดมิน</button>
 
     <a href="index.html" class="back-link">← กลับเมนูหลัก</a>
@@ -205,10 +275,16 @@
     //  SECURITY: ไม่มี hardcoded fallback — ตรวจผ่าน GAS API เท่านั้น
     // ============================================================
     const SESSION_KEY = 'adminAuth';
-    // [REMOVED] LOCAL_FALLBACK_CODE — ลบออกเพื่อความปลอดภัย
 
     const btnLogin  = document.getElementById('btnLogin');
     const destBadge = document.getElementById('destBadge');
+    const tabCode   = document.getElementById('tabCode');
+    const tabEmail  = document.getElementById('tabEmail');
+    const fieldCode = document.getElementById('fieldCode');
+    const fieldEmail = document.getElementById('fieldEmail');
+    const adminCode = document.getElementById('adminCode');
+    const adminEmail = document.getElementById('adminEmail');
+    let authMethod = 'code';
 
     // ---- อ่าน ?to=... จาก URL เพื่อรู้ว่าจะ redirect ไปหน้าไหน ----
     const params   = new URLSearchParams(window.location.search);
@@ -220,6 +296,19 @@
       'register.html': '👤 ลงทะเบียนพนักงาน (register)',
     };
     destBadge.textContent = destLabel[destPage] || ('→ ' + destPage);
+
+    function setAuthMethod(method) {
+      authMethod = method;
+      tabCode.classList.toggle('active', method === 'code');
+      tabEmail.classList.toggle('active', method === 'email');
+      fieldCode.classList.toggle('active', method === 'code');
+      fieldEmail.classList.toggle('active', method === 'email');
+      btnLogin.textContent = method === 'code' ? '🔓 ยืนยันรหัสแอดมิน' : '🔐 เข้าด้วย Gmail';
+    }
+
+    tabCode.addEventListener('click', () => setAuthMethod('code'));
+    tabEmail.addEventListener('click', () => setAuthMethod('email'));
+    setAuthMethod('code');
 
     // ---- ตรวจสอบ session ----
     function isAuthed() {
@@ -249,7 +338,7 @@
         .trim();
     }
 
-    async function verifyCode(code) {
+    async function loginWithCode(code) {
       const trimmed = normalizeCodeInput(code);
       const apiUrl  = getApiUrl();
 
@@ -259,10 +348,10 @@
 
       try {
         const ctrl  = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 15000); // 15s — รองรับ GAS cold start
+        const timer = setTimeout(() => ctrl.abort(), 15000);
         const res   = await fetch(apiUrl + '?action=login', {
           method: 'POST',
-          body: JSON.stringify({ action: 'login', username: 'admin', code: trimmed }),
+          body: JSON.stringify({ action: 'login', authMethod: 'code', username: 'admin', code: trimmed }),
           signal: ctrl.signal
         });
         clearTimeout(timer);
@@ -283,27 +372,57 @@
       }
     }
 
+    async function loginWithEmail(email) {
+      const trimmed = normalizeCodeInput(email);
+      const apiUrl  = getApiUrl();
+
+      if (!apiUrl) {
+        return { ok: false, error: 'ยังไม่ได้ตั้งค่า API URL — ไปตั้งค่าที่ config.html ก่อน' };
+      }
+
+      try {
+        const ctrl  = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 15000);
+        const res   = await fetch(apiUrl + '?action=login', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'login', authMethod: 'email', email: trimmed, username: 'admin' }),
+          signal: ctrl.signal
+        });
+        clearTimeout(timer);
+        const data = await res.json();
+
+        if (data.status === 'ok' && data.token) {
+          try { localStorage.setItem('token', data.token); } catch (e) {}
+          try { localStorage.setItem('readToken', data.readToken || ''); } catch (e) {}
+          return { ok: true, token: data.token };
+        }
+
+        return { ok: false, error: data.message || data.error || 'อีเมลไม่ถูกต้อง' };
+      } catch (e) {
+        if (e.name === 'AbortError') {
+          return { ok: false, error: 'Server ใช้เวลาตอบนานเกินไป (cold start) — กรุณาลองใหม่อีกครั้ง' };
+        }
+        return { ok: false, error: 'เชื่อมต่อ Server ไม่ได้ — ตรวจสอบ API URL ใน config.html' };
+      }
+    }
+
     // ---- ปุ่ม Login ----
     btnLogin.addEventListener('click', async function () {
-      const { value: code, isConfirmed } = await Swal.fire({
-        title: '🔐 Admin Login',
-        input: 'password',
-        inputLabel: 'กรอกรหัสแอดมิน',
-        inputPlaceholder: 'รหัสผ่าน',
-        inputAttributes: { autocomplete: 'current-password' },
-        confirmButtonText: '🔓 ยืนยัน',
-        cancelButtonText: 'ยกเลิก',
-        showCancelButton: true,
-        confirmButtonColor: '#6366f1',
-        cancelButtonColor: '#374151',
-        background: '#1e1b4b',
-        color: '#e2e8f0',
-        inputValidator: (v) => {
-          if (!v || !v.trim()) return 'กรุณากรอกรหัสก่อน';
-        }
-      });
+      const value = authMethod === 'code'
+        ? adminCode.value
+        : adminEmail.value;
 
-      if (!isConfirmed || !code) return;
+      if (!normalizeCodeInput(value)) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'กรุณากรอกข้อมูล',
+          text: authMethod === 'code' ? 'กรอกรหัสแอดมินก่อน' : 'กรอกอีเมลแอดมินก่อน',
+          confirmButtonColor: '#6366f1',
+          background: '#1e1b4b',
+          color: '#e2e8f0'
+        });
+        return;
+      }
 
       Swal.fire({
         title: '⏳ กำลังตรวจสอบ...',
@@ -313,7 +432,9 @@
         color: '#e2e8f0'
       });
 
-      const result = await verifyCode(code);
+      const result = authMethod === 'code'
+        ? await loginWithCode(value)
+        : await loginWithEmail(value);
 
       if (result.ok) {
         try { sessionStorage.setItem(SESSION_KEY, '1'); } catch(e) {}
@@ -330,8 +451,8 @@
       } else {
         Swal.fire({
           icon: 'error',
-          title: '❌ รหัสไม่ถูกต้อง',
-          text: result.error || 'กรุณาตรวจสอบรหัสอีกครั้ง',
+          title: '❌ เข้าสู่ระบบไม่สำเร็จ',
+          text: result.error || 'กรุณาตรวจสอบข้อมูลอีกครั้ง',
           confirmButtonText: 'ลองใหม่',
           confirmButtonColor: '#6366f1',
           background: '#1e1b4b',

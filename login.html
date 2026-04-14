@@ -248,14 +248,21 @@
       try {
         const ctrl  = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 15000); // 15s — รองรับ GAS cold start
-        const res   = await fetch(apiUrl, {
+        const res   = await fetch(apiUrl + '?action=login', {
           method: 'POST',
-          body:   JSON.stringify({ action: 'verifyAdmin', code: trimmed }),
+          body:   JSON.stringify({ action: 'login', username: 'admin', code: trimmed }),
           signal: ctrl.signal
         });
         clearTimeout(timer);
-      const data = await res.json();
-      return data.success === true ? { ok: true } : { ok: false, error: data.error || 'รหัสไม่ถูกต้อง' };
+        const data = await res.json();
+
+        if (data.status === 'ok' && data.token) {
+          try { localStorage.setItem('token', data.token); } catch (e) {}
+          try { localStorage.setItem('readToken', data.readToken || ''); } catch (e) {}
+          return { ok: true, token: data.token };
+        }
+
+        return { ok: false, error: data.message || data.error || 'รหัสไม่ถูกต้อง' };
       } catch (e) {
         if (e.name === 'AbortError') {
           return { ok: false, error: 'Server ใช้เวลาตอบนานเกินไป (cold start) — กรุณาลองใหม่อีกครั้ง' };
@@ -296,7 +303,7 @@
 
       const result = await verifyCode(code);
 
-      if (result.ok) {
+        if (result.ok) {
         try { sessionStorage.setItem(SESSION_KEY, '1'); } catch(e) {}
         await Swal.fire({
           icon: 'success',

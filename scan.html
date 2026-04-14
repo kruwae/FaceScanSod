@@ -668,7 +668,13 @@
 </div>
 
 <script>
-  const API_URL = localStorage.getItem('gasApiUrl') || GAS_API_URL;
+  function getApiUrl() {
+    return (localStorage.getItem('gasApiUrl') || GAS_API_URL || '').trim();
+  }
+  function getReadToken() {
+    try { return (localStorage.getItem('readToken') || '').trim(); } catch (_) { return ''; }
+  }
+  const API_URL = getApiUrl();
   const video = document.getElementById('video');
   const mainStatus = document.getElementById('main-status');
   const overlayStatus = document.getElementById('overlay-status');
@@ -1013,15 +1019,18 @@
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
       ]);
 
-      const data = await fetch(API_URL + '?action=getKnownFaces').then(function (r) { return r.json(); });
-      if (!data || data.length === 0) {
-        showError('ไม่พบข้อมูลพนักงาน กรุณาลงทะเบียนก่อน');
+      const token = getReadToken();
+      const facesUrl = API_URL + '?action=getKnownFaces' + (token ? '&token=' + encodeURIComponent(token) : '');
+      const res = await fetch(facesUrl);
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        showError(data && data.error ? ('ไม่สามารถโหลดข้อมูลใบหน้า: ' + data.error) : 'ไม่พบข้อมูลพนักงาน กรุณาลงทะเบียนก่อน');
         return;
       }
 
       knownFaces = data.map(function (u) {
         return {
-          name: u.label,
+          name: u.employeeId || u.label || '',
           descriptor: new Float32Array(u.descriptor)
         };
       });

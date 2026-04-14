@@ -160,10 +160,15 @@ function normalizeLocation(loc, index) {
 //  สร้าง / ตรวจสอบ sheet พร้อม admin เริ่มต้นถ้ายังไม่มี
 // ============================================================
 var STAFFOS_SHEET   = 'staffOS';
-var STAFFOS_HEADERS = ['Username', 'Code', 'Role', 'Status', 'Note', 'Created At', 'Updated At'];
+var STAFFOS_HEADERS = ['Username', 'Code', 'Role', 'Status', 'Note', 'Created At', 'Updated At', 'Hash Version', 'Hash Salt'];
 var DEFAULT_ADMIN_CODE = '2569';
 var ADMIN_PASSWORD_SALT = 'staffOS-v1';
 var HASH_PREFIX = 'sha256:';
+var HASH_VERSION_V1 = 'v1';
+var HASH_VERSION_V2 = 'v2';
+var DEFAULT_HASH_VERSION = HASH_VERSION_V2;
+var DEFAULT_USER_SALT_LENGTH = 16;
+var PASSWORD_ALGORITHM = 'sha256';
 
 function normalizePasswordInput(password) {
   return String(password || '')
@@ -177,29 +182,46 @@ function normalizePasswordInput(password) {
     .trim();
 }
 
-function hashPassword(password) {
-  var input = normalizePasswordInput(password);
-
-  var salt = String(ADMIN_PASSWORD_SALT || '').trim();
-  var combined = salt ? (salt + '|' + input) : input;
-
-  var bytes = Utilities.newBlob(combined).getBytes();
-
-  var digest = Utilities.computeDigest(
-    Utilities.DigestAlgorithm.SHA_256,
-    bytes
-  );
-
-  var hex = digest.map(function(b) {
-    return ('0' + (b & 0xFF).toString(16)).slice(-2);
-  }).join('');
-
-  return HASH_PREFIX + hex;
+function createUserSalt(seed) {
+  var raw = [String(seed || ''), new Date().getTime(), Math.random(), Math.random()].join('|');
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, raw, Utilities.Charset.UTF_8);
+  return bytesToHex(digest).substring(0, DEFAULT_USER_SALT_LENGTH);
 }
+
 function normalizeHash(hash) {
   return String(hash || '')
-    .replace(/^sha256[:$]/, '') // ตัด prefix ทั้ง : และ $
+    .replace(/^sha256[:$]/, '')
+    .replace(/^v[12][:$]/, '')
     .trim();
+}
+
+function buildPasswordRecord(password, userSalt, version) {
+  var input = normalizePasswordInput(password);
+  var salt = String(ADMIN_PASSWORD_SALT || '').trim();
+  var resolvedVersion = String(version || DEFAULT_HASH_VERSION).toLowerCase();
+  var recordSalt = String(userSalt || '').trim();
+  if (!recordSalt && resolvedVersion === HASH_VERSION_V2) {
+    recordSalt = createUserSalt(input);
+  }
+
+  var base = [PASSWORD_ALGORITHM, resolvedVersion, salt, recordSalt, input].join('|');
+  var bytes = Utilities.newBlob(base).getBytes();
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
+  var hex = bytesToHex(digest);
+
+  return {
+    version: resolvedVersion,
+    salt: recordSalt,
+    hash: resolvedVersion + ':' + HASH_PREFIX + hex
+  };
+}
+
+function hashPassword(password) {
+  return buildPasswordRecord(password, '', HASH_VERSION_V1).hash;
+}
+
+function hashPasswordV2(password, userSalt) {
+  return buildPasswordRecord(password, userSalt, HASH_VERSION_V2).hash;
 }
 function bytesToHex(bytes) {
   var hex = '';
@@ -213,8 +235,35 @@ function bytesToHex(bytes) {
   return hex;
 }
 
+function parsePasswordRecord(value) {
+  var raw = String(value || '').trim();
+  if (!raw) return { version: HASH_VERSION_V1, salt: '', hash: '' };
+
+  var version = HASH_VERSION_V1;
+  var body = raw;
+
+  var versionMatch = raw.match(/^(v[12])[:$](.*)$/i);
+  if (versionMatch) {
+    version = String(versionMatch[1]).toLowerCase();
+    body = versionMatch[2];
+  }
+
+  var hash = normalizeHash(body);
+  var salt = '';
+
+  if (version === HASH_VERSION_V2) {
+    var parts = body.split('|');
+    if (parts.length >= 4) {
+      salt = parts[2] || '';
+      hash = normalizeHash(parts[parts.length - 1]);
+    }
+  }
+
+  return { version: version, salt: salt, hash: hash, raw: raw };
+}
+
 function isHashedPassword(value) {
-  return typeof value === 'string' && value.indexOf(HASH_PREFIX) === 0 && value.length > HASH_PREFIX.length + 32;
+  return parsePasswordRecord(value).hash.length >= 64;
 }
 
 function safeStringEquals(a, b) {
@@ -231,7 +280,13 @@ function safeStringEquals(a, b) {
 function safeHashEquals(input, storedHash) {
   var normalizedInput = normalizePasswordInput(input);
   var computedHash = hashPassword(normalizedInput);
-  return safeStringEquals(computedHash, String(storedHash || ''));
+  return safeStringEquals(normalizeHash(computedHash), normalizeHash(storedHash));
+}
+
+function safeHashEqualsV2(input, storedRecord) {
+  var record = parsePasswordRecord(storedRecord);
+  var computed = buildPasswordRecord(input, record.salt || createUserSalt(input), HASH_VERSION_V2);
+  return safeStringEquals(normalizeHash(computed.hash), record.hash);
 }
 
 var TOKEN_CACHE_PREFIX = 'auth_token_';
@@ -417,14 +472,18 @@ function initSetup() {
   if (!hasAdmin) {
     var row = sheet.getLastRow() + 1;
     var now = new Date();
+    var adminSalt = createUserSalt('admin');
+    var adminRecord = buildPasswordRecord(DEFAULT_ADMIN_CODE, adminSalt, HASH_VERSION_V2);
     setRowByHeaders(sheet, row, hm, {
-      'Username'   : 'admin',
-      'Code'       : hashPassword(DEFAULT_ADMIN_CODE),
-      'Role'       : 'admin',
-      'Status'     : 'active',
-      'Note'       : 'Default admin — เปลี่ยนรหัสหลัง deploy',
-      'Created At' : now,
-      'Updated At' : now
+      'Username'    : 'admin',
+      'Code'        : adminRecord.hash,
+      'Role'        : 'admin',
+      'Status'      : 'active',
+      'Note'        : 'Default admin — เปลี่ยนรหัสหลัง deploy',
+      'Created At'  : now,
+      'Updated At'  : now,
+      'Hash Version': adminRecord.version,
+      'Hash Salt'   : adminRecord.salt
     });
     return { success: true, created: true, message: 'สร้าง staffOS sheet และ admin เริ่มต้นเรียบร้อย (รหัสเริ่มต้นถูกเก็บแบบเข้ารหัสแล้ว)' };
   }
@@ -439,7 +498,6 @@ function initSetup() {
  */
 function verifyAdmin(code) {
   var input = normalizePasswordInput(code);
-
   if (!input) {
     return { success: false, error: 'กรุณากรอกรหัส' };
   }
@@ -450,30 +508,54 @@ function verifyAdmin(code) {
   var hm = result.headerMap;
   var data = sheet.getDataRange().getValues();
 
-  var hashedInput = hashPassword(input);
-  var inputNormalized = normalizeHash(hashedInput);
-
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-
-    var role   = String(row[hm['Role']   - 1] || '').toLowerCase();
+    var role = String(row[hm['Role'] - 1] || '').toLowerCase();
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
-    var stored = String(row[hm['Code']   - 1] || '');
+    var stored = String(row[hm['Code'] - 1] || '');
+    var version = String(row[hm['Hash Version'] - 1] || '').trim().toLowerCase();
+    var salt = String(row[hm['Hash Salt'] - 1] || '').trim();
+    var parsed = parsePasswordRecord(stored);
 
     if (role !== 'admin' || status !== 'active') continue;
 
-    var storedNormalized = normalizeHash(stored);
+    if (version === HASH_VERSION_V2 || parsed.version === HASH_VERSION_V2) {
+      var v2Salt = salt || parsed.salt || createUserSalt(row[hm['Username'] - 1] || 'admin');
+      var v2Record = buildPasswordRecord(input, v2Salt, HASH_VERSION_V2);
 
-    // ✅ กรณี hash ตรง (รองรับทุก prefix)
-    if (storedNormalized === inputNormalized) {
-      return { success: true };
+      if (safeStringEquals(normalizeHash(stored), normalizeHash(v2Record.hash))) {
+        if (!version || version !== HASH_VERSION_V2 || !salt || !parsed.salt) {
+          sheet.getRange(i + 1, hm['Code']).setValue(v2Record.hash);
+          if (hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
+          if (hm['Hash Salt']) sheet.getRange(i + 1, hm['Hash Salt']).setValue(v2Salt);
+          sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
+          return { success: true, migrated: true, hashVersion: HASH_VERSION_V2 };
+        }
+        return { success: true, hashVersion: HASH_VERSION_V2 };
+      }
     }
 
-    // ✅ กรณีเป็น plain text (auto migrate)
+    if (version === HASH_VERSION_V1 || parsed.version === HASH_VERSION_V1 || !version) {
+      var v1Record = buildPasswordRecord(input, '', HASH_VERSION_V1);
+      if (safeStringEquals(normalizeHash(stored), normalizeHash(v1Record.hash)) || safeStringEquals(stored, input)) {
+        var upgradeSalt = createUserSalt(input + '|' + (row[hm['Username'] - 1] || 'admin'));
+        var upgradedRecord = buildPasswordRecord(input, upgradeSalt, HASH_VERSION_V2);
+        sheet.getRange(i + 1, hm['Code']).setValue(upgradedRecord.hash);
+        if (hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
+        if (hm['Hash Salt']) sheet.getRange(i + 1, hm['Hash Salt']).setValue(upgradedRecord.salt);
+        sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
+        return { success: true, migrated: true, hashVersion: HASH_VERSION_V2 };
+      }
+    }
+
     if (stored === input) {
-      var newHash = hashPassword(input);
-      sheet.getRange(i + 1, hm['Code']).setValue(newHash);
-      return { success: true, migrated: true };
+      var legacySalt = createUserSalt(input + '|legacy|' + (row[hm['Username'] - 1] || 'admin'));
+      var legacyUpgraded = buildPasswordRecord(input, legacySalt, HASH_VERSION_V2);
+      sheet.getRange(i + 1, hm['Code']).setValue(legacyUpgraded.hash);
+      if (hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
+      if (hm['Hash Salt']) sheet.getRange(i + 1, hm['Hash Salt']).setValue(legacyUpgraded.salt);
+      sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
+      return { success: true, migrated: true, hashVersion: HASH_VERSION_V2 };
     }
   }
 
@@ -493,28 +575,35 @@ function changeAdminCode(currentCode, newCode) {
   var sheet   = result.sheet;
   var hm      = result.headerMap;
   var data    = sheet.getDataRange().getValues();
-  var current = String(currentCode).trim();
-  var nextHash = hashPassword(newCode);
+  var current = normalizePasswordInput(currentCode);
 
   for (var i = 1; i < data.length; i++) {
     var row    = data[i];
     var role   = String(row[hm['Role']   - 1] || '').toLowerCase();
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
     var stored = String(row[hm['Code']   - 1] || '');
+    var version = String(row[hm['Hash Version'] - 1] || '').trim().toLowerCase();
+    var salt = String(row[hm['Hash Salt'] - 1] || '').trim();
+    var parsed = parsePasswordRecord(stored);
 
     if (role !== 'admin' || status !== 'active') continue;
 
     var matched = false;
-    if (isHashedPassword(stored)) {
-      matched = safeStringEquals(hashPassword(current), stored);
+    if (version === HASH_VERSION_V2 || parsed.version === HASH_VERSION_V2) {
+      var currentV2Salt = salt || parsed.salt || createUserSalt(row[hm['Username'] - 1] || 'admin');
+      matched = safeStringEquals(normalizeHash(buildPasswordRecord(current, currentV2Salt, HASH_VERSION_V2).hash), normalizeHash(stored));
     } else {
-      matched = safeStringEquals(stored, current);
+      matched = safeStringEquals(normalizeHash(buildPasswordRecord(current, '', HASH_VERSION_V1).hash), normalizeHash(stored)) || safeStringEquals(stored, current);
     }
 
     if (matched) {
-      sheet.getRange(i + 1, hm['Code']).setValue(nextHash);
+      var updatedSalt = createUserSalt((row[hm['Username'] - 1] || 'admin') + '|' + newCode);
+      var newRecord = buildPasswordRecord(newCode, updatedSalt, HASH_VERSION_V2);
+      sheet.getRange(i + 1, hm['Code']).setValue(newRecord.hash);
+      if (hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
+      if (hm['Hash Salt']) sheet.getRange(i + 1, hm['Hash Salt']).setValue(newRecord.salt);
       sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
-      return { success: true, message: 'เปลี่ยนรหัสแอดมินเรียบร้อย' };
+      return { success: true, message: 'เปลี่ยนรหัสแอดมินเรียบร้อย', hashVersion: HASH_VERSION_V2 };
     }
   }
   return { success: false, error: 'รหัสปัจจุบันไม่ถูกต้อง' };

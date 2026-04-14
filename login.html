@@ -385,6 +385,7 @@
         const timer = setTimeout(() => ctrl.abort(), 15000);
         const res   = await fetch(apiUrl + '?action=login', {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'login', authMethod: 'email', email: trimmed, username: 'admin' }),
           signal: ctrl.signal
         });

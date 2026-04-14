@@ -939,6 +939,7 @@
       showMsg('⏳ กำลังบันทึก...', '');
       fetch(apiUrl, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'saveConfig', apiUrl, locations, workTimes, fallbackSettings, updatedBy: 'admin' })
       })
         .then(r => r.json())
@@ -967,6 +968,7 @@
       try {
         const res = await fetch(apiUrl, {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'changeAdminCode', currentCode, newCode })
         });
         const data = await res.json();
@@ -998,7 +1000,7 @@
       }
       initMsg.innerText = '⏳ กำลังสร้าง staffOS sheet...'; initMsg.className = '';
       try {
-        const res  = await fetch(apiUrl + '?action=initSetup');
+        const res  = await fetch(apiUrl + '?action=initSetup', { method: 'GET' });
         const data = await res.json();
         if (data.success) {
           initMsg.innerText = '✅ ' + (data.message || 'เรียบร้อย');

@@ -349,6 +349,11 @@
 
     // ถ้า login อยู่แล้ว → ไปเลย
     if (isAuthed()) { window.location.replace(destPage); }
+    window.addEventListener('load', function () {
+      if (authMethod === 'google') {
+        triggerGoogleAccessPrompt();
+      }
+    });
 
     // ---- API URL ----
     function getApiUrl() {
@@ -494,8 +499,11 @@
       }
 
       setAuthMethod('google');
+      renderGoogleLogin();
       if (window.google && google.accounts && google.accounts.id) {
-        renderGoogleLogin();
+        try {
+          google.accounts.id.prompt();
+        } catch (e) {}
       }
     }
 
@@ -551,6 +559,9 @@
       if (window.google && google.accounts && google.accounts.id) {
         if (authMethod === 'google') {
           renderGoogleLogin();
+          try {
+            google.accounts.id.prompt();
+          } catch (e) {}
         }
         return;
       }

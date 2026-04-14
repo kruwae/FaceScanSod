@@ -40,6 +40,7 @@ export async function apiPost(action, payload = {}) {
 
   const res = await fetch(apiUrl, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
   return res.json();

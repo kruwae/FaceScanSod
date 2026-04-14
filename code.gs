@@ -46,8 +46,9 @@ function doPost(e) {
   let result;
 
   if (action === 'registerUser')         result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status);
-  else if (action === 'logAttendance')    result = logAttendance(data);
+  else if (action === 'logAttendance')   result = logAttendance(data);
   else if (action === 'saveConfig')      result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy);
+  else if (action === 'login')           result = login(data);
   else if (action === 'verifyAdmin')     result = verifyAdmin(data.code);
   else if (action === 'changeAdminCode') result = changeAdminCode(data.currentCode, data.newCode);
   else result = { status: 'error', message: 'Unknown action: ' + action };

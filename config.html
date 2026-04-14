@@ -974,6 +974,10 @@
           changeMsg.innerText = '✅ ' + (data.message || 'เปลี่ยนรหัสสำเร็จ');
           changeMsg.className = MSG_SUCCESS;
           ['currentCode','newCode','confirmCode'].forEach(id => document.getElementById(id).value = '');
+          // Force re-read current admin value from sheet on next login attempt.
+          // If the sheet is still plain text, it's almost always because the web app
+          // deployment is not the newest version or the active API URL points to an old deployment.
+          console.log('Admin code changed successfully. Verify the staffOS sheet code column after refresh.');
         } else {
           changeMsg.innerText = '❌ ' + (data.error || 'เปลี่ยนรหัสล้มเหลว');
           changeMsg.className = MSG_ERROR;

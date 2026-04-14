@@ -295,7 +295,8 @@
     </div>
   </div>
 
-  <script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
     // ============================================================
     //  Admin Login — Central page
     //  SECURITY: ไม่มี hardcoded fallback — ตรวจผ่าน GAS API เท่านั้น
@@ -313,6 +314,7 @@
     let authMethod = 'code';
     let googleClientReady = false;
     let googleOneTapShown = false;
+    let googlePromptShown = false;
 
     // ---- อ่าน ?to=... จาก URL เพื่อรู้ว่าจะ redirect ไปหน้าไหน ----
     const params   = new URLSearchParams(window.location.search);
@@ -475,10 +477,41 @@
         locale: 'th'
       });
 
-      if (!googleOneTapShown) {
+      if (!googlePromptShown) {
         google.accounts.id.prompt();
-        googleOneTapShown = true;
+        googlePromptShown = true;
       }
+    }
+
+    function triggerGoogleAccessPrompt() {
+      if (!window.google || !google.accounts || !google.accounts.id) {
+        Swal.fire({
+          icon: 'info',
+          title: 'กำลังโหลด Google Sign-In',
+          text: 'กรุณารอสักครู่แล้วลองใหม่',
+          confirmButtonColor: '#6366f1',
+          background: '#1e1b4b',
+          color: '#e2e8f0'
+        });
+        return;
+      }
+
+      const clientId = getGoogleClientId();
+      if (!clientId) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ยังไม่ได้ตั้งค่า Google Client ID',
+          text: 'กรุณากำหนด Google Client ID ก่อนใช้งาน',
+          confirmButtonColor: '#6366f1',
+          background: '#1e1b4b',
+          color: '#e2e8f0'
+        });
+        return;
+      }
+
+      setAuthMethod('google');
+      google.accounts.id.prompt();
+      googlePromptShown = true;
     }
 
     async function handleGoogleCredentialResponse(response) {
@@ -540,6 +573,10 @@
     }
 
     waitForGoogleScriptReady();
+
+    tabGoogle.addEventListener('click', function () {
+      triggerGoogleAccessPrompt();
+    });
 
     // ---- ปุ่ม Login ----
     btnLogin.addEventListener('click', async function () {

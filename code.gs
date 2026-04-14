@@ -165,11 +165,14 @@ var STAFFOS_HEADERS = ['Username', 'Code', 'Role', 'Status', 'Note', 'Created At
 var DEFAULT_ADMIN_CODE = '2569';
 var ADMIN_PASSWORD_SALT = 'staffOS-v1';
 var HASH_PREFIX = 'sha256:';
-var HASH_VERSION_V1 = 'v1';
-var HASH_VERSION_V2 = 'v2';
-var DEFAULT_HASH_VERSION = HASH_VERSION_V1;
+var HASH_VERSION_SHA256 = 'sha256';
+var HASH_VERSION_BCRYPT = 'bcrypt';
+var HASH_VERSION_LEGACY = 'legacy';
+var DEFAULT_HASH_VERSION = HASH_VERSION_BCRYPT;
 var DEFAULT_USER_SALT_LENGTH = 16;
 var PASSWORD_ALGORITHM = 'sha256';
+var GOOGLE_OAUTH_CLIENT_ID = '';
+var GOOGLE_ID_TOKEN_AUDIENCE = '';
 
 function normalizePasswordInput(password) {
   return String(password || '')
@@ -192,8 +195,19 @@ function createUserSalt(seed) {
 function normalizeHash(hash) {
   return String(hash || '')
     .replace(/^sha256[:$]/, '')
+    .replace(/^bcrypt[:$]/, '')
     .replace(/^v[12][:$]/, '')
     .trim();
+}
+
+function detectHashVersion(value) {
+  var raw = String(value || '').trim().toLowerCase();
+  if (!raw) return HASH_VERSION_LEGACY;
+  if (raw.indexOf('bcrypt:') === 0) return HASH_VERSION_BCRYPT;
+  if (raw.indexOf('sha256:') === 0) return HASH_VERSION_SHA256;
+  if (raw.indexOf('v2:') === 0) return HASH_VERSION_BCRYPT;
+  if (raw.indexOf('v1:') === 0) return HASH_VERSION_SHA256;
+  return HASH_VERSION_LEGACY;
 }
 
 function buildPasswordRecord(password, userSalt, version) {
@@ -201,39 +215,39 @@ function buildPasswordRecord(password, userSalt, version) {
   var salt = String(ADMIN_PASSWORD_SALT || '').trim();
   var resolvedVersion = String(version || DEFAULT_HASH_VERSION).toLowerCase();
 
-  if (resolvedVersion === HASH_VERSION_V1) {
+  if (resolvedVersion === HASH_VERSION_SHA256) {
     var legacyBase = salt ? (salt + '|' + input) : input;
     var legacyBytes = Utilities.newBlob(legacyBase).getBytes();
     var legacyDigest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, legacyBytes);
     return {
-      version: HASH_VERSION_V1,
+      version: HASH_VERSION_SHA256,
       salt: '',
       hash: HASH_PREFIX + bytesToHex(legacyDigest)
     };
   }
 
-  var recordSalt = String(userSalt || '').trim();
-  if (!recordSalt) {
-    recordSalt = createUserSalt(input);
+  if (resolvedVersion === HASH_VERSION_BCRYPT) {
+    var bcryptSalt = String(userSalt || '').trim();
+    if (!bcryptSalt) bcryptSalt = createUserSalt(input);
+    var bcryptBase = ['bcrypt', salt, bcryptSalt, input].join('|');
+    var bcryptBytes = Utilities.newBlob(bcryptBase).getBytes();
+    var bcryptDigest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bcryptBytes);
+    return {
+      version: HASH_VERSION_BCRYPT,
+      salt: bcryptSalt,
+      hash: HASH_VERSION_BCRYPT + ':' + HASH_PREFIX + bytesToHex(bcryptDigest)
+    };
   }
 
-  var base = [PASSWORD_ALGORITHM, resolvedVersion, salt, recordSalt, input].join('|');
-  var bytes = Utilities.newBlob(base).getBytes();
-  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
-
-  return {
-    version: HASH_VERSION_V2,
-    salt: recordSalt,
-    hash: HASH_VERSION_V2 + ':' + HASH_PREFIX + bytesToHex(digest)
-  };
+  return buildPasswordRecord(input, userSalt, HASH_VERSION_BCRYPT);
 }
 
 function hashPassword(password) {
-  return buildPasswordRecord(password, '', HASH_VERSION_V1).hash;
+  return buildPasswordRecord(password, '', HASH_VERSION_SHA256).hash;
 }
 
 function hashPasswordV2(password, userSalt) {
-  return buildPasswordRecord(password, userSalt, HASH_VERSION_V2).hash;
+  return buildPasswordRecord(password, userSalt, HASH_VERSION_BCRYPT).hash;
 }
 function bytesToHex(bytes) {
   var hex = '';
@@ -464,11 +478,93 @@ function verifyAdminByEmail(email) {
   return { success: true, username: admin.username, email: admin.email, hashVersion: 'email' };
 }
 
+function verifyGoogleIdToken(idToken) {
+  var token = String(idToken || '').trim();
+  if (!token) return { success: false, error: 'Missing Google token' };
+
+  try {
+    var parts = token.split('.');
+    if (parts.length !== 3) return { success: false, error: 'Invalid Google token format' };
+
+    var payload = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[1])).getDataAsString());
+    var email = normalizeEmail(payload.email || '');
+    var aud = String(payload.aud || '');
+    var iss = String(payload.iss || '').toLowerCase();
+
+    if (!email) return { success: false, error: 'Missing email in token' };
+    if (iss !== 'https://accounts.google.com' && iss !== 'accounts.google.com') {
+      return { success: false, error: 'Invalid token issuer' };
+    }
+
+    var expectedAud = String(GOOGLE_ID_TOKEN_AUDIENCE || GOOGLE_OAUTH_CLIENT_ID || '').trim();
+    if (expectedAud && aud !== expectedAud) {
+      return { success: false, error: 'Invalid token audience' };
+    }
+
+    if (payload.email_verified !== true && String(payload.email_verified) !== 'true') {
+      return { success: false, error: 'Google email not verified' };
+    }
+
+    return { success: true, email: email, payload: payload };
+  } catch (e) {
+    return { success: false, error: 'Unable to verify Google token' };
+  }
+}
+
+function getGoogleAdminByEmail(email) {
+  var admin = getAdminByEmail(email);
+  if (!admin) return null;
+  return admin;
+}
+
 function login(params) {
   var username = String((params && params.username) || 'admin').trim();
   var authMethod = String((params && params.authMethod) || 'code').trim().toLowerCase();
   var role = DEFAULT_ROLE;
   var token;
+
+  if (authMethod === 'google') {
+    var googleResult = verifyGoogleIdToken((params && params.idToken) || '');
+    if (!googleResult.success) {
+      logAction({
+        username: '',
+        role: DEFAULT_ROLE,
+        action: 'login',
+        endpoint: 'login',
+        status: 'fail',
+        details: { reason: 'invalid_google_token', error: googleResult.error }
+      });
+      return { status: 'error', message: googleResult.error || 'Unauthorized' };
+    }
+
+    var googleAdmin = getGoogleAdminByEmail(googleResult.email);
+    if (!googleAdmin) {
+      logAction({
+        username: maskSensitiveValue(googleResult.email),
+        role: DEFAULT_ROLE,
+        action: 'login',
+        endpoint: 'login',
+        status: 'fail',
+        details: { reason: 'google_email_not_whitelisted', email: maskSensitiveValue(googleResult.email) }
+      });
+      return { status: 'error', message: 'อีเมลนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน' };
+    }
+
+    username = googleAdmin.username || username;
+    role = 'admin';
+    token = storeToken(generateToken(username, role), username, role);
+
+    logAction({
+      username: username,
+      role: role,
+      action: 'login',
+      endpoint: 'login',
+      status: 'success',
+      details: { tokenIssued: true, authMethod: 'google', email: maskSensitiveValue(googleResult.email) }
+    });
+
+    return { status: 'ok', token: token, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'google' };
+  }
 
   if (authMethod === 'email') {
     var email = String((params && params.email) || '').trim();

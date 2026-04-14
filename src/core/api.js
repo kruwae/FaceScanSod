@@ -1,4 +1,4 @@
-const getApiUrl = () => (localStorage.getItem('gasApiUrl') || '').trim();
+const getApiUrl = () => (localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : window.GAS_API_URL || '') || '').trim();
 
 const getToken = () => {
   try {

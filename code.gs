@@ -166,10 +166,12 @@ var ADMIN_PASSWORD_SALT = 'staffOS-v1';
 var HASH_PREFIX = 'sha256:';
 
 function hashPassword(password) {
-  var input = String(password || '').trim();
+  var input = String(password || '');
+  input = input.trim();
   var combined = ADMIN_PASSWORD_SALT ? (ADMIN_PASSWORD_SALT + '|' + input) : input;
-  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, combined, Utilities.Charset.UTF_8);
-  return HASH_PREFIX + bytesToHex(bytes);
+  var bytes = Utilities.newBlob(combined).getBytes();
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
+  return HASH_PREFIX + bytesToHex(digest);
 }
 
 function bytesToHex(bytes) {
@@ -403,7 +405,9 @@ function initSetup() {
  * รับ: { success: true } หรือ { success: false, error: '...' }
  */
 function verifyAdmin(code) {
-  if (!code) return { success: false, error: 'กรุณากรอกรหัส' };
+  var input = String(code || '');
+  input = input.trim();
+  if (!input) return { success: false, error: 'กรุณากรอกรหัส' };
 
   var ss    = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(STAFFOS_SHEET);
@@ -416,7 +420,10 @@ function verifyAdmin(code) {
   var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
   var hm     = result.headerMap;
   var data   = result.sheet.getDataRange().getValues();
-  var input  = String(code).trim();
+  var debugEnabled = true;
+  if (debugEnabled) {
+    console.log('[verifyAdmin] raw=[' + String(code || '') + '] trimmed=[' + input + ']');
+  }
 
   for (var i = 1; i < data.length; i++) {
     var row    = data[i];
@@ -425,6 +432,10 @@ function verifyAdmin(code) {
     var stored = String(row[hm['Code']   - 1] || '');
 
     if (role !== 'admin' || status !== 'active') continue;
+
+    if (debugEnabled) {
+      console.log('[verifyAdmin] stored=[' + stored + '] inputHash=[' + hashPassword(input) + ']');
+    }
 
     if (isHashedPassword(stored)) {
       if (safeStringEquals(stored, hashPassword(input))) {

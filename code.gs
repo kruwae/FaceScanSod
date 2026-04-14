@@ -179,19 +179,28 @@ function normalizePasswordInput(password) {
 
 function hashPassword(password) {
   var input = normalizePasswordInput(password);
-  var salt = (typeof ADMIN_PASSWORD_SALT !== 'undefined')
-    ? String(ADMIN_PASSWORD_SALT).trim()
-    : '';
-  var combined = salt ? (salt + '|' + input) : input;
-  console.log('SALT:', ADMIN_PASSWORD_SALT);
-  console.log('INPUT:', input);
-  console.log('COMBINED:', combined);
-  var blob = Utilities.newBlob(combined);
-  var bytes = blob.getBytes();
-  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
-  return HASH_PREFIX + bytesToHex(digest);
-}
 
+  var salt = String(ADMIN_PASSWORD_SALT || '').trim();
+  var combined = salt ? (salt + '|' + input) : input;
+
+  var bytes = Utilities.newBlob(combined).getBytes();
+
+  var digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    bytes
+  );
+
+  var hex = digest.map(function(b) {
+    return ('0' + (b & 0xFF).toString(16)).slice(-2);
+  }).join('');
+
+  return HASH_PREFIX + hex;
+}
+function normalizeHash(hash) {
+  return String(hash || '')
+    .replace(/^sha256[:$]/, '') // ตัด prefix ทั้ง : และ $
+    .trim();
+}
 function bytesToHex(bytes) {
   var hex = '';
   for (var i = 0; i < bytes.length; i++) {
@@ -430,47 +439,41 @@ function initSetup() {
  */
 function verifyAdmin(code) {
   var input = normalizePasswordInput(code);
-  if (!input) return { success: false, error: 'กรุณากรอกรหัส' };
 
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(STAFFOS_SHEET);
-
-  if (!sheet) {
-    initSetup();
-    sheet = ss.getSheetByName(STAFFOS_SHEET);
+  if (!input) {
+    return { success: false, error: 'กรุณากรอกรหัส' };
   }
 
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
   var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
-  var hm     = result.headerMap;
-  var data   = result.sheet.getDataRange().getValues();
-  var debugEnabled = true;
-  if (debugEnabled) {
-    console.log('[verifyAdmin] raw=[' + String(code || '') + '] trimmed=[' + input + ']');
-  }
+  var sheet = result.sheet;
+  var hm = result.headerMap;
+  var data = sheet.getDataRange().getValues();
+
+  var hashedInput = hashPassword(input);
+  var inputNormalized = normalizeHash(hashedInput);
 
   for (var i = 1; i < data.length; i++) {
-    var row    = data[i];
+    var row = data[i];
+
     var role   = String(row[hm['Role']   - 1] || '').toLowerCase();
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
     var stored = String(row[hm['Code']   - 1] || '');
 
     if (role !== 'admin' || status !== 'active') continue;
 
-    var computedHash = hashPassword(input);
+    var storedNormalized = normalizeHash(stored);
 
-    if (debugEnabled) {
-      console.log('[verifyAdmin] stored=[' + stored + '] inputHash=[' + computedHash + ']');
+    // ✅ กรณี hash ตรง (รองรับทุก prefix)
+    if (storedNormalized === inputNormalized) {
+      return { success: true };
     }
 
-    if (isHashedPassword(stored)) {
-      if (safeStringEquals(stored, computedHash)) {
-        return { success: true, migrated: true };
-      }
-    } else {
-      if (safeStringEquals(stored, input)) {
-        migrateAdminPasswordIfNeeded(result.sheet, i + 1, hm, input);
-        return { success: true, migrated: true };
-      }
+    // ✅ กรณีเป็น plain text (auto migrate)
+    if (stored === input) {
+      var newHash = hashPassword(input);
+      sheet.getRange(i + 1, hm['Code']).setValue(newHash);
+      return { success: true, migrated: true };
     }
   }
 

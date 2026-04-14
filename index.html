@@ -271,7 +271,7 @@
     const apiWarning = document.getElementById('apiWarning');
 
     function hasApiConfig() {
-      return !!(localStorage.getItem('gasApiUrl') || typeof GAS_API_URL !== 'undefined');
+      return !!(localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : window.GAS_API_URL || ''));
     }
 
     if (!hasApiConfig()) {

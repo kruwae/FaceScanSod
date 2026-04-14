@@ -8,8 +8,14 @@
 //  doGet — read-only actions
 // ============================================================
 function doGet(e) {
-  const action = e.parameter.action;
+  const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
   let result;
+
+  if (!action) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'error', message: 'Unknown action: undefined' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 
   if (action === 'login')                    result = login(e.parameter);
   else if (action === 'getConfig')           result = getConfig(e.parameter);
@@ -42,7 +48,12 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  const action = data.action;
+  const action = (data && data.action) ? data.action : '';
+  if (!action) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'error', message: 'Unknown action: undefined' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   let result;
 
   if (action === 'registerUser')         result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status);

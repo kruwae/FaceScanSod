@@ -154,19 +154,38 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
   let sheet = ss.getSheetByName('Config');
   const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token'];
 
-  if (!sheet) sheet = ss.insertSheet('Config');
+  if (!sheet) {
+    sheet = ss.insertSheet('Config');
+    sheet.getRange(1, 1, 1, schema.length).setValues([schema]);
+  }
 
-  sheet.clearContents();
-  sheet.getRange(1, 1, 1, schema.length).setValues([schema]);
+  // Preserve existing Read Token from row 2, column 9
+  let existingReadToken = '';
+  if (sheet.getLastRow() >= 2) {
+    existingReadToken = String(sheet.getRange(2, 9).getValue() || '').trim();
+  }
+
+  // Clear data but keep headers if possible, or just clear and re-write
+  if (sheet.getLastRow() > 1) {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, schema.length).clearContent();
+  }
+  sheet.getRange(1, 1, 1, schema.length).setValues([schema]); // Ensure headers are correct
 
   const now = new Date();
-  const parsedLocations = parseLocations(locations).map(normalizeLocation);
-  parsedLocations.forEach(function(loc, index) {
-    sheet.getRange(index + 2, 1, 1, schema.length).setValues([[
-      loc.id, loc.name, loc.lat, loc.lng, loc.radius, true,
-      updatedBy || 'admin', now, ''
-    ]]);
-  });
+  const rawLocs = parseLocations(locations);
+  const parsedLocations = (Array.isArray(rawLocs) ? rawLocs : []).map(normalizeLocation);
+
+  if (parsedLocations.length > 0) {
+    const rows = parsedLocations.map(function(loc, index) {
+      // Only the first row of locations gets the Read Token preserved
+      const tokenToSave = (index === 0) ? existingReadToken : '';
+      return [
+        loc.id, loc.name, loc.lat, loc.lng, loc.radius, true,
+        updatedBy || 'admin', now, tokenToSave
+      ];
+    });
+    sheet.getRange(2, 1, rows.length, schema.length).setValues(rows);
+  }
 
   const props = PropertiesService.getScriptProperties();
   props.setProperty('API_URL',            apiUrl || '');

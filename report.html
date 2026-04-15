@@ -377,7 +377,6 @@
 
   // ===== Config =====
   const SESSION_KEY   = 'adminAuth';
-  const LOCAL_FALLBACK = '2569';
   const API_URL = (localStorage.getItem('gasApiUrl') ||
     (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
 
@@ -403,7 +402,6 @@
 
   async function verifyCode(code) {
     const trimmed = normalizeCodeInput(code);
-    if (trimmed === LOCAL_FALLBACK) return true;
     if (!API_URL) return false;
     try {
       const r = await fetch(API_URL, {
@@ -614,8 +612,16 @@
       // เรียง entries ตามเวลา ascending
       const entries = rec.entries.sort((a, b) => a.minutes - b.minutes);
 
-      // ① เช็คอิน = บันทึกแรกสุด (เร็วสุดของวัน)
-      if (entries.length > 0) {
+      // ① เช็คอิน = บันทึกแรกสุดที่ type เป็น logAttendance หรือไม่มี type
+      const inEntries = entries.filter(e => !e.log['Action Type'] || e.log['Action Type'] === 'logAttendance');
+      if (inEntries.length > 0) {
+        const first = inEntries[0];
+        rec.checkIn       = { timeStr: first.timeStr, minutes: first.minutes };
+        rec.locationName  = first.log['Location']        || first.log.locationName  || rec.locationName;
+        rec.gpsStatus     = first.log['GPS Status']      || first.log.gpsStatus     || rec.gpsStatus;
+        rec.gpsSkipReason = first.log['GPS Skip Reason'] || first.log.gpsSkipReason || rec.gpsSkipReason;
+      } else if (entries.length > 0 && !rec.checkIn) {
+        // Fallback: ถ้ามีบันทึกแต่เป็นประเภทอื่นหมด ให้เอาอันแรกสุด
         const first = entries[0];
         rec.checkIn       = { timeStr: first.timeStr, minutes: first.minutes };
         rec.locationName  = first.log['Location']        || first.log.locationName  || rec.locationName;
@@ -623,12 +629,16 @@
         rec.gpsSkipReason = first.log['GPS Skip Reason'] || first.log.gpsSkipReason || rec.gpsSkipReason;
       }
 
-      // ② เช็คออต์ = บันทึกล่าสุดที่ ≥ 13:30 เมื่อมีมากกว่า 1 แถว
-      if (entries.length > 1) {
+      // ② เช็คออต์ = บันทึกล่าสุดที่มี type เป็น logCheckout หรือบันทึกที่มีเวลา >= 13:30 (Legacy fallback)
+      const explicitOuts = entries.filter(e => e.log['Action Type'] === 'logCheckout');
+      if (explicitOuts.length > 0) {
+        const latest = explicitOuts[explicitOuts.length - 1];
+        rec.checkOut = { timeStr: latest.timeStr, minutes: latest.minutes };
+      } else if (entries.length > 1) {
         const outCandidates = entries.filter(e => e.minutes >= CHECKOUT_MIN);
         if (outCandidates.length > 0) {
           const latest = outCandidates[outCandidates.length - 1];
-          if (latest.timeStr !== entries[0].timeStr) {
+          if (!rec.checkIn || latest.timeStr !== rec.checkIn.timeStr) {
             rec.checkOut = { timeStr: latest.timeStr, minutes: latest.minutes };
           }
         }

@@ -614,6 +614,7 @@
       }
 
       const descriptorArray = Array.from(detection.descriptor);
+      const quantizedDescriptor = descriptorArray.map(v => Math.floor(v * 127));
 
       // *** ตรวจสอบว่าหน้าแตกต่างจากมุมที่บันทึกไปแล้ว ***
       if (capturedDescriptors.length > 0) {
@@ -647,7 +648,7 @@
             action: 'registerUser',
             name,
             position,
-            faceDescriptor: descriptorArray,
+            faceDescriptor: quantizedDescriptor,
             registeredBy: 'admin',
             status: 'active',
             roles: ['admin', 'employee'],

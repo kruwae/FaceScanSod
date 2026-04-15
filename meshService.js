@@ -74,6 +74,12 @@ const MeshService = (function () {
     queue.push(record);
     localStorage.setItem(STORAGE_KEY_QUEUE, JSON.stringify(queue));
     console.log('[Mesh] Stored locally. Queue size:', queue.length);
+
+    try {
+      const channel = new BroadcastChannel('mesh_sync');
+      channel.postMessage({ type: 'NEW_RECORD', data: record.data });
+    } catch (_) {}
+
     return { success: true, id: record.id, message: 'บันทึกในเครื่องสำเร็จ (จะ sync เมื่อมีสัญญาณ)' };
   }
 

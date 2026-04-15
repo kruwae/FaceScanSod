@@ -106,6 +106,12 @@ export function store(data) {
   };
   queue.push(record);
   setQueue(queue);
+
+  try {
+    const channel = new BroadcastChannel('mesh_sync');
+    channel.postMessage({ type: 'NEW_RECORD', data: record.data });
+  } catch (_) {}
+
   return { success: true, id: record.id, message: 'บันทึกในเครื่องสำเร็จ (จะ sync เมื่อมีสัญญาณ)' };
 }
 
@@ -278,7 +284,3 @@ const meshApi = {
 };
 
 export default meshApi;
-
-if (typeof window !== 'undefined') {
-  window.MeshService = meshApi;
-}

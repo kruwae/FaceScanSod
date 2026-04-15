@@ -638,7 +638,10 @@
     </div>
   </div>
 
-  <button id="btnStart" onclick="startCamera()">📷 แตะเพื่อเริ่มสแกน</button>
+  <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px;">
+    <button id="btnStart" onclick="startCamera('logAttendance')">📷 สแกนเข้างาน</button>
+    <button id="btnCheckOut" onclick="startCamera('logCheckout')" style="background: linear-gradient(135deg, #f59e0b, #d97706); display: none;">🚪 สแกนเลิกงาน</button>
+  </div>
 
   <div class="video-container">
     <div class="scanner-frame">
@@ -682,6 +685,7 @@
   const gpsStatus = document.getElementById('gps-status');
   const gpsAlertBox = document.getElementById('gps-alert-box');
   const btnStart = document.getElementById('btnStart');
+  const btnCheckOut = document.getElementById('btnCheckOut');
   const locationSelector = document.getElementById('locationSelector');
   const locationSelect = document.getElementById('locationSelect');
   const btnConfirmLocation = document.getElementById('btnConfirmLocation');
@@ -704,6 +708,7 @@
   let gpsSkipped = false;
   let gpsSkipReason = '';
   let faceSystemInitialized = false;
+  let currentAction = 'logAttendance';
   let fallbackSettings = {
     enabled: false,
     contactText: 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
@@ -989,6 +994,7 @@
   async function ensureFaceSystemReady() {
     if (faceSystemInitialized) {
       btnStart.style.display = 'inline-block';
+      if (btnCheckOut) btnCheckOut.style.display = 'inline-block';
       return;
     }
     await initFaceSystem();
@@ -997,6 +1003,7 @@
   async function initFaceSystem() {
     if (faceSystemInitialized) {
       btnStart.style.display = 'inline-block';
+      if (btnCheckOut) btnCheckOut.style.display = 'inline-block';
       return;
     }
 
@@ -1022,21 +1029,72 @@
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
       ]);
 
+      // IndexedDB caching for known faces
+      const DB_NAME = 'FaceScanDB';
+      const STORE_NAME = 'facesCache';
+      
+      const getCachedFaces = () => new Promise((resolve) => {
+        try {
+          const idx = indexedDB.open(DB_NAME, 1);
+          idx.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+          };
+          idx.onsuccess = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) return resolve(null);
+            const req = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get('faces_data');
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve(null);
+          };
+          idx.onerror = () => resolve(null);
+        } catch (_) { resolve(null); }
+      });
+
+      const setCachedFaces = (facesData) => new Promise((resolve) => {
+        try {
+          const idx = indexedDB.open(DB_NAME, 1);
+          idx.onsuccess = (e) => {
+            const tx = e.target.result.transaction(STORE_NAME, 'readwrite');
+            tx.objectStore(STORE_NAME).put(facesData, 'faces_data');
+            tx.oncomplete = () => resolve();
+          };
+        } catch (_) { resolve(); }
+      });
+
       const token = getReadToken();
       const facesUrl = API_URL + '?action=getKnownFaces' + (token ? '&token=' + encodeURIComponent(token) : '');
-      const res = await fetch(facesUrl);
-      const data = await res.json();
+      let data = null;
+
+      try {
+        if (navigator.onLine) {
+          const res = await fetch(facesUrl);
+          data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            await setCachedFaces(data);
+          }
+        } else {
+          data = await getCachedFaces();
+          if (!data) throw new Error('ไม่มีข้อมูลแคชสำหรับใช้งานแบบออฟไลน์');
+        }
+      } catch (err) {
+        data = await getCachedFaces();
+        if (!data) throw err;
+      }
+
       if (!Array.isArray(data) || data.length === 0) {
         showError(data && data.error ? ('ไม่สามารถโหลดข้อมูลใบหน้า: ' + data.error) : 'ไม่พบข้อมูลพนักงาน กรุณาลงทะเบียนก่อน');
         return;
       }
 
       knownFaces = data.map(function (u) {
+        const isQuantized = u.descriptor.some(function(v) { return v > 1.0 || v < -1.0 || (v !== 0 && Number.isInteger(v)); });
+        const finalDesc = isQuantized ? u.descriptor.map(function(v) { return v / 127.0; }) : u.descriptor;
         return {
           employeeId: u.employeeId || '',
           name: u.name || u.label || u.employeeId || '',
           position: u.position || '',
-          descriptor: new Float32Array(u.descriptor)
+          descriptor: new Float32Array(finalDesc)
         };
       });
 
@@ -1044,6 +1102,7 @@
       mainStatus.innerText = '✅ ระบบพร้อมใช้งาน';
       mainStatus.style.color = '#34d399';
       btnStart.style.display = 'inline-block';
+      if (btnCheckOut) btnCheckOut.style.display = 'inline-block';
     } catch (e) {
       showError('โหลด AI / ฐานข้อมูลล้มเหลว: ' + e.message);
     }
@@ -1085,13 +1144,15 @@
     }, 500);
   }
 
-  function startCamera() {
+  function startCamera(actionType = 'logAttendance') {
     if (!meshEnabled() && allLocations.length > 0 && !currentLocation) {
       alert('⛔ กรุณาผ่านการตรวจสอบ GPS หรือเลือกแผนสำรองก่อนเริ่มสแกน');
       return;
     }
 
+    currentAction = actionType;
     btnStart.style.display = 'none';
+    if (btnCheckOut) btnCheckOut.style.display = 'none';
     mainStatus.innerText = 'กำลังเปิดกล้อง...';
     mainStatus.style.color = '#94a3b8';
 
@@ -1107,6 +1168,7 @@
       .catch(function (err) {
         showError('เปิดกล้องไม่ได้: ' + err.message);
         btnStart.style.display = 'inline-block';
+        if (btnCheckOut) btnCheckOut.style.display = 'inline-block';
       });
   }
 
@@ -1163,7 +1225,7 @@
 
     const mode = meshEnabled() ? 'mesh' : (window._locationMode || 'gps');
     const payload = {
-      action: 'logAttendance',
+      action: currentAction,
       name: currentMatch,
       lat: currentLat,
       lng: currentLng,
@@ -1206,6 +1268,7 @@
     overlayStatus.innerText = 'รอโหลด...';
     overlayStatus.style.background = 'rgba(0,0,0,0.65)';
     btnStart.style.display = 'inline-block';
+    if (btnCheckOut) btnCheckOut.style.display = 'inline-block';
   }
 
   function haversineKm(lat1, lon1, lat2, lon2) {
@@ -1237,6 +1300,29 @@
     if (typeof MeshService !== 'undefined') {
       try {
         MeshService.injectToggleButton(document.getElementById('statusAreaRoot'));
+
+        // Mesh Auto-sync enhancement
+        window.addEventListener('online', async () => {
+          if (!MeshService.isEnabled() && navigator.onLine) {
+            try {
+              const res = await MeshService.sync(getApiUrl());
+              if (res.synced > 0) {
+                console.log(`[Mesh] Auto-synced ${res.synced} records on reconnect!`);
+                alert(`📡 ซิงค์ข้อมูลออฟไลน์สำเร็จ ${res.synced} รายการ`);
+              }
+            } catch (e) {
+              console.error('[Mesh] Auto-sync failed', e);
+            }
+          }
+        });
+
+        const channel = new BroadcastChannel('mesh_sync');
+        channel.onmessage = async (e) => {
+          if (e.data && e.data.type === 'NEW_RECORD' && navigator.onLine && !MeshService.isEnabled()) {
+             await MeshService.sync(getApiUrl());
+          }
+        };
+
       } catch (_) {}
     }
 

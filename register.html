@@ -410,6 +410,9 @@
       <div class="input-group">
         <input type="text" id="username" placeholder="ชื่อ-นามสกุลพนักงาน" autocomplete="off">
       </div>
+      <div class="input-group">
+        <input type="text" id="position" placeholder="ตำแหน่ง" autocomplete="off">
+      </div>
 
       <button id="btnSave" onclick="saveFace()" disabled>
         📸 บันทึกใบหน้า <span id="saveCount" class="count-badge">0</span>
@@ -435,6 +438,8 @@
     const btnSave      = document.getElementById('btnSave');
     const msgDiv       = document.getElementById('msg');
     const countSpan    = document.getElementById('saveCount');
+    const usernameInput = document.getElementById('username');
+    const positionInput = document.getElementById('position');
 
     let saveCounter = 0;
     const MAX_CAPTURES = 3;
@@ -531,7 +536,8 @@
 
     // --------- Save Face ---------
     async function saveFace() {
-      const name = document.getElementById('username').value.trim();
+      const name = usernameInput.value.trim();
+      const position = positionInput.value.trim();
       if (!name) return alert('กรุณาใส่ชื่อก่อน');
       if (saveCounter >= MAX_CAPTURES) {
         msgDiv.innerHTML = '<span class="msg-error">❌ บันทึกครบ 3 มุมแล้ว กรุณาเริ่มลงทะเบียนใหม่</span>';
@@ -579,9 +585,12 @@
           body: JSON.stringify({
             action: 'registerUser',
             name,
+            position,
             faceDescriptor: descriptorArray,
             registeredBy: 'admin',
-            status: 'active'
+            status: 'active',
+            roles: ['admin', 'employee'],
+            role: 'admin'
           })
         });
         const data = await res.json();

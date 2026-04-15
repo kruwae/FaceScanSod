@@ -919,10 +919,87 @@
     });
   }
 
+  function checkGPSAndAutoMatch() {
+    return new Promise(function (resolve, reject) {
+      if (!navigator.geolocation) {
+        reject(new Error('❌ อุปกรณ์นีไม่รองรับ GPS'));
+        return;
+      }
+
+      mainStatus.innerText = '📍 กำลังค้นหาหน่วยบริการจากพิกัดของคุณ...';
+      mainStatus.style.color = '#fbbf24';
+
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          currentLat = pos.coords.latitude;
+          currentLng = pos.coords.longitude;
+          gpsPermBanner.style.display = 'none';
+          hideGpsGuide();
+
+          // Calculate distance to all locations
+          const mapped = allLocations.map(function (loc) {
+            const d = haversineKm(currentLat, currentLng, parseFloat(loc.lat), parseFloat(loc.lng));
+            return Object.assign({}, loc, { distKm: d });
+          });
+
+          // Filter those in radius (with a 50m tolerance)
+          const inRadius = mapped.filter(function (loc) {
+            return loc.distKm <= ((parseFloat(loc.radius || 100) + 50) / 1000);
+          });
+
+          renderLocations(mapped, true);
+          locationSelector.style.display = 'block';
+
+          if (inRadius.length === 1) {
+            // Auto match found!
+            currentLocation = inRadius[0];
+            updateGpsInfoCard(currentLocation, 'gps');
+            window._locationMode = 'gps';
+            
+            // Sync the dropdown for visual consistency
+            for (let i = 0; i < locationSelect.options.length; i++) {
+              if (locationSelect.options[i].value == currentLocation.id) {
+                locationSelect.selectedIndex = i;
+                break;
+              }
+            }
+            
+            mainStatus.innerText = '📍 ตรวจพบหน่วยบริการ: ' + currentLocation.name;
+            mainStatus.style.color = '#34d399';
+            setTimeout(resolve, 1000); // Slight delay for UX
+          } else if (inRadius.length > 1) {
+             // Multiple in range, pick nearest but let user confirm
+             const nearest = inRadius.sort((a,b) => a.distKm - b.distKm)[0];
+             mainStatus.innerText = '📍 พบหลายหน่วยบริการใกล้เคียง กรุณายืนยันหน้าจอ';
+             mainStatus.style.color = '#fbbf24';
+             currentLocation = nearest;
+             updateGpsInfoCard(nearest, 'gps');
+             waitForLocationConfirm().then(resolve);
+          } else {
+             // None in range
+             mainStatus.innerText = '📍 ไม่อยู่ในพื้นที่บริการของคุณ กรุณาเลือกสาขาด้วยตนเอง';
+             mainStatus.style.color = '#f87171';
+             waitForLocationConfirm().then(resolve);
+          }
+        },
+        function (err) {
+          showGpsGuide(err.code);
+          const errors = {
+            1: '❗ ถูกปฏิเสธสิทธิ์ GPS — สามารถใช้แผนสำรองหรือโหมดออฟไลน์ได้',
+            2: '❗ ไม่สามารถรับสัญญาณ GPS — สามารถใช้แผนสำรองหรือโหมดออฟไลน์ได้',
+            3: '❗ GPS หมดเวลารอ — สามารถใช้แผนสำรองหรือโหมดออฟไลน์ได้'
+          };
+          reject(new Error(errors[err.code] || ('GPS Error: ' + err.message)));
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+      );
+    });
+  }
+
   function checkGPSForSelectedLocation() {
     return new Promise(function (resolve, reject) {
       if (!navigator.geolocation) {
-        reject(new Error('❌ อุปกรณ์นี้ไม่รองรับ GPS'));
+        reject(new Error('❌ อุปกรณ์นีไม่รองรับ GPS'));
         return;
       }
 
@@ -1394,7 +1471,7 @@
     } catch (_) {}
 
     if (permState === 'unsupported') {
-      showError('❌ อุปกรณ์นี้ไม่รองรับ GPS');
+      showError('❌ อุปกรณ์นีไม่รองรับ GPS');
       showGpsGuide(2);
       return;
     }
@@ -1411,7 +1488,7 @@
     }
 
     try {
-      await checkGPSForSelectedLocation();
+      await checkGPSAndAutoMatch();
       await ensureFaceSystemReady();
     } catch (e) {
       showError(e.message);

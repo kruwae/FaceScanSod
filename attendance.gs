@@ -792,11 +792,53 @@ function logAttendance(payload, actionParam) {
     'Name', 'Time', 'Date', 'Latitude', 'Longitude', 'Google Map Link',
     'Location', 'GPS Status', 'GPS Skip Reason',
     'Mesh Synced', 'Mesh ID', 'Mesh Client Time', 'Mesh Fingerprint',
-    'User Agent', 'Duplicate', 'Action Type'
+    'User Agent', 'Duplicate', 'Action Type', 'Verification'
   ];
   const result = ensureSheetWithHeaders(ss, 'Attendance', schema);
   const sheet  = result.sheet;
   const hm     = result.headerMap;
+
+  // --- Geofencing & Anti-Cheat Validation ---
+  let verificationStatus = 'verified';
+  const toleranceKm = 0.05; // 50 meters tolerance for GPS jitter
+
+  if (gpsStatus === 'ok' && lat && lng && locationName && locationName !== '📍 ไม่จำกัดพื้นที่') {
+    const config = getConfig({});
+    const officialLoc = (config.locations || []).find(l => l.name === locationName);
+    
+    if (officialLoc) {
+      const realDist = haversineKm(parseFloat(lat), parseFloat(lng), officialLoc.lat, officialLoc.lng);
+      const allowedRadiusKm = (officialLoc.radius || 100) / 1000;
+      
+      if (realDist > (allowedRadiusKm + toleranceKm)) {
+        verificationStatus = '📍 OUT_OF_RANGE (' + (realDist * 1000).toFixed(0) + 'm)';
+        // Log rejection in Audit Log
+        logAction({
+          username: auth.user && auth.user.username ? auth.user.username : String(name || ''),
+          role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
+          action: actionType + '_rejected',
+          endpoint: 'logAttendance',
+          status: 'fail',
+          details: { reason: 'proximity_check_failed', distance: realDist, allowed: allowedRadiusKm }
+        });
+        
+        return { 
+          status: 'error', 
+          message: '⛔ ปฏิเสธการเช็คอิน: ตรวจพบว่าพิกัดของคุณอยู่ห่างจากหน่วยบริการเกินกำหนด (' + (realDist * 1000).toFixed(0) + ' ม.)'
+        };
+      }
+    }
+  }
+
+  // Time Sync Check (for Mesh/Offline logs)
+  if (meshClientTime) {
+    const clientDate = new Date(meshClientTime);
+    const serverDate = new Date();
+    const driftMs = Math.abs(serverDate - clientDate);
+    if (driftMs > 24 * 60 * 60 * 1000) { // > 24 hours drift
+      verificationStatus += (verificationStatus ? ' | ' : '') + '⚠️ TIME_DRIFT';
+    }
+  }
 
   const now     = new Date();
   const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'd/M/yyyy');
@@ -838,7 +880,8 @@ function logAttendance(payload, actionParam) {
     'Mesh Fingerprint':  meshFingerprint,
     'User Agent':        userAgent,
     'Duplicate':         isDuplicate ? 'DUPLICATE' : '',
-    'Action Type':       actionType
+    'Action Type':       actionType,
+    'Verification':      verificationStatus
   });
 
   if (isDuplicate) {

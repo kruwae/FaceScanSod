@@ -470,12 +470,16 @@
     // --------- Logout ---------
     function doLogout() {
       sessionStorage.removeItem(SESSION_KEY);
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('readToken');
+      } catch (e) {}
       // หยุดกล้องก่อน
       if (video.srcObject) {
         video.srcObject.getTracks().forEach(t => t.stop());
         video.srcObject = null;
       }
-      window.location.replace('index.html');
+      window.location.replace('login.html?to=register.html');
     }
 
     btnLogout.addEventListener('click', doLogout);
@@ -494,6 +498,12 @@
         setTimeout(initModels, 0);
       }
     }
+
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted && !isAuthed()) {
+        window.location.replace('login.html?to=register.html');
+      }
+    });
 
 
     // --------- Step Dots ---------

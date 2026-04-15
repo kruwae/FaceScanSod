@@ -688,6 +688,7 @@
   const gpsInfoCard = document.getElementById('gpsInfoCard');
   const gpsGuide = document.getElementById('gpsGuide');
   const gpsPermBanner = document.getElementById('gpsPermBanner');
+  const SESSION_KEY = 'adminAuth';
 
   const MATCH_THRESHOLD = 0.45;
 
@@ -1221,6 +1222,10 @@
   }
 
   async function init() {
+    if (sessionStorage.getItem(SESSION_KEY) !== '1') {
+      window.location.replace('login.html?to=scan.html');
+      return;
+    }
     if (!API_URL) {
       showError('ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่า</a>');
       return;

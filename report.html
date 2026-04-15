@@ -6,6 +6,8 @@
   <title>📊 รายงานการลงชื่อเข้าออก</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <!-- html2pdf for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script>
     // ===== Inline GAS API URL (replaced by GAS doGet) =====
     const GAS_API_URL = '';
@@ -320,7 +322,11 @@
           </select>
         </div>
         <button class="btn-filter" onclick="loadReport()">🔍 ดูรายงาน</button>
-        <button class="btn-export" onclick="exportCSV()">📥 Export CSV</button>
+        <div style="display:flex;gap:4px">
+          <button class="btn-export" onclick="exportCSV()" title="Export CSV">📥 CSV</button>
+          <button class="btn-export" style="color:#ef4444;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.1)" onclick="exportPDF()" title="Export PDF">📥 PDF</button>
+          <button class="btn-export" style="color:#3b82f6;border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.1)" onclick="exportDOCX()" title="Export Word">📥 DOCX</button>
+        </div>
       </div>
     </div>
 
@@ -753,15 +759,31 @@
   }
 
   // ===== Export CSV =====
+  function getFilteredRecords() {
+    // เอาที่แสดงในหน้าจอตอนนี้
+    const nameFilter   = document.getElementById('filterName').value.trim().toLowerCase();
+    const statusFilter = document.getElementById('filterStatus').value;
+    return allRecords.filter(r => {
+      if (nameFilter && !r.name.toLowerCase().includes(nameFilter)) return false;
+      if (statusFilter === 'ontime'     && r.statusType !== 'ontime')   return false;
+      if (statusFilter === 'late'       && r.statusType !== 'late')     return false;
+      if (statusFilter === 'verylate'   && r.statusType !== 'verylate') return false;
+      if (statusFilter === 'absent'     && r.statusType !== 'absent')   return false;
+      if (statusFilter === 'nocheckout' && (r.statusType === 'absent' || r.checkOut)) return false;
+      if (statusFilter === 'skipgps'    && r.gpsStatus === 'ok')        return false;
+      return true;
+    });
+  }
+
   function exportCSV() {
-    if (allRecords.length === 0) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
-    const header = ['ชื่อ', 'วันที่', 'เช็คอิน', 'เช็คเอ้าท์', 'สถานที่', 'GPS', 'สถานะ', 'สายกี่นาที'];
-    const rows = allRecords.map(r => [
-      r.name, r.displayDate,
+    const records = getFilteredRecords();
+    if (records.length === 0) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
+    const header = ['ลำดับ', 'ชื่อ', 'วันที่', 'เช็คอิน', 'เช็คเอ้าท์', 'สถานที่', 'GPS', 'สถานะ', 'สายกี่นาที'];
+    const rows = records.map((r, i) => [
+      i + 1, r.name, r.displayDate,
       r.checkIn  ? formatTimeHms(r.checkIn.timeStr)  : '',
       r.checkOut ? formatTimeHms(r.checkOut.timeStr) : '',
-      r.locationName,
-      r.gpsStatus,
+      r.locationName, r.gpsStatus,
       r.statusType === 'ontime' ? 'ตรงเวลา' : r.statusType === 'late' ? 'สาย' : r.statusType === 'verylate' ? 'สายมาก' : 'ไม่ลงชื่อ',
       r.lateMinutes || 0
     ]);
@@ -772,6 +794,81 @@
     const a    = document.createElement('a');
     a.href     = URL.createObjectURL(blob);
     a.download = 'attendance_' + document.getElementById('filterStart').value + '.csv';
+    a.click();
+  }
+
+  // ===== Export HTML Generator (for PDF / DOCX) =====
+  function buildExportHTMLTable() {
+    const records = getFilteredRecords();
+    let html = `
+      <div style="font-family: 'Sarabun', sans-serif; padding: 20px;">
+        <h2 style="text-align:center; color:#333;">รายงานการลงชื่อเข้าออก</h2>
+        <p style="text-align:center; color:#666;">ช่วงวันที่: ${document.getElementById('filterStart').value} ถึง ${document.getElementById('filterEnd').value}</p>
+        <table border="1" style="border-collapse: collapse; width: 100%; font-size: 13px; text-align: left; color:#000;">
+          <thead>
+            <tr style="background-color: #f3f4f6;">
+              <th style="padding: 8px;">ลำดับ</th>
+              <th style="padding: 8px;">ชื่อ</th>
+              <th style="padding: 8px;">วันที่</th>
+              <th style="padding: 8px;">เช็คอิน</th>
+              <th style="padding: 8px;">เช็คเอ้าท์</th>
+              <th style="padding: 8px;">สถานที่</th>
+              <th style="padding: 8px;">สถานะ</th>
+              <th style="padding: 8px;">สาย (นาที)</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    records.forEach((r, i) => {
+      const inTime  = r.checkIn ? formatTimeHms(r.checkIn.timeStr) : '-';
+      const outTime = r.checkOut ? formatTimeHms(r.checkOut.timeStr) : '-';
+      const statusStr = r.statusType === 'ontime' ? 'ตรงเวลา' : r.statusType === 'late' ? 'สาย' : r.statusType === 'verylate' ? 'สายมาก' : 'ไม่ลงชื่อ';
+      html += `
+        <tr>
+          <td style="padding: 6px;">${i + 1}</td>
+          <td style="padding: 6px;">${r.name}</td>
+          <td style="padding: 6px;">${r.displayDate}</td>
+          <td style="padding: 6px;">${inTime}</td>
+          <td style="padding: 6px;">${outTime}</td>
+          <td style="padding: 6px;">${r.locationName}</td>
+          <td style="padding: 6px;">${statusStr}</td>
+          <td style="padding: 6px;">${r.lateMinutes || '-'}</td>
+        </tr>
+      `;
+    });
+    html += `</tbody></table></div>`;
+    return html;
+  }
+
+  // ===== Export PDF =====
+  function exportPDF() {
+    if (getFilteredRecords().length === 0) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
+    const element = document.createElement('div');
+    element.innerHTML = buildExportHTMLTable();
+    const opt = {
+      margin:       0.5,
+      filename:     'attendance_' + document.getElementById('filterStart').value + '.pdf',
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2 },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(element).save();
+  }
+
+  // ===== Export DOCX (Word) =====
+  function exportDOCX() {
+    if (getFilteredRecords().length === 0) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
+    const tableHtml = buildExportHTMLTable();
+    const docHtml = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head><meta charset='utf-8'><title>Attendance Report</title></head>
+      <body>${tableHtml}</body></html>
+    `;
+    const blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'attendance_' + document.getElementById('filterStart').value + '.doc';
     a.click();
   }
 

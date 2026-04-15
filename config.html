@@ -731,7 +731,7 @@
           <span class="section-title-text">Google Apps Script API</span>
         </div>
         <label>WEB APP URL</label>
-        <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" data-enable-grammarly="false" spellcheck="false">
     
       </div>
 
@@ -872,11 +872,11 @@
 
     function escapeHtml(value) {
       return String(value)
-        .replaceAll('&', '&')
-        .replaceAll('"', '"')
-        .replaceAll("'", ''')
-        .replaceAll('<', '<')
-        .replaceAll('>', '>');
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     // ── API URL helpers (ไม่พึ่ง ES module เพื่อหลีกเลี่ยง infinite recursion / CORS บน file://) ──

@@ -122,6 +122,112 @@
       text-align: center;
     }
 
+    .gps-guide {
+      display: none;
+      width: 100%;
+      background: rgba(10,10,28,0.95);
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+
+    .gps-guide-title {
+      font-size: 0.88em;
+      font-weight: 700;
+      color: #c7d2fe;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .gps-guide-platform {
+      font-size: 0.78em;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .gps-guide-step {
+      font-size: 0.8em;
+      color: #94a3b8;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .gps-guide-step:last-child { border-bottom: none; }
+
+    .gps-step-num {
+      color: #6366f1;
+      font-weight: 700;
+      min-width: 18px;
+      flex-shrink: 0;
+    }
+
+    .gps-fallback-title {
+      font-size: 0.78em;
+      font-weight: 700;
+      color: #64748b;
+      margin: 12px 0 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .gps-fallback-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-gps-fallback {
+      flex: 1;
+      min-width: 120px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .btn-ip {
+      background: rgba(99,102,241,0.15);
+      border: 1px solid rgba(99,102,241,0.3);
+      color: #a5b4fc;
+    }
+
+    .btn-ip:hover { background: rgba(99,102,241,0.25); }
+
+    .btn-wifi {
+      background: rgba(59,130,246,0.15);
+      border: 1px solid rgba(59,130,246,0.3);
+      color: #93c5fd;
+    }
+
+    .btn-wifi:hover { background: rgba(59,130,246,0.25); }
+
+    .btn-skip-mild {
+      background: rgba(239,68,68,0.1);
+      border: 1px dashed rgba(239,68,68,0.4);
+      color: #fca5a5;
+    }
+
+    .btn-skip-mild:hover { background: rgba(239,68,68,0.18); }
+
+    .btn-offline {
+      background: rgba(245,158,11,0.14);
+      border: 1px solid rgba(245,158,11,0.35);
+      color: #fcd34d;
+    }
+
+    .btn-offline:hover { background: rgba(245,158,11,0.24); }
+
     .gps-permission-banner {
       display: none;
       width: 100%;
@@ -147,6 +253,7 @@
       color: #94a3b8;
       margin-bottom: 6px;
       font-weight: 600;
+      letter-spacing: 0.03em;
     }
 
     .location-selector select {
@@ -159,6 +266,30 @@
       font-size: 14px;
       font-family: 'Sarabun', sans-serif;
       outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      cursor: pointer;
+      transition: border-color 0.25s ease;
+      margin-bottom: 10px;
+    }
+
+    .location-selector select:focus { border-color: rgba(99,102,241,0.55); }
+
+    #btnConfirmLocation {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg,#6366f1,#4f46e5);
+      color: #fff;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: none;
     }
 
     .gps-info-card {
@@ -176,6 +307,35 @@
     .gps-info-card.out-range {
       background: rgba(239,68,68,0.08);
       border-color: rgba(239,68,68,0.3);
+    }
+
+    .gps-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .gps-info-label {
+      color: #64748b;
+      min-width: 60px;
+    }
+
+    .gps-info-value {
+      color: #e2e8f0;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .gps-dist-ok {
+      color: #34d399;
+      font-weight: 700;
+    }
+
+    .gps-dist-bad {
+      color: #f87171;
+      font-weight: 700;
     }
 
     .video-container {
@@ -264,11 +424,13 @@
       box-shadow: 0 4px 25px rgba(99,102,241,0.45);
       margin: 20px auto 0;
       transition: all 0.3s ease;
+      animation: btnPulse 2s ease-in-out infinite;
     }
 
     #btnStart:hover {
       transform: translateY(-3px);
       box-shadow: 0 8px 35px rgba(99,102,241,0.6);
+      animation: none;
     }
 
     .modal-overlay {
@@ -292,6 +454,10 @@
       max-width: 360px;
       text-align: center;
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: modalSlideUp 0.35s ease;
     }
 
     .modal-avatar {
@@ -305,6 +471,12 @@
       align-items: center;
       justify-content: center;
       margin-bottom: 14px;
+    }
+
+    .modal-title {
+      font-size: 0.82em;
+      color: #64748b;
+      margin-bottom: 4px;
     }
 
     .user-name {
@@ -336,6 +508,12 @@
       margin-bottom: 8px;
     }
 
+    .score-text {
+      color: #475569;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
     .btn {
       border: none;
       border-radius: 14px;
@@ -353,6 +531,18 @@
       font-size: 20px;
       font-weight: 700;
       box-shadow: 0 4px 20px rgba(16,185,129,0.35);
+      margin-bottom: 10px;
+    }
+
+    .btn-confirm:hover:not(:disabled) {
+      box-shadow: 0 8px 30px rgba(16,185,129,0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-confirm:disabled {
+      background: rgba(255,255,255,0.08);
+      color: #475569;
+      box-shadow: none;
     }
 
     .btn-cancel {
@@ -364,10 +554,27 @@
       font-weight: 600;
     }
 
+    .btn-cancel:hover { background: rgba(239,68,68,0.18); }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes btnPulse {
+      0%,100% { box-shadow: 0 4px 25px rgba(99,102,241,0.45); }
+      50% { box-shadow: 0 4px 40px rgba(99,102,241,0.7); }
+    }
+
     @keyframes scanMove {
       0% { top: 12%; }
       50% { top: 82%; }
       100% { top: 12%; }
+    }
+
+    @keyframes modalSlideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>

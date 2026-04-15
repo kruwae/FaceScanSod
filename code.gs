@@ -1075,7 +1075,7 @@ function getAttendanceLogs(params) {
   const sheet = ss.getSheetByName('Attendance');
   if (!sheet) return [];
 
-  const data = sheet.getDataRange().getValues();
+  const data = sheet.getDataRange().getDisplayValues(); // ใช้ getDisplayValues() เพื่อเอาข้อความแบบเดียวกับที่เห็นบนชีต (ป้องกันปัญหาเวลาได้ค่าเป็น 1899:xx)
   if (data.length <= 1) return [];
 
   const headers = data[0].map(function(h) { return String(h).trim(); });

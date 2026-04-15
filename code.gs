@@ -848,7 +848,9 @@ function getKnownFaces(params) {
   const token = String((params && params.token) || '').trim();
   const config = getConfig(params);
   const requiredToken = String(config.readToken || '').trim();
-  if (!requiredToken || !token || token !== requiredToken) {
+  // ถ้า readToken ถูกตั้งค่าไว้ → ต้องส่ง token ที่ถูกต้อง
+  // ถ้า readToken ว่าง (ไม่ได้ตั้งค่า) → ข้ามการตรวจสอบ token (open access)
+  if (requiredToken && token !== requiredToken) {
     logAction({
       username: auth.user && auth.user.username ? auth.user.username : '',
       role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,

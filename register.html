@@ -448,6 +448,21 @@
     let selectedLocationData = null;
     let selectedLocationEditable = false;
 
+    // ---- เก็บ descriptors ที่บันทึกมาแล้ว เพื่อตรวจสอบความแตกต่าง ----
+    let capturedDescriptors = [];
+    const MIN_FACE_DISTANCE = 0.25; // ต้องต่างกันอย่างน้อยนี้ (Euclidean distance)
+    let lastCaptureTime = 0;
+    const MIN_CAPTURE_INTERVAL_MS = 1000; // รอขั้นต่ำ 1 วินาทีระหว่างแต่ละ capture
+
+    function euclideanDistance(d1, d2) {
+      let sum = 0;
+      for (let i = 0; i < d1.length; i++) {
+        const diff = d1[i] - d2[i];
+        sum += diff * diff;
+      }
+      return Math.sqrt(sum);
+    }
+
     // --------- ตรวจสอบ session ---------
     function isAuthed() {
       return sessionStorage.getItem(SESSION_KEY) === '1';
@@ -559,6 +574,13 @@
         return;
       }
 
+      // *** ตรวจสอบเวลาขั้นต่ำระหว่าง capture ***
+      const now = Date.now();
+      if (now - lastCaptureTime < MIN_CAPTURE_INTERVAL_MS) {
+        msgDiv.innerHTML = '<span class="msg-error">⏳ กรุณารอสักครู่แล้วลองใหม่ (ห่างกันอย่างน้อย 1 วินาที)</span>';
+        return;
+      }
+
       // ตรวจสอบ session ยังอยู่ไหม
       if (!isAuthed()) {
         alert('หมดสิทธิ์การเข้าถึง กรุณาเข้าสู่ระบบใหม่');
@@ -593,6 +615,31 @@
 
       const descriptorArray = Array.from(detection.descriptor);
 
+      // *** ตรวจสอบว่าหน้าแตกต่างจากมุมที่บันทึกไปแล้ว ***
+      if (capturedDescriptors.length > 0) {
+        let tooSimilar = false;
+        let minDist = 999;
+        for (const prev of capturedDescriptors) {
+          const dist = euclideanDistance(descriptorArray, prev);
+          if (dist < minDist) minDist = dist;
+          if (dist < MIN_FACE_DISTANCE) {
+            tooSimilar = true;
+            break;
+          }
+        }
+        if (tooSimilar) {
+          const captureNum = saveCounter + 1;
+          const hints = ['หันซ้ายเล็กน้อย', 'หันขวาเล็กน้อย', 'เงยหน้าหรือก้มเล็กน้อย'];
+          const hint = hints[saveCounter - 1] || 'ขยับหน้าให้ต่างจากเดิม';
+          msgDiv.innerHTML = `<span class="msg-error">⚠️ ใบหน้ามุมนี้คล้ายกับที่บันทึกไปแล้วมาก (ระยะห่าง ${minDist.toFixed(3)})<br>กรุณา${hint} แล้วลองอีกครั้ง</span>`;
+          btnSave.disabled = false;
+          btnSave.innerHTML = '📸 บันทึกเพิ่ม <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
+          return;
+        }
+      }
+
+      lastCaptureTime = Date.now();
+
       try {
         const res = await fetch(currentApiUrl, {
           method: 'POST',
@@ -611,12 +658,18 @@
 
         if (data.error) throw new Error(data.error);
 
+        capturedDescriptors.push(descriptorArray);
         saveCounter = Math.min(saveCounter + 1, MAX_CAPTURES);
         document.getElementById('saveCount') && (document.getElementById('saveCount').innerText = saveCounter);
         updateDots();
+
+        const angleNames = ['หน้าตรง', 'มุมที่สอง (หันซ้าย/ขวา)', 'มุมที่สาม (หันอีกด้าน)'];
+        const nextHints = ['หันซ้ายเล็กน้อยแล้วกดอีกครั้ง', 'หันขวาเล็กน้อยแล้วกดอีกครั้ง', ''];
+
         msgDiv.innerHTML = saveCounter >= MAX_CAPTURES
-          ? '<span class="msg-success">✅ บันทึกครบ 3 มุมแล้ว</span>'
-          : '<span class="msg-success">✅ บันทึกครั้งที่ ' + saveCounter + ' สำเร็จ! ขยับหน้าเล็กน้อยแล้วกดอีกครั้ง</span>';
+          ? '<span class="msg-success">✅ บันทึกครบ 3 มุมแล้ว ลงทะเบียนสำเร็จ!</span>'
+          : `<span class="msg-success">✅ บันทึก${angleNames[saveCounter - 1]}สำเร็จ! ${nextHints[saveCounter - 1]}</span>`;
+
         if (saveCounter < MAX_CAPTURES) {
           btnSave.disabled = false;
           btnSave.innerHTML = '📸 บันทึกเพิ่ม <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
@@ -627,6 +680,8 @@
       } catch (e) {
         msgDiv.innerHTML = '<span class="msg-error">❌ บันทึกล้มเหลว: ' + e.message + '</span>';
         updateDots();
+        btnSave.disabled = false;
+        btnSave.innerHTML = '📸 บันทึกใบหน้า <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
       }
     }
   </script>

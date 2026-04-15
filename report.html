@@ -193,6 +193,7 @@
     .badge-announce { background: rgba(59,130,246,0.15); color: #93c5fd; border: 1px solid rgba(59,130,246,0.25); }
     .badge-ontime { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
     .badge-late   { background: rgba(245,158,11,0.15);  color: #fcd34d; border: 1px solid rgba(245,158,11,0.25); }
+    .badge-verylate { background: rgba(220,38,38,0.2); color: #ff8080; border: 1px solid rgba(220,38,38,0.45); }
     .badge-absent { background: rgba(239,68,68,0.15);   color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
     .badge-nocheckout { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25); }
     .badge-gps-skip { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px dashed rgba(239,68,68,0.3); font-size: 0.7em; margin-left: 4px; }
@@ -271,22 +272,22 @@
       <div class="sum-card green">
         <div class="sum-icon">✅</div>
         <div class="sum-num" id="cntOntime">—</div>
-        <div class="sum-label">มาตรงเวลา</div>
+        <div class="sum-label">ตรงเวลา (≤08:30)</div>
       </div>
       <div class="sum-card yellow">
         <div class="sum-icon">⚠️</div>
         <div class="sum-num" id="cntLate">—</div>
-        <div class="sum-label">มาสาย</div>
+        <div class="sum-label">สาย (08:31–09:00)</div>
+      </div>
+      <div class="sum-card" style="border-color:rgba(220,38,38,0.35)">
+        <div class="sum-icon">🔴</div>
+        <div class="sum-num" id="cntVeryLate" style="color:#ff8080">—</div>
+        <div class="sum-label">สายมาก (>09:00)</div>
       </div>
       <div class="sum-card red">
         <div class="sum-icon">❌</div>
         <div class="sum-num" id="cntAbsent">—</div>
-        <div class="sum-label">ไม่ลงชื่อเข้า</div>
-      </div>
-      <div class="sum-card blue">
-        <div class="sum-icon">🚪</div>
-        <div class="sum-num" id="cntNoOut">—</div>
-        <div class="sum-label">ไม่ลงชื่อออก</div>
+        <div class="sum-label">ไม่ลงชื่อ</div>
       </div>
     </div>
 
@@ -310,11 +311,11 @@
           <label>สถานะ</label>
           <select id="filterStatus" class="filter-input">
             <option value="all">ทั้งหมด</option>
-            <option value="announce">📣 แจ้ง</option>
-            <option value="ontime">✅ มาตรงเวลา</option>
-            <option value="late">⚠️ มาสาย</option>
+            <option value="ontime">✅ ตรงเวลา (≤08:30)</option>
+            <option value="late">⚠️ สาย (08:31–09:00)</option>
+            <option value="verylate">🔴 สายมาก (>09:00)</option>
             <option value="absent">❌ ไม่ลงชื่อ</option>
-            <option value="nocheckout">🚪 ไม่ลงชื่อออก</option>
+            <option value="nocheckout">🚪 ไม่เช็คเอาต์</option>
             <option value="skipgps">⚠️ GPS ไม่ยืนยัน</option>
           </select>
         </div>
@@ -358,14 +359,14 @@
 </div>
 
 <script>
-  // Polyfill/Inline: แทน import จาก src/utils/helpers.js
+  // แสดงเวลา HH:MM:SS
   function formatTimeHms(timeStr) {
     if (!timeStr || timeStr === '-') return '';
     const parts = String(timeStr).split(':');
-    if (parts.length >= 2) {
-      return String(parts[0]).padStart(2, '0') + ':' + String(parts[1]).padStart(2, '0');
-    }
-    return timeStr;
+    const hh = String(parseInt(parts[0] || 0, 10)).padStart(2, '0');
+    const mm = String(parseInt(parts[1] || 0, 10)).padStart(2, '0');
+    const ss = String(parseInt(parts[2] || 0, 10)).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
   }
 
   // ===== Config =====
@@ -518,6 +519,12 @@
   }
 
   // ===== Process Logs =====
+  // เช็คอิน = บันทึกแรกสุดของวัน
+  // เช็คออต์ = บันทึกล่าสุดที่ ≥ 13:30 เมื่อมีมากกว่า 1 บันทึก
+  // สถานะ: ตรงเวลา(≤08:30) / สาย(08:31-09:00) / สายมาก(>09:00) / ไม่ลงชื่อ
+  const CHECKOUT_MIN = 13 * 60 + 30; // 13:30
+  const VERY_LATE_MIN = 9 * 60;      // 09:00
+
   function timeToMinutes(timeStr) {
     if (!timeStr) return Infinity;
     const [h, m] = String(timeStr).split(':').map(Number);
@@ -534,16 +541,11 @@
   function parseSheetDate(value) {
     const raw = String(value || '').replace(/^'/, '').trim();
     if (!raw) return null;
-
     const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (m) {
-      const d = Number(m[1]);
-      const mo = Number(m[2]) - 1;
-      const y = Number(m[3]);
-      const dt = new Date(y, mo, d);
+      const dt = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
       if (!isNaN(dt.getTime())) return dt;
     }
-
     const dt = new Date(raw);
     if (!isNaN(dt.getTime())) return dt;
     return null;
@@ -552,8 +554,9 @@
   function processLogs(logs, startDate, endDate) {
     const map = {};
     const startObj = parseSheetDate(startDate);
-    const endObj = parseSheetDate(endDate);
+    const endObj   = parseSheetDate(endDate);
 
+    // รวบรวมทุก entries ของแต่ละคน/วัน
     logs.forEach(log => {
       const rawName = (log['Name'] || log.name || 'ไม่ระบุ').toString().trim();
       const rawDate = (log['Date'] || log.date || '').toString().replace(/^'/, '').trim();
@@ -562,74 +565,71 @@
 
       if (!rawDate || !parsedDate) return;
       if (startObj && parsedDate < startObj) return;
-      if (endObj && parsedDate > endObj) return;
+      if (endObj   && parsedDate > endObj)   return;
 
-      const dateKey = rawDate;
-      const key = rawName + '|' + dateKey;
+      const key     = rawName + '|' + rawDate;
+      const minutes = timeToMinutes(rawTime);
 
       if (!map[key]) {
         map[key] = {
-          name: rawName,
-          date: dateKey,
-          displayDate: parsedDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }),
-          checkIn: null,
-          checkOut: null,
-          locationName: log['Location'] || log.locationName || '',
-          gpsStatus: log['GPS Status'] || log.gpsStatus || 'ok',
+          name:          rawName,
+          date:          rawDate,
+          displayDate:   parsedDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }),
+          checkIn:       null,
+          checkOut:      null,
+          locationName:  log['Location']        || log.locationName  || '',
+          gpsStatus:     log['GPS Status']      || log.gpsStatus     || 'ok',
           gpsSkipReason: log['GPS Skip Reason'] || log.gpsSkipReason || '',
-          logs: []
+          entries:       []
         };
       }
-
-      map[key].logs.push(log);
-
-      const minutes = timeToMinutes(rawTime);
-      const specialIso = isoFromDmy(rawDate);
-      const specialDate = (workTimes.specialDates || []).find(s => s.date === specialIso);
-      const endMin = timeToMinutes((specialDate && specialDate.endTime) || workTimes.endTime);
-
-      if (!map[key].checkIn || minutes < map[key].checkIn.minutes) {
-        map[key].checkIn = { timeStr: rawTime || '-', minutes: minutes };
-        map[key].locationName = log['Location'] || log.locationName || map[key].locationName;
-        map[key].gpsStatus = log['GPS Status'] || log.gpsStatus || map[key].gpsStatus;
-        map[key].gpsSkipReason = log['GPS Skip Reason'] || log.gpsSkipReason || map[key].gpsSkipReason;
-      }
-
-      if (rawTime && Number.isFinite(minutes) && minutes >= endMin) {
-        if (!map[key].checkOut || minutes > map[key].checkOut.minutes) {
-          map[key].checkOut = { timeStr: rawTime, minutes: minutes };
-        }
-      }
+      map[key].entries.push({ timeStr: rawTime, minutes, log });
     });
 
     return Object.values(map).map(rec => {
-      const specialIso = isoFromDmy(rec.date);
+      const specialIso  = isoFromDmy(rec.date);
       const dateSpecial = (workTimes.specialDates || []).find(s => s.date === specialIso);
-      const lateThresh = dateSpecial?.lateThreshold || workTimes.lateThreshold;
-      const announceTime = '13:30';
-      const checkoutEnd = '18:30';
+      const lateThresh  = (dateSpecial && dateSpecial.lateThreshold) || workTimes.lateThreshold;
 
-      let statusType = 'absent';
+      // เรียง entries ตามเวลา ascending
+      const entries = rec.entries.sort((a, b) => a.minutes - b.minutes);
+
+      // ① เช็คอิน = บันทึกแรกสุด (เร็วสุดของวัน)
+      if (entries.length > 0) {
+        const first = entries[0];
+        rec.checkIn       = { timeStr: first.timeStr, minutes: first.minutes };
+        rec.locationName  = first.log['Location']        || first.log.locationName  || rec.locationName;
+        rec.gpsStatus     = first.log['GPS Status']      || first.log.gpsStatus     || rec.gpsStatus;
+        rec.gpsSkipReason = first.log['GPS Skip Reason'] || first.log.gpsSkipReason || rec.gpsSkipReason;
+      }
+
+      // ② เช็คออต์ = บันทึกล่าสุดที่ ≥ 13:30 เมื่อมีมากกว่า 1 แถว
+      if (entries.length > 1) {
+        const outCandidates = entries.filter(e => e.minutes >= CHECKOUT_MIN);
+        if (outCandidates.length > 0) {
+          const latest = outCandidates[outCandidates.length - 1];
+          if (latest.timeStr !== entries[0].timeStr) {
+            rec.checkOut = { timeStr: latest.timeStr, minutes: latest.minutes };
+          }
+        }
+      }
+
+      // ③ สถานะ
+      let statusType  = 'absent';
       let lateMinutes = 0;
 
       if (rec.checkIn && Number.isFinite(rec.checkIn.minutes)) {
         const checkInMin = rec.checkIn.minutes;
-        const lateMin = timeToMinutes(lateThresh);
-        if (checkInMin < timeToMinutes(announceTime)) {
-          statusType = 'announce';
-        } else if (checkInMin <= lateMin) {
-          statusType = 'ontime';
-        } else {
-          statusType = 'late';
-          lateMinutes = checkInMin - lateMin;
-        }
-      }
+        const lateMin    = timeToMinutes(lateThresh);
 
-      if (rec.checkOut && rec.checkIn) {
-        const checkoutWindowStart = timeToMinutes(announceTime);
-        const checkoutWindowEnd = timeToMinutes(checkoutEnd);
-        if (rec.checkOut.minutes >= checkoutWindowStart && rec.checkOut.minutes <= checkoutWindowEnd) {
-          rec.checkOut.isCheckout = true;
+        if (checkInMin <= lateMin) {
+          statusType = 'ontime';    // ✅ ตรงเวลา: ≤ 08:30
+        } else if (checkInMin <= VERY_LATE_MIN) {
+          statusType   = 'late';    // ⚠️ สาย: 08:31 – 09:00
+          lateMinutes  = checkInMin - lateMin;
+        } else {
+          statusType   = 'verylate'; // 🔴 สายมาก: > 09:00
+          lateMinutes  = checkInMin - lateMin;
         }
       }
 
@@ -655,12 +655,12 @@
 
     const filtered = records.filter(r => {
       if (nameFilter && !r.name.toLowerCase().includes(nameFilter)) return false;
-      if (statusFilter === 'announce'   && r.statusType !== 'announce') return false;
-      if (statusFilter === 'ontime'     && r.statusType !== 'ontime') return false;
-      if (statusFilter === 'late'       && r.statusType !== 'late')   return false;
-      if (statusFilter === 'absent'     && r.statusType !== 'absent') return false;
+      if (statusFilter === 'ontime'     && r.statusType !== 'ontime')   return false;
+      if (statusFilter === 'late'       && r.statusType !== 'late')     return false;
+      if (statusFilter === 'verylate'   && r.statusType !== 'verylate') return false;
+      if (statusFilter === 'absent'     && r.statusType !== 'absent')   return false;
       if (statusFilter === 'nocheckout' && (r.statusType === 'absent' || r.checkOut)) return false;
-      if (statusFilter === 'skipgps'    && r.gpsStatus === 'ok') return false;
+      if (statusFilter === 'skipgps'    && r.gpsStatus === 'ok')        return false;
       return true;
     });
 
@@ -675,7 +675,7 @@
     body.innerHTML = filtered.map((r, i) => {
       const statusBadge = getStatusBadge(r);
       const gpsBadge    = getGpsBadge(r);
-      const checkInClass  = r.statusType === 'late' ? 'td-time late' : 'td-time';
+      const checkInClass  = (r.statusType === 'late' || r.statusType === 'verylate') ? 'td-time late' : 'td-time';
       const checkOutClass = !r.checkOut ? 'td-time missing' : 'td-time';
       const checkInText   = r.checkIn  ? formatTimeHms(r.checkIn.timeStr)  || '<span style="color:#f87171">—</span>' : '<span style="color:#f87171">—</span>';
       const checkOutText  = r.checkOut ? formatTimeHms(r.checkOut.timeStr) || '<span style="color:#64748b">—</span>' : '<span style="color:#64748b">—</span>';
@@ -695,17 +695,19 @@
   function getStatusBadge(r) {
     const noOut = r.checkIn && !r.checkOut;
     let badge = '';
-    if (r.statusType === 'announce') {
-      badge = `<span class="badge badge-announce">📣 แจ้ง</span>`;
-    } else if (r.statusType === 'ontime') {
-      badge = `<span class="badge badge-ontime">✅ มาตรงเวลา</span>`;
+    if (r.statusType === 'ontime') {
+      badge = `<span class="badge badge-ontime">✅ ตรงเวลา</span>`;
     } else if (r.statusType === 'late') {
-      badge = `<span class="badge badge-late">⚠️ มาสาย</span>`;
+      const m = r.lateMinutes ? ` +${r.lateMinutes}น.` : '';
+      badge = `<span class="badge badge-late">⚠️ สาย${m}</span>`;
+    } else if (r.statusType === 'verylate') {
+      const m = r.lateMinutes ? ` +${r.lateMinutes}น.` : '';
+      badge = `<span class="badge badge-verylate">🔴 สายมาก${m}</span>`;
     } else {
       badge = `<span class="badge badge-absent">❌ ไม่ลงชื่อ</span>`;
     }
     if (noOut) {
-      badge += ` <span class="badge badge-nocheckout" style="margin-top:2px">🚪 ไม่ลงออก</span>`;
+      badge += ` <span class="badge badge-nocheckout" style="margin-top:2px">🚪 ไม่เช็คออต์</span>`;
     }
     return badge;
   }
@@ -726,15 +728,14 @@
 
   // ===== Summary =====
   function updateSummary(records) {
-    const announced = records.filter(r => r.statusType === 'announce').length;
-    const ontime    = records.filter(r => r.statusType === 'ontime').length;
-    const late      = records.filter(r => r.statusType === 'late').length;
-    const absent    = records.filter(r => r.statusType === 'absent').length;
-    const noOut   = records.filter(r => r.checkIn && !r.checkOut).length;
-    document.getElementById('cntOntime').innerText = ontime;
-    document.getElementById('cntLate').innerText   = late;
-    document.getElementById('cntAbsent').innerText = absent;
-    document.getElementById('cntNoOut').innerText  = noOut;
+    const ontime   = records.filter(r => r.statusType === 'ontime').length;
+    const late     = records.filter(r => r.statusType === 'late').length;
+    const verylate = records.filter(r => r.statusType === 'verylate').length;
+    const absent   = records.filter(r => r.statusType === 'absent').length;
+    document.getElementById('cntOntime').innerText   = ontime;
+    document.getElementById('cntLate').innerText     = late;
+    document.getElementById('cntVeryLate').innerText = verylate;
+    document.getElementById('cntAbsent').innerText   = absent;
   }
 
   // ===== Export CSV =====
@@ -747,7 +748,7 @@
       r.checkOut ? formatTimeHms(r.checkOut.timeStr) : '',
       r.locationName,
       r.gpsStatus,
-      r.statusType === 'announce' ? 'แจ้ง' : r.statusType === 'ontime' ? 'มาตรงเวลา' : r.statusType === 'late' ? 'มาสาย' : 'ไม่ลงชื่อ',
+      r.statusType === 'ontime' ? 'ตรงเวลา' : r.statusType === 'late' ? 'สาย' : r.statusType === 'verylate' ? 'สายมาก' : 'ไม่ลงชื่อ',
       r.lateMinutes || 0
     ]);
     const csv = [header, ...rows].map(row =>

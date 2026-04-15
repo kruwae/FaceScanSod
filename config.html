@@ -11,6 +11,9 @@
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <!-- Leaflet.js for Map Picker -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -707,6 +710,73 @@
         flex: 0 0 auto;
       }
     }
+
+    /* Map Modal Styles */
+    .map-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.95);
+      z-index: 9999;
+      flex-direction: column;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .map-header {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .map-header h3 {
+      font-size: 1.1em;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    #mapContainer {
+      flex: 1;
+      width: 100%;
+    }
+
+    .map-footer {
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-map-confirm {
+      flex: 2;
+      background: linear-gradient(135deg, #06b6d4, #0891b2);
+      color: white;
+    }
+
+    .btn-map-cancel {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.1);
+      color: #e2e8f0;
+    }
+
+    .map-hint {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85em;
+      z-index: 1000;
+      pointer-events: none;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
   </style>
 </head>
 
@@ -833,6 +903,20 @@
     </div>
   </div>
 
+  <!-- Map Picker Modal -->
+  <div id="mapModal" class="map-modal">
+    <div class="map-header">
+      <h3>📍 เลือกตำแหน่งบนแผนที่</h3>
+      <button onclick="closeMap()" style="background:none;border:none;color:#94a3b8;font-size:24px;cursor:pointer;">&times;</button>
+    </div>
+    <div class="map-hint">🖱️ คลิกบนแผนที่เพื่อปักหมุดตำแหน่งที่ถูกต้อง</div>
+    <div id="mapContainer"></div>
+    <div class="map-footer">
+      <button class="btn btn-map-confirm" onclick="confirmMapSelection()">✅ ยืนยันตำแหน่งนี้</button>
+      <button class="btn btn-map-cancel" onclick="closeMap()">ยกเลิก</button>
+    </div>
+  </div>
+
   <script>
     const SESSION_KEY = 'adminAuth';
     const MSG_SUCCESS = 'msg-success';
@@ -841,6 +925,13 @@
     const btnLogoutTop = document.getElementById('btnLogoutTop');
     const locationsBox = document.getElementById('locations');
     const fallbackEnabledEl = document.getElementById('fallbackEnabled');
+
+    // Map Picker Variables
+    let map = null;
+    let mapMarker = null;
+    let activeLatInput = null;
+    let activeLngInput = null;
+    const mapModal = document.getElementById('mapModal');
 
     function isAuthed() {
       try { return sessionStorage.getItem(SESSION_KEY) === '1'; }
@@ -862,6 +953,55 @@
 
     if (btnLogoutTop) {
       btnLogoutTop.addEventListener('click', doLogout);
+    }
+
+    // Map Picker Logic
+    function openMap(latInput, lngInput) {
+      activeLatInput = latInput;
+      activeLngInput = lngInput;
+      mapModal.style.display = 'flex';
+
+      const initialLat = parseFloat(latInput.value) || 13.7563;
+      const initialLng = parseFloat(lngInput.value) || 100.5018;
+
+      if (!map) {
+        map = L.map('mapContainer').setView([initialLat, initialLng], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        map.on('click', function(e) {
+          updateMarker(e.latlng.lat, e.latlng.lng);
+        });
+      } else {
+        map.setView([initialLat, initialLng], 13);
+        setTimeout(() => map.invalidateSize(), 100);
+      }
+
+      updateMarker(initialLat, initialLng);
+    }
+
+    function updateMarker(lat, lng) {
+      if (mapMarker) {
+        mapMarker.setLatLng([lat, lng]);
+      } else {
+        mapMarker = L.marker([lat, lng], { draggable: true }).addTo(map);
+      }
+    }
+
+    function confirmMapSelection() {
+      if (mapMarker && activeLatInput && activeLngInput) {
+        const pos = mapMarker.getLatLng();
+        activeLatInput.value = pos.lat.toFixed(6);
+        activeLngInput.value = pos.lng.toFixed(6);
+      }
+      closeMap();
+    }
+
+    function closeMap() {
+      mapModal.style.display = 'none';
+      activeLatInput = null;
+      activeLngInput = null;
     }
 
     function showMsg(text, type) {
@@ -945,12 +1085,12 @@
 
         <div class='input-row'>
           <div>
-            <label>Latitude</label>
-            <input type='number' step='any' class='loc-lat' placeholder='13.7563' value='${latVal}'>
+            <label>Latitude (คลิกเพื่อเลือกจากแผนที่)</label>
+            <input type='number' step='any' class='loc-lat' placeholder='13.7563' value='${latVal}' readonly style='cursor:pointer'>
           </div>
           <div>
-            <label>Longitude</label>
-            <input type='number' step='any' class='loc-lng' placeholder='100.5018' value='${lngVal}'>
+            <label>Longitude (คลิกเพื่อเลือกจากแผนที่)</label>
+            <input type='number' step='any' class='loc-lng' placeholder='100.5018' value='${lngVal}' readonly style='cursor:pointer'>
           </div>
         </div>
 
@@ -981,6 +1121,13 @@
 
       wrap.querySelector('.loc-maps-url').addEventListener('paste', function () {
         setTimeout(() => wrap.querySelector('.btn-parse-maps').click(), 80);
+      });
+
+      // Bind Map Picker
+      const latIn = wrap.querySelector('.loc-lat');
+      const lngIn = wrap.querySelector('.loc-lng');
+      [latIn, lngIn].forEach(el => {
+        el.addEventListener('click', () => openMap(latIn, lngIn));
       });
 
       wrap.querySelector('.location-item__remove').addEventListener('click', () => wrap.remove());

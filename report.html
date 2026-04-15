@@ -355,7 +355,9 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+  import { formatTimeHms } from './src/utils/helpers.js';
+
   // ===== Config =====
   const SESSION_KEY   = 'adminAuth';
   const LOCAL_FALLBACK = '2569';
@@ -651,8 +653,8 @@
       const gpsBadge    = getGpsBadge(r);
       const checkInClass  = r.statusType === 'late' ? 'td-time late' : 'td-time';
       const checkOutClass = !r.checkOut ? 'td-time missing' : 'td-time';
-      const checkInText   = r.checkIn  ? r.checkIn.timeStr  : '<span style="color:#f87171">—</span>';
-      const checkOutText  = r.checkOut ? r.checkOut.timeStr : '<span style="color:#64748b">—</span>';
+      const checkInText   = r.checkIn  ? formatTimeHms(r.checkIn.timeStr)  || '<span style="color:#f87171">—</span>' : '<span style="color:#f87171">—</span>';
+      const checkOutText  = r.checkOut ? formatTimeHms(r.checkOut.timeStr) || '<span style="color:#64748b">—</span>' : '<span style="color:#64748b">—</span>';
       return `<tr>
         <td style="color:var(--muted);font-size:0.8em">${i+1}</td>
         <td class="td-name">${esc(r.name)}</td>
@@ -714,8 +716,8 @@
     const header = ['ชื่อ', 'วันที่', 'เช็คอิน', 'เช็คเอ้าท์', 'สถานที่', 'GPS', 'สถานะ', 'สายกี่นาที'];
     const rows = allRecords.map(r => [
       r.name, r.displayDate,
-      r.checkIn  ? r.checkIn.timeStr  : '',
-      r.checkOut ? r.checkOut.timeStr : '',
+      r.checkIn  ? formatTimeHms(r.checkIn.timeStr)  : '',
+      r.checkOut ? formatTimeHms(r.checkOut.timeStr) : '',
       r.locationName,
       r.gpsStatus,
       r.statusType === 'ontime' ? 'ตรงเวลา' : r.statusType === 'late' ? 'มาสาย' : 'ไม่ลงชื่อเข้า',
@@ -732,7 +734,7 @@
   }
 
   // ===== Helpers =====
-  function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function esc(s) { return String(s || '').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>'); }
   function showError(html) {
     const b = document.getElementById('errorBox');
     b.innerHTML = html; b.style.display = 'block';

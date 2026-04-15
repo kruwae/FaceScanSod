@@ -7,6 +7,13 @@
   <title>ตั้งค่าระบบ | Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
+  <script type="module">
+    import { getApiUrl, setApiUrl } from './src/core/api.js';
+    if (typeof window !== 'undefined') {
+      window.getApiUrl = getApiUrl;
+      window.setApiUrl = setApiUrl;
+    }
+  </script>
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
@@ -721,17 +728,11 @@
       window.location.replace('login.html?to=config.html');
     }
 
-    // Guard: back button (bfcache restore) → ตรวจสิทธิ์ใหม่
     window.addEventListener('pageshow', function(e) {
       if (e.persisted) requireAuth();
     });
 
     btnLogoutTop.addEventListener('click', doLogout);
-
-    // API URL
-    function getApiUrl() {
-      return (localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
-    }
 
     function showMsg(text, type) {
       msgDiv.innerText = text;
@@ -740,26 +741,25 @@
 
     function escapeHtml(value) {
       return String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
+        .replaceAll('&', '&')
+        .replaceAll('"', '"')
+        .replaceAll("'", ''')
+        .replaceAll('<', '<')
+        .replaceAll('>', '>');
     }
 
-    // แปลง Google Maps URL → lat/lng
+    function getApiUrl() {
+      return typeof window.getApiUrl === 'function' ? window.getApiUrl() : '';
+    }
+
     function parseGoogleMapsUrl(url) {
       if (!url) return null;
-      // รูปแบบที่ 1: https://www.google.com/maps/place/.../@13.7563,100.5018,17z
       let m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
       if (m) return { lat: m[1], lng: m[2] };
-      // รูปแบบที่ 2: https://maps.google.com/?q=13.7563,100.5018
       m = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
       if (m) return { lat: m[1], lng: m[2] };
-      // รูปแบบที่ 3: ll=13.7563,100.5018
       m = url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
       if (m) return { lat: m[1], lng: m[2] };
-      // รูปแบบที่ 4: !3d13.7563!4d100.5018
       m = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
       if (m) return { lat: m[1], lng: m[2] };
       return null;
@@ -816,7 +816,6 @@
         </div>
       `;
 
-      // ปุ่ม Parse
       wrap.querySelector('.btn-parse-maps').addEventListener('click', function () {
         const url    = wrap.querySelector('.loc-maps-url').value.trim();
         const coords = parseGoogleMapsUrl(url);
@@ -830,7 +829,7 @@
         }
       });
 
-      wrap.querySelector('.loc-maps-url').addEventListener('paste', function (e) {
+      wrap.querySelector('.loc-maps-url').addEventListener('paste', function () {
         setTimeout(() => wrap.querySelector('.btn-parse-maps').click(), 80);
       });
 
@@ -860,7 +859,6 @@
       fetch(apiUrl + '?action=getConfig')
         .then(r => r.json())
         .then(config => {
-          // โหลด locations
           locationsBox.innerHTML = '';
           const locations = Array.isArray(config.locations) ? config.locations : [];
           if (locations.length === 0) {
@@ -868,13 +866,11 @@
           } else {
             locations.forEach(loc => addLocation(loc));
           }
-          // โหลด workTimes
           if (config.workTimes) {
             const wt = config.workTimes;
             if (wt.startTime)     document.getElementById('workStartTime').value     = wt.startTime;
             if (wt.lateThreshold) document.getElementById('workLateThreshold').value = wt.lateThreshold;
             if (wt.endTime)       document.getElementById('workEndTime').value        = wt.endTime;
-            // special dates
             const sdBox = document.getElementById('specialDatesBox');
             sdBox.innerHTML = '';
             (wt.specialDates || []).forEach(sd => addSpecialDate(sd));
@@ -888,7 +884,6 @@
         .catch(err => showMsg('❌ โหลดข้อมูลไม่สำเร็จ: ' + err.message, MSG_ERROR));
     }
 
-    // ===== Special Dates =====
     function addSpecialDate(sd = {}) {
       const sdBox = document.getElementById('specialDatesBox');
       const row   = document.createElement('div');
@@ -935,7 +930,6 @@
       };
       if (!apiUrl) return showMsg('❌ กรุณากรอก API URL', MSG_ERROR);
       if (locations.length === 0) return showMsg('❌ กรุณาเพิ่มอย่างน้อย 1 ตำแหน่ง', MSG_ERROR);
-      localStorage.setItem('gasApiUrl', apiUrl);
       showMsg('⏳ กำลังบันทึก...', '');
       fetch(apiUrl, {
         method: 'POST',
@@ -943,11 +937,22 @@
         body: JSON.stringify({ action: 'saveConfig', apiUrl, locations, workTimes, fallbackSettings, updatedBy: 'admin' })
       })
         .then(r => r.json())
-        .then(data => showMsg('✅ ' + (data.message || 'บันทึกสำเร็จ'), MSG_SUCCESS))
+        .then(data => {
+          if (data && (data.success || data.status === 'ok')) {
+            if (typeof window.setApiUrl === 'function') {
+              window.setApiUrl(apiUrl);
+            } else {
+              try { localStorage.setItem('GAS_API_URL', apiUrl); localStorage.setItem('gasApiUrl', apiUrl); } catch (e) {}
+            }
+            document.getElementById('apiUrl').value = apiUrl;
+            showMsg('✅ ' + (data.message || 'บันทึกสำเร็จ'), MSG_SUCCESS);
+            return;
+          }
+          showMsg('❌ ' + (data.error || data.message || 'บันทึกไม่สำเร็จ'), MSG_ERROR);
+        })
         .catch(err => showMsg('❌ เชื่อมต่อ API ไม่ได้: ' + err.message, MSG_ERROR));
     }
 
-    // --------- เปลี่ยนรหัสแอดมิน ---------
     async function changeCode() {
       const currentCode = document.getElementById('currentCode').value.trim();
       const newCode     = document.getElementById('newCode').value.trim();
@@ -976,9 +981,6 @@
           changeMsg.innerText = '✅ ' + (data.message || 'เปลี่ยนรหัสสำเร็จ');
           changeMsg.className = MSG_SUCCESS;
           ['currentCode','newCode','confirmCode'].forEach(id => document.getElementById(id).value = '');
-          // Force re-read current admin value from sheet on next login attempt.
-          // If the sheet is still plain text, it's almost always because the web app
-          // deployment is not the newest version or the active API URL points to an old deployment.
           console.log('Admin code changed successfully. Verify the staffOS sheet code column after refresh.');
         } else {
           changeMsg.innerText = '❌ ' + (data.error || 'เปลี่ยนรหัสล้มเหลว');
@@ -990,7 +992,6 @@
       }
     }
 
-    // --------- สร้าง staffOS Sheet ครั้งแรก ---------
     async function runInitSetup() {
       const apiUrl  = getApiUrl();
       const initMsg = document.getElementById('initMsg');
@@ -1015,8 +1016,7 @@
       }
     }
 
-    // --------- Init ---------
-    requireAuth();          // redirect ถ้าไม่มี session
+    requireAuth();
     if (getApiUrl()) {
       loadFromServer();
     } else {

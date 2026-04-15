@@ -1,63 +1,109 @@
-const getApiUrl = () => (localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : window.GAS_API_URL || '') || '').trim();
+export const API_URL_STORAGE_KEY = 'GAS_API_URL';
+const LEGACY_API_URL_STORAGE_KEY = 'gasApiUrl';
 
-const getToken = () => {
-  try {
-    return (localStorage.getItem('token') || '').trim();
-  } catch (_) {
+let resolvedApiUrl = '';
+
+function normalizeApiUrl(value) {
+  if (typeof value !== 'string') {
     return '';
   }
-};
 
-const withToken = (url) => {
-  const token = getToken();
-  if (!token) return url;
-  const join = url.includes('?') ? '&' : '?';
-  return `${url}${join}token=${encodeURIComponent(token)}`;
-};
-
-export async function apiGet(action, params = {}) {
-  const apiUrl = getApiUrl();
-  if (!apiUrl) throw new Error('API URL is not configured');
-
-  const search = new URLSearchParams();
-  search.set('action', action);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && `${value}` !== '') search.set(key, String(value));
-  });
-
-  const url = withToken(`${apiUrl}?${search.toString()}`);
-  const res = await fetch(url, { method: 'GET' });
-  return res.json();
+  return value.trim().replace(/\/+$/, '');
 }
 
-export async function apiPost(action, payload = {}) {
-  const apiUrl = getApiUrl();
-  if (!apiUrl) throw new Error('API URL is not configured');
-
-  const body = { action, ...payload };
-  const token = getToken();
-  if (token && body.token == null) body.token = token;
-
-  const res = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  return res.json();
-}
-
-export function getStoredToken() {
-  return getToken();
-}
-
-export function setStoredToken(token) {
+function readStoredApiUrl() {
   try {
-    localStorage.setItem('token', token);
-  } catch (_) {}
+    if (typeof localStorage === 'undefined') {
+      return '';
+    }
+
+    return normalizeApiUrl(
+      localStorage.getItem(API_URL_STORAGE_KEY) ||
+      localStorage.getItem(LEGACY_API_URL_STORAGE_KEY) ||
+      ''
+    );
+  } catch (error) {
+    return '';
+  }
 }
 
-export function clearStoredToken() {
+function readGlobalApiUrl() {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  return normalizeApiUrl(window.GAS_API_URL || window.API_URL || '');
+}
+
+function writeStoredApiUrl(value) {
   try {
-    localStorage.removeItem('token');
-  } catch (_) {}
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    if (value) {
+      localStorage.setItem(API_URL_STORAGE_KEY, value);
+      localStorage.setItem(LEGACY_API_URL_STORAGE_KEY, value);
+    } else {
+      localStorage.removeItem(API_URL_STORAGE_KEY);
+      localStorage.removeItem(LEGACY_API_URL_STORAGE_KEY);
+    }
+  } catch (error) {
+    // Ignore storage failures and keep the in-memory value.
+  }
+}
+
+export function getApiUrl() {
+  if (resolvedApiUrl) {
+    return resolvedApiUrl;
+  }
+
+  const storedApiUrl = readStoredApiUrl();
+  if (storedApiUrl) {
+    resolvedApiUrl = storedApiUrl;
+    return resolvedApiUrl;
+  }
+
+  const globalApiUrl = readGlobalApiUrl();
+  if (globalApiUrl) {
+    resolvedApiUrl = globalApiUrl;
+    return resolvedApiUrl;
+  }
+
+  return '';
+}
+
+export function setApiUrl(url) {
+  const normalizedUrl = normalizeApiUrl(url);
+  resolvedApiUrl = normalizedUrl;
+  writeStoredApiUrl(normalizedUrl);
+
+  if (typeof window !== 'undefined') {
+    window.GAS_API_URL = normalizedUrl;
+  }
+
+  return resolvedApiUrl;
+}
+
+export function getStoredApiUrl() {
+  return readStoredApiUrl();
+}
+
+export function hasApiUrl() {
+  return Boolean(getApiUrl());
+}
+
+export function buildApiUrl(path) {
+  const baseUrl = getApiUrl();
+  const normalizedPath = typeof path === 'string' ? path.replace(/^\/+/, '') : '';
+
+  if (!baseUrl) {
+    return normalizedPath ? `/${normalizedPath}` : '';
+  }
+
+  if (!normalizedPath) {
+    return baseUrl;
+  }
+
+  return `${baseUrl}/${normalizedPath}`;
 }

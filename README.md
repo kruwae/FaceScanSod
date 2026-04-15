@@ -92,6 +92,8 @@ facescanner v2/
 const GAS_API_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
 ```
 
+> ระบบอ่านค่า API URL จาก `src/core/api.js` เป็นจุดเดียว และรองรับ fallback จาก key เดิม `gasApiUrl` เพื่อความเข้ากันได้ย้อนหลัง
+
 ---
 
 ### Step 3 — Deploy ขึ้น Netlify
@@ -170,7 +172,7 @@ const GAS_API_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
 ### 📋 Users — ข้อมูลพนักงาน
 
 | Column A | Column B | Column C |
-|----------|----------|----------|
+|----------|----------|-----------|
 | Name | Face Descriptor (JSON array 128D) | Registered At |
 
 ### 📋 Attendance — ประวัติเข้างาน

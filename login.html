@@ -7,6 +7,12 @@
   <title>Admin Login | ระบบสแกนหน้า</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
+  <script type="module">
+    import { getApiUrl } from './src/core/api.js';
+    if (typeof window !== 'undefined') {
+      window.getApiUrl = getApiUrl;
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
   <style>
@@ -353,11 +359,7 @@
 
     // ---- API URL ----
     function getApiUrl() {
-      return (
-        localStorage.getItem('gasApiUrl') ||
-        (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') ||
-        (typeof window !== 'undefined' ? (window.GAS_API_URL || '') : '')
-      ).trim();
+      return typeof window.getApiUrl === 'function' ? window.getApiUrl() : (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '').trim();
     }
 
     function normalizeCodeInput(value) {
@@ -600,7 +602,6 @@
           icon: 'error',
           title: '❌ เข้าสู่ระบบไม่สำเร็จ',
           text: result.error || 'กรุณาตรวจสอบข้อมูลอีกครั้ง',
-          confirmButtonText: 'ลองใหม่',
           confirmButtonColor: '#6366f1',
           background: '#1e1b4b',
           color: '#e2e8f0'

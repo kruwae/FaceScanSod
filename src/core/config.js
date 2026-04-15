@@ -1,11 +1,11 @@
+import { API_URL_STORAGE_KEY, getApiUrl as getCoreApiUrl, setApiUrl as setCoreApiUrl } from './api.js';
+
 export function getApiUrl() {
-  return (localStorage.getItem('gasApiUrl') || '').trim();
+  return getCoreApiUrl();
 }
 
 export function setApiUrl(url) {
-  try {
-    localStorage.setItem('gasApiUrl', String(url || '').trim());
-  } catch (_) {}
+  return setCoreApiUrl(url);
 }
 
 export function getPublicConfig() {

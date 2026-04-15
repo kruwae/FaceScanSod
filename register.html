@@ -443,6 +443,10 @@
 
     let saveCounter = 0;
     const MAX_CAPTURES = 3;
+    let currentEmployeeId = '';
+    let currentLocationName = '';
+    let selectedLocationData = null;
+    let selectedLocationEditable = false;
 
     // --------- ตรวจสอบ session ---------
     function isAuthed() {

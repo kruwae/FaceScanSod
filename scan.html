@@ -692,11 +692,13 @@
   const MATCH_THRESHOLD = 0.45;
 
   let knownFaces = [];
+  let knownFacesLoaded = false;
   let scanInterval = null;
   let currentMatch = null;
   let currentLat = null;
   let currentLng = null;
   let currentLocation = null;
+  let selectedLocation = null;
   let allLocations = [];
   let gpsSkipped = false;
   let gpsSkipReason = '';

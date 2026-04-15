@@ -841,6 +841,26 @@
       locationsBox.appendChild(createLocationItem(location));
     }
 
+    function ensureDefaultLocations(locations) {
+      const source = Array.isArray(locations) ? locations : [];
+      const normalized = source.filter(loc => loc && (loc.name || loc.lat || loc.lng));
+      if (normalized.length >= 3) {
+        return normalized;
+      }
+
+      const defaults = [
+        { name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true },
+        { name: 'หน่วยบริการ 2', lat: '', lng: '', radius: 100, enabled: true },
+        { name: 'หน่วยบริการ 3', lat: '', lng: '', radius: 100, enabled: true }
+      ];
+
+      for (let i = normalized.length; i < 3; i++) {
+        normalized.push(defaults[i]);
+      }
+
+      return normalized;
+    }
+
     function collectLocations() {
       return [...document.querySelectorAll('.location-item')].map((item, idx) => ({
         id: item.dataset.id || ('loc-' + (idx + 1)),
@@ -854,23 +874,28 @@
 
     function loadFromServer() {
       const apiUrl = getApiUrl();
-      if (!apiUrl) { showMsg('❌ ยังไม่ได้ตั้งค่า API URL', MSG_ERROR); return; }
+      if (!apiUrl) {
+        showMsg('❌ ยังไม่ได้ตั้งค่า API URL', MSG_ERROR);
+        document.getElementById('apiUrl').value = '';
+        return;
+      }
+
       document.getElementById('apiUrl').value = apiUrl;
+
       fetch(apiUrl + '?action=getConfig')
         .then(r => r.json())
         .then(config => {
           locationsBox.innerHTML = '';
-          const locations = Array.isArray(config.locations) ? config.locations : [];
-          if (locations.length === 0) {
-            addLocation({ name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true });
-          } else {
-            locations.forEach(loc => addLocation(loc));
-          }
+          document.getElementById('apiUrl').value = config.apiUrl || apiUrl;
+
+          const locations = ensureDefaultLocations(Array.isArray(config.locations) ? config.locations : []);
+          locations.forEach(loc => addLocation(loc));
+
           if (config.workTimes) {
             const wt = config.workTimes;
             if (wt.startTime)     document.getElementById('workStartTime').value     = wt.startTime;
             if (wt.lateThreshold) document.getElementById('workLateThreshold').value = wt.lateThreshold;
-            if (wt.endTime)       document.getElementById('workEndTime').value        = wt.endTime;
+            if (wt.endTime)       document.getElementById('workEndTime').value       = wt.endTime;
             const sdBox = document.getElementById('specialDatesBox');
             sdBox.innerHTML = '';
             (wt.specialDates || []).forEach(sd => addSpecialDate(sd));
@@ -881,7 +906,14 @@
           document.getElementById('fallbackContactText').value = fallback.contactText || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง';
           showMsg('✅ โหลดข้อมูลจากเซิร์ฟเวอร์แล้ว', MSG_SUCCESS);
         })
-        .catch(err => showMsg('❌ โหลดข้อมูลไม่สำเร็จ: ' + err.message, MSG_ERROR));
+        .catch(err => {
+          showMsg('❌ โหลดข้อมูลไม่สำเร็จ: ' + err.message, MSG_ERROR);
+          if (!locationsBox.children.length) {
+            addLocation({ name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true });
+            addLocation({ name: 'หน่วยบริการ 2', lat: '', lng: '', radius: 100, enabled: true });
+            addLocation({ name: 'หน่วยบริการ 3', lat: '', lng: '', radius: 100, enabled: true });
+          }
+        });
     }
 
     function addSpecialDate(sd = {}) {
@@ -1020,7 +1052,9 @@
     if (getApiUrl()) {
       loadFromServer();
     } else {
-      addLocation({ name: '', lat: '', lng: '', radius: 100, enabled: true });
+      addLocation({ name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true });
+      addLocation({ name: 'หน่วยบริการ 2', lat: '', lng: '', radius: 100, enabled: true });
+      addLocation({ name: 'หน่วยบริการ 3', lat: '', lng: '', radius: 100, enabled: true });
       document.getElementById('fallbackEnabled').value = 'false';
       document.getElementById('fallbackContactText').value = 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง';
     }

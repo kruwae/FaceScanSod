@@ -961,8 +961,11 @@
       activeLngInput = lngInput;
       mapModal.style.display = 'flex';
 
+      const hasValue = latInput.value && lngInput.value;
       const initialLat = parseFloat(latInput.value) || 13.7563;
       const initialLng = parseFloat(lngInput.value) || 100.5018;
+
+      const hintEl = document.querySelector('.map-hint');
 
       if (!map) {
         map = L.map('mapContainer').setView([initialLat, initialLng], 13);
@@ -975,10 +978,31 @@
         });
       } else {
         map.setView([initialLat, initialLng], 13);
-        setTimeout(() => map.invalidateSize(), 100);
+        setTimeout(() => map.invalidateSize(), 150);
       }
 
       updateMarker(initialLat, initialLng);
+
+      // Auto-pin current GPS if inputs are empty
+      if (!hasValue && navigator.geolocation) {
+        if (hintEl) hintEl.innerText = '🛰️ กำลังค้นหาตำแหน่งของคุณ...';
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            const clat = pos.coords.latitude;
+            const clng = pos.coords.longitude;
+            map.setView([clat, clng], 16);
+            updateMarker(clat, clng);
+            if (hintEl) hintEl.innerText = '📍 พบตำแหน่งปัจจุบันของคุณแล้ว (แก้ไขได้โดยคลิกบนแผนที่)';
+          },
+          function(err) {
+            if (hintEl) hintEl.innerText = '❌ ไม่สามารถดึงตำแหน่งปัจจุบันได้ (กรุณาเลือกเองบนแผนที่)';
+          },
+          { enableHighAccuracy: true, timeout: 5000 }
+        );
+      } else if (hasValue) {
+        if (hintEl) hintEl.innerText = '📍 แสดงตำแหน่งเดิม (แก้ไขได้โดยคลิกบนแผนที่)';
+        map.setView([initialLat, initialLng], 16);
+      }
     }
 
     function updateMarker(lat, lng) {

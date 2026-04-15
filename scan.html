@@ -1030,7 +1030,9 @@
 
       knownFaces = data.map(function (u) {
         return {
-          name: u.employeeId || u.label || '',
+          employeeId: u.employeeId || '',
+          name: u.name || u.label || u.employeeId || '',
+          position: u.position || '',
           descriptor: new Float32Array(u.descriptor)
         };
       });
@@ -1106,7 +1108,7 @@
   }
 
   function showModal(match) {
-    currentMatch = match.name;
+    currentMatch = match.employeeId || match.name;
     document.getElementById('modalName').innerText = match.name;
 
     const now = new Date();

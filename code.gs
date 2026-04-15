@@ -56,7 +56,7 @@ function doPost(e) {
   }
   let result;
 
-  if (action === 'registerUser')         result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status, data.position, data.roles, data.role, data.employeeId, data.position);
+  if (action === 'registerUser')         result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status, data.position, data.roles, data.role, data.employeeId);
   else if (action === 'logAttendance')   result = logAttendance(data);
   else if (action === 'saveConfig')      result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy, data.token);
   else if (action === 'login')           result = login(data);
@@ -787,24 +787,48 @@ function changeAdminCode(currentCode, newCode) {
 // ============================================================
 //  Users
 // ============================================================
-function registerUser(name, faceDescriptor, registeredBy, status) {
+function ensureUsersSheetWithContract(ss) {
+  const schema = ['Employee ID', 'Name', 'Position', 'Face Descriptor', 'Registered At', 'Registered By', 'Status'];
+  return ensureSheetWithHeaders(ss, 'Users', schema);
+}
+
+function normalizeEmployeeId(value, name, rowIndex) {
+  const raw = String(value || '').trim();
+  if (raw) return raw;
+  const baseName = String(name || '').trim().replace(/\s+/g, '_') || 'EMP';
+  return 'EMP-' + baseName + '-' + String(rowIndex || 0);
+}
+
+function registerUser(name, faceDescriptor, registeredBy, status, position, roles, role, employeeId) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const schema = ['Name', 'Face Descriptor', 'Registered At', 'Registered By', 'Status'];
-  const result = ensureSheetWithHeaders(ss, 'Users', schema);
+  const result = ensureUsersSheetWithContract(ss);
   const sheet = result.sheet;
+  const headerMap = result.headerMap;
 
   const rowNumber = sheet.getLastRow() + 1;
-  sheet.getRange(rowNumber, 1, 1, Math.max(sheet.getLastColumn(), schema.length)).setValues([new Array(Math.max(sheet.getLastColumn(), schema.length)).fill('')]);
+  const resolvedEmployeeId = normalizeEmployeeId(employeeId, name, rowNumber);
 
-  setRowByHeaders(sheet, rowNumber, result.headerMap, {
-    'Name': name,
-    'Face Descriptor': JSON.stringify(faceDescriptor),
+  sheet.getRange(rowNumber, 1, 1, Math.max(sheet.getLastColumn(), 7)).setValues([
+    new Array(Math.max(sheet.getLastColumn(), 7)).fill('')
+  ]);
+
+  setRowByHeaders(sheet, rowNumber, headerMap, {
+    'Employee ID': resolvedEmployeeId,
+    'Name': String(name || '').trim(),
+    'Position': String(position || '').trim(),
+    'Face Descriptor': JSON.stringify(faceDescriptor || []),
     'Registered At': new Date(),
-    'Registered By': registeredBy || '',
-    'Status': status || 'active'
+    'Registered By': String(registeredBy || '').trim(),
+    'Status': String(status || 'active').trim() || 'active'
   });
 
-  return { success: true, message: 'บันทึกข้อมูลใบหน้าเรียบร้อย' };
+  return {
+    success: true,
+    message: 'บันทึกข้อมูลใบหน้าเรียบร้อย',
+    employeeId: resolvedEmployeeId,
+    name: String(name || '').trim(),
+    position: String(position || '').trim()
+  };
 }
 
 function getKnownFaces(params) {
@@ -837,29 +861,41 @@ function getKnownFaces(params) {
   }
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheetInfo = ensureSheetWithHeaders(ss, 'Users', ['Employee ID', 'Face Descriptor', 'Status']);
+  const sheetInfo = ensureUsersSheetWithContract(ss);
   const sheet = sheetInfo.sheet;
+  const headerMap = sheetInfo.headerMap;
 
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
 
-  const headerMap = sheetInfo.headerMap;
-  const employeeIdCol = headerMap['Employee ID'] || 1;
-  const descriptorCol = headerMap['Face Descriptor'] || 2;
+  const employeeIdCol = headerMap['Employee ID'];
+  const nameCol = headerMap['Name'];
+  const positionCol = headerMap['Position'];
+  const descriptorCol = headerMap['Face Descriptor'];
   const statusCol = headerMap['Status'];
 
   const users = [];
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const employeeId = row[employeeIdCol - 1];
-    const jsonStr = row[descriptorCol - 1];
-    const status = statusCol ? String(row[statusCol - 1] || '').toLowerCase() : 'active';
+    const employeeId = employeeIdCol ? String(row[employeeIdCol - 1] || '').trim() : '';
+    const name = nameCol ? String(row[nameCol - 1] || '').trim() : '';
+    const position = positionCol ? String(row[positionCol - 1] || '').trim() : '';
+    const jsonStr = descriptorCol ? String(row[descriptorCol - 1] || '').trim() : '';
+    const status = statusCol ? String(row[statusCol - 1] || 'active').toLowerCase() : 'active';
 
-    if (employeeId && jsonStr && status !== 'inactive') {
-      try {
-        users.push({ employeeId: String(employeeId), descriptor: JSON.parse(jsonStr) });
-      } catch (e) {}
-    }
+    if (!jsonStr || status === 'inactive') continue;
+
+    try {
+      const descriptor = JSON.parse(jsonStr);
+      users.push({
+        employeeId: employeeId || normalizeEmployeeId('', name, i + 1),
+        label: name || employeeId || ('User ' + (i + 1)),
+        name: name || '',
+        position: position || '',
+        descriptor: descriptor,
+        status: status || 'active'
+      });
+    } catch (e) {}
   }
 
   logAction({

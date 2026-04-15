@@ -42,15 +42,6 @@ function denyAction(action, params) {
 // ============================================================
 
 function doPost(e) {
-  // CORS Origin Validation
-  // GAS doesn't naturally expose request headers in Web Apps easily, but if a custom shim/header passes this:
-  const origin = (e && e.requestHeader && e.requestHeader.origin) ? e.requestHeader.origin : null;
-  const allowedOrigins = ['https://facescan-sod.netlify.app']; // Change to your actual frontend domain
-  if (origin && !allowedOrigins.includes(origin)) {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Forbidden: Origin not allowed' }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
   let data;
   try {
     data = JSON.parse(e.postData.contents);

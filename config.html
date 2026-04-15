@@ -1192,7 +1192,13 @@
       if (apiInput) apiInput.value = apiUrl;
 
       fetch(apiUrl + '?action=getConfig')
-        .then(r => r.json())
+        .then(async r => {
+          if (!r.ok) {
+            const txt = await r.text();
+            throw new Error('HTTP ' + r.status + ': ' + (txt.substring(0, 50)));
+          }
+          return r.json();
+        })
         .then(config => {
           if (locationsBox) locationsBox.innerHTML = '';
           if (apiInput) apiInput.value = config.apiUrl || apiUrl;
@@ -1216,7 +1222,8 @@
           showMsg('✅ โหลดข้อมูลจากเซิร์ฟเวอร์แล้ว', MSG_SUCCESS);
         })
         .catch(err => {
-          showMsg('❌ โหลดข้อมูลไม่สำเร็จ: ' + err.message, MSG_ERROR);
+          console.error('[Load] Fetch error:', err);
+          showMsg('❌ เชื่อมต่อ API ไม่ได้: ' + err.message, MSG_ERROR);
           if (locationsBox && !locationsBox.children.length) {
             addLocation({ name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true });
             addLocation({ name: 'หน่วยบริการ 2', lat: '', lng: '', radius: 100, enabled: true });
@@ -1277,7 +1284,13 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'saveConfig', apiUrl, locations, workTimes, fallbackSettings, updatedBy: 'admin' })
       })
-        .then(r => r.json())
+        .then(async r => {
+          if (!r.ok) {
+            const txt = await r.text();
+            throw new Error('HTTP ' + r.status + ': ' + (txt.substring(0, 50)));
+          }
+          return r.json();
+        })
         .then(data => {
           if (data && (data.success || data.status === 'ok')) {
             setApiUrl(apiUrl);
@@ -1287,7 +1300,10 @@
           }
           showMsg('❌ ' + (data.error || data.message || 'บันทึกไม่สำเร็จ'), MSG_ERROR);
         })
-        .catch(err => showMsg('❌ เชื่อมต่อ API ไม่ได้: ' + err.message, MSG_ERROR));
+        .catch(err => {
+          console.error('[Save] Fetch error:', err);
+          showMsg('❌ เชื่อมต่อ API ไม่ได้: ' + err.message, MSG_ERROR);
+        });
     }
 
     // ── บันทึกเฉพาะส่วนแผนสำรอง (แสดงผลภายในกรอบแผนสำรอง) ──

@@ -122,112 +122,6 @@
       text-align: center;
     }
 
-    .gps-guide {
-      display: none;
-      width: 100%;
-      background: rgba(10,10,28,0.95);
-      border: 1px solid rgba(99,102,241,0.3);
-      border-radius: 14px;
-      padding: 14px 16px;
-      margin-bottom: 10px;
-    }
-
-    .gps-guide-title {
-      font-size: 0.88em;
-      font-weight: 700;
-      color: #c7d2fe;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .gps-guide-platform {
-      font-size: 0.78em;
-      color: #64748b;
-      margin-bottom: 8px;
-    }
-
-    .gps-guide-step {
-      font-size: 0.8em;
-      color: #94a3b8;
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-    }
-
-    .gps-guide-step:last-child { border-bottom: none; }
-
-    .gps-step-num {
-      color: #6366f1;
-      font-weight: 700;
-      min-width: 18px;
-      flex-shrink: 0;
-    }
-
-    .gps-fallback-title {
-      font-size: 0.78em;
-      font-weight: 700;
-      color: #64748b;
-      margin: 12px 0 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .gps-fallback-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .btn-gps-fallback {
-      flex: 1;
-      min-width: 120px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      font-family: 'Sarabun', sans-serif;
-      font-size: 12.5px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      text-align: center;
-      transition: all 0.2s;
-    }
-
-    .btn-ip {
-      background: rgba(99,102,241,0.15);
-      border: 1px solid rgba(99,102,241,0.3);
-      color: #a5b4fc;
-    }
-
-    .btn-ip:hover { background: rgba(99,102,241,0.25); }
-
-    .btn-wifi {
-      background: rgba(59,130,246,0.15);
-      border: 1px solid rgba(59,130,246,0.3);
-      color: #93c5fd;
-    }
-
-    .btn-wifi:hover { background: rgba(59,130,246,0.25); }
-
-    .btn-skip-mild {
-      background: rgba(239,68,68,0.1);
-      border: 1px dashed rgba(239,68,68,0.4);
-      color: #fca5a5;
-    }
-
-    .btn-skip-mild:hover { background: rgba(239,68,68,0.18); }
-
-    .btn-offline {
-      background: rgba(245,158,11,0.14);
-      border: 1px solid rgba(245,158,11,0.35);
-      color: #fcd34d;
-    }
-
-    .btn-offline:hover { background: rgba(245,158,11,0.24); }
-
     .gps-permission-banner {
       display: none;
       width: 100%;
@@ -253,7 +147,6 @@
       color: #94a3b8;
       margin-bottom: 6px;
       font-weight: 600;
-      letter-spacing: 0.03em;
     }
 
     .location-selector select {
@@ -266,30 +159,6 @@
       font-size: 14px;
       font-family: 'Sarabun', sans-serif;
       outline: none;
-      appearance: none;
-      -webkit-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px center;
-      cursor: pointer;
-      transition: border-color 0.25s ease;
-      margin-bottom: 10px;
-    }
-
-    .location-selector select:focus { border-color: rgba(99,102,241,0.55); }
-
-    #btnConfirmLocation {
-      width: 100%;
-      padding: 12px;
-      border-radius: 12px;
-      border: none;
-      background: linear-gradient(135deg,#6366f1,#4f46e5);
-      color: #fff;
-      font-family: 'Sarabun', sans-serif;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      display: none;
     }
 
     .gps-info-card {
@@ -307,35 +176,6 @@
     .gps-info-card.out-range {
       background: rgba(239,68,68,0.08);
       border-color: rgba(239,68,68,0.3);
-    }
-
-    .gps-info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .gps-info-label {
-      color: #64748b;
-      min-width: 60px;
-    }
-
-    .gps-info-value {
-      color: #e2e8f0;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .gps-dist-ok {
-      color: #34d399;
-      font-weight: 700;
-    }
-
-    .gps-dist-bad {
-      color: #f87171;
-      font-weight: 700;
     }
 
     .video-container {
@@ -424,13 +264,11 @@
       box-shadow: 0 4px 25px rgba(99,102,241,0.45);
       margin: 20px auto 0;
       transition: all 0.3s ease;
-      animation: btnPulse 2s ease-in-out infinite;
     }
 
     #btnStart:hover {
       transform: translateY(-3px);
       box-shadow: 0 8px 35px rgba(99,102,241,0.6);
-      animation: none;
     }
 
     .modal-overlay {
@@ -454,10 +292,6 @@
       max-width: 360px;
       text-align: center;
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      animation: modalSlideUp 0.35s ease;
     }
 
     .modal-avatar {
@@ -471,12 +305,6 @@
       align-items: center;
       justify-content: center;
       margin-bottom: 14px;
-    }
-
-    .modal-title {
-      font-size: 0.82em;
-      color: #64748b;
-      margin-bottom: 4px;
     }
 
     .user-name {
@@ -508,12 +336,6 @@
       margin-bottom: 8px;
     }
 
-    .score-text {
-      color: #475569;
-      font-size: 13px;
-      margin-bottom: 20px;
-    }
-
     .btn {
       border: none;
       border-radius: 14px;
@@ -531,18 +353,6 @@
       font-size: 20px;
       font-weight: 700;
       box-shadow: 0 4px 20px rgba(16,185,129,0.35);
-      margin-bottom: 10px;
-    }
-
-    .btn-confirm:hover:not(:disabled) {
-      box-shadow: 0 8px 30px rgba(16,185,129,0.5);
-      transform: translateY(-1px);
-    }
-
-    .btn-confirm:disabled {
-      background: rgba(255,255,255,0.08);
-      color: #475569;
-      box-shadow: none;
     }
 
     .btn-cancel {
@@ -554,27 +364,10 @@
       font-weight: 600;
     }
 
-    .btn-cancel:hover { background: rgba(239,68,68,0.18); }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes btnPulse {
-      0%,100% { box-shadow: 0 4px 25px rgba(99,102,241,0.45); }
-      50% { box-shadow: 0 4px 40px rgba(99,102,241,0.7); }
-    }
-
     @keyframes scanMove {
       0% { top: 12%; }
       50% { top: 82%; }
       100% { top: 12%; }
-    }
-
-    @keyframes modalSlideUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
@@ -593,50 +386,18 @@
   </div>
 
   <div id="gps-alert-box" class="gps-alert"></div>
+  <div id="gpsPermBanner" class="gps-permission-banner">📱 บราวเซอร์กำลังขอสิทธิ์ GPS — กรุณากด <strong style="color:#fbbf24">Allow</strong></div>
+  <div id="gpsGuide" class="gps-guide"></div>
 
-  <div id="gpsPermBanner" class="gps-permission-banner">
-    📱 บราวเซอร์กำลังขอสิทธิ์ GPS — กรุณากด <strong style="color:#fbbf24">Allow</strong>
-  </div>
-
-  <div id="gpsGuide" class="gps-guide">
-    <div class="gps-guide-title" id="gpsGuideTitle">📱 วิธีแก้ GPS</div>
-    <div class="gps-guide-platform" id="gpsGuidePlatform"></div>
-    <div id="gpsGuideSteps"></div>
-    <div class="gps-fallback-title">🔄 แผนสำรอง / ฉุกเฉิน</div>
-    <div class="gps-fallback-row">
-      <button class="btn-gps-fallback btn-wifi" id="btnWifiFallback">📦 แผนสำรอง</button>
-      <button class="btn-gps-fallback btn-offline" id="btnOfflineMode">📡 โหมดออฟไลน์</button>
-    </div>
-  </div>
-
+  <!-- เลือกหน่วยบริการ + ปุ่มเปลี่ยน -->
   <div class="location-selector" id="locationSelector">
-    <label>🏥 เลือกหน่วยบริการที่ต้องการเช็คอิน</label>
+    <label>🏥 เลือกหน่วยบริการ</label>
     <select id="locationSelect"></select>
     <button id="btnConfirmLocation" type="button">✅ ยืนยันหน่วยบริการ → ตรวจสอบ GPS</button>
+    <button id="btnChangeLocation" type="button" style="margin-top:8px; background:#64748b; color:white; display:none; width:100%; padding:12px;">🔄 เปลี่ยนหน่วยบริการ</button>
   </div>
 
-  <div class="gps-info-card" id="gpsInfoCard">
-    <div class="gps-info-row">
-      <span class="gps-info-label">📍 สถานที่</span>
-      <span class="gps-info-value" id="infoLocName">—</span>
-    </div>
-    <div class="gps-info-row">
-      <span class="gps-info-label">Latitude</span>
-      <span class="gps-info-value" id="infoLocLat">—</span>
-    </div>
-    <div class="gps-info-row">
-      <span class="gps-info-label">Longitude</span>
-      <span class="gps-info-value" id="infoLocLng">—</span>
-    </div>
-    <div class="gps-info-row">
-      <span class="gps-info-label">รัศมี</span>
-      <span class="gps-info-value" id="infoLocRadius">—</span>
-    </div>
-    <div class="gps-info-row" style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px">
-      <span class="gps-info-label">ห่าง</span>
-      <span id="infoLocDist">—</span>
-    </div>
-  </div>
+  <div class="gps-info-card" id="gpsInfoCard"></div>
 
   <button id="btnStart" onclick="startCamera()">📷 แตะเพื่อเริ่มสแกน</button>
 
@@ -651,9 +412,9 @@
     <div id="overlay-status">รอโหลด...</div>
     <video id="video" autoplay muted playsinline></video>
   </div>
-
 </div>
 
+<!-- Modal ยืนยัน -->
 <div id="confirmModal" class="modal-overlay">
   <div class="modal-content">
     <div class="modal-avatar">🙋</div>
@@ -662,356 +423,58 @@
     <div id="modalTime" class="time-badge">00:00</div>
     <div id="modalLocation" class="loc-badge" style="display:none"></div>
     <div id="modalScore" class="score-text"></div>
-    <button class="btn btn-confirm" id="btnConfirm" onclick="confirmAttendance()">✅ ยืนยันเข้างาน</button>
+    <button class="btn btn-confirm" id="btnConfirm">✅ ยืนยันเข้างาน</button>
     <button class="btn btn-cancel" onclick="cancelAttendance()">ไม่ใช่ฉัน</button>
   </div>
 </div>
 
 <script>
-  function getApiUrl() {
-    return (localStorage.getItem('gasApiUrl') || GAS_API_URL || '').trim();
-  }
-  function getReadToken() {
-    try { return (localStorage.getItem('readToken') || '').trim(); } catch (_) { return ''; }
-  }
-  const API_URL = getApiUrl();
+  // ====================== ตัวแปรหลัก ======================
+  const API_URL = (localStorage.getItem('gasApiUrl') || window.GAS_API_URL || '').trim();
   const video = document.getElementById('video');
-  const mainStatus = document.getElementById('main-status');
-  const overlayStatus = document.getElementById('overlay-status');
-  const confirmModal = document.getElementById('confirmModal');
-  const gpsStatus = document.getElementById('gps-status');
-  const gpsAlertBox = document.getElementById('gps-alert-box');
-  const btnStart = document.getElementById('btnStart');
-  const locationSelector = document.getElementById('locationSelector');
-  const locationSelect = document.getElementById('locationSelect');
-  const btnConfirmLocation = document.getElementById('btnConfirmLocation');
-  const gpsInfoCard = document.getElementById('gpsInfoCard');
-  const gpsGuide = document.getElementById('gpsGuide');
-  const gpsPermBanner = document.getElementById('gpsPermBanner');
-
-  const MATCH_THRESHOLD = 0.45;
-
   let knownFaces = [];
-  let scanInterval = null;
-  let currentMatch = null;
+  let currentLocation = null;
   let currentLat = null;
   let currentLng = null;
-  let currentLocation = null;
-  let allLocations = [];
-  let gpsSkipped = false;
-  let gpsSkipReason = '';
   let faceSystemInitialized = false;
-  let fallbackSettings = {
-    enabled: false,
-    contactText: 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
-  };
+  let scanInterval = null;
+  let currentMatch = null;
+  let allLocations = [];
+  const MATCH_THRESHOLD = 0.45;
 
-  function meshEnabled() {
-    return typeof MeshService !== 'undefined' && MeshService.isEnabled();
-  }
-
-  function detectPlatform() {
-    const ua = navigator.userAgent.toLowerCase();
-    if (/iphone|ipad|ipod/.test(ua)) return 'ios';
-    if (/android/.test(ua)) return 'android';
-    if (/macintosh|mac os/.test(ua)) return 'mac';
-    return 'windows';
-  }
-
-  async function checkGeolocationPermission() {
-    if (!navigator.geolocation) return 'unsupported';
-    if (!navigator.permissions) return 'unknown';
+  // ====================== โหลดข้อมูลพนักงาน ======================
+  async function loadKnownFaces() {
+    if (!API_URL) return false;
     try {
-      const perm = await navigator.permissions.query({ name: 'geolocation' });
-      return perm.state;
-    } catch (_) {
-      return 'unknown';
-    }
-  }
+      const token = localStorage.getItem('readToken') || '';
+      const url = `${API_URL}?action=getKnownFaces${token ? '&token=' + encodeURIComponent(token) : ''}`;
+      const res = await fetch(url);
+      const data = await res.json();
 
-  async function checkCamera() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      stream.getTracks().forEach(t => t.stop());
-      return true;
+      if (Array.isArray(data) && data.length > 0) {
+        knownFaces = data.map(u => ({
+          name: u.name || u.label || u.employeeId || 'ไม่ระบุ',
+          descriptor: new Float32Array(u.descriptor)
+        }));
+        return true;
+      } else {
+        document.getElementById('main-status').innerHTML = '⚠️ ไม่พบข้อมูลพนักงานในระบบ<br>กรุณาไปลงทะเบียนที่เมนู Admin';
+        document.getElementById('main-status').style.color = '#f87171';
+        return false;
+      }
     } catch (e) {
-      console.warn('[Camera]', e.message);
+      document.getElementById('main-status').innerHTML = '❌ ไม่สามารถโหลดข้อมูลพนักงานได้';
+      document.getElementById('main-status').style.color = '#f87171';
       return false;
     }
   }
 
-  function showError(msg) {
-    mainStatus.innerHTML = '<span style="color:#f87171">❌ ' + msg + '</span>';
-  }
-
-  function showGpsGuide(errorCode) {
-    const platform = detectPlatform();
-    const guides = {
-      ios: {
-        label: 'iPhone / iPad (Safari)',
-        steps: [
-          'เปิด Settings → Privacy & Security → Location Services',
-          'เปิดสิทธิ์ Location ให้ Safari เป็น While Using',
-          'กลับมาหน้านี้แล้วอนุญาต GPS อีกครั้ง'
-        ]
-      },
-      android: {
-        label: 'Android (Chrome)',
-        steps: [
-          'แตะไอคอนล็อกข้าง URL → Site settings',
-          'เปิดสิทธิ์ Location เป็น Allow',
-          'ตรวจว่า Location ของเครื่องเปิดอยู่ แล้วลองใหม่'
-        ]
-      },
-      mac: {
-        label: 'Mac',
-        steps: [
-          'เปิด Site Settings ของเบราว์เซอร์',
-          'อนุญาต Location ให้เว็บไซต์นี้',
-          'ตรวจสิทธิ์ Location Services ใน System Settings'
-        ]
-      },
-      windows: {
-        label: 'Windows',
-        steps: [
-          'เปิด Site Settings ของเบราว์เซอร์',
-          'อนุญาต Location ให้เว็บไซต์นี้',
-          'ตรวจว่า Windows Location Access เปิดใช้งานอยู่'
-        ]
-      }
-    };
-    const guide = guides[platform];
-    const titleMap = {
-      1: '❗ ถูกปฏิเสธสิทธิ์ GPS',
-      2: '❗ ไม่สามารถรับสัญญาณ GPS',
-      3: '❗ GPS หมดเวลารอ'
-    };
-
-    document.getElementById('gpsGuideTitle').innerText = titleMap[errorCode] || '📱 วิธีแก้ปัญหา GPS';
-    document.getElementById('gpsGuidePlatform').innerText = 'ℹ️ อุปกรณ์ที่ตรวจพบ: ' + guide.label;
-    document.getElementById('gpsGuideSteps').innerHTML = guide.steps.map((step, index) =>
-      '<div class="gps-guide-step"><span class="gps-step-num">' + (index + 1) + '.</span><span>' + step + '</span></div>'
-    ).join('');
-    gpsGuide.style.display = 'block';
-  }
-
-  function hideGpsGuide() {
-    gpsGuide.style.display = 'none';
-  }
-
-  function updateGpsInfoCard(loc, mode) {
-    if (!loc) {
-      gpsInfoCard.style.display = 'none';
-      return;
-    }
-
-    const radius = parseFloat(loc.radius) || 100;
-    const hasGps = typeof currentLat === 'number' && typeof currentLng === 'number';
-    const distKm = hasGps ? haversineKm(currentLat, currentLng, parseFloat(loc.lat), parseFloat(loc.lng)) : null;
-    const distM = distKm !== null ? (distKm * 1000).toFixed(0) : '?';
-    const inRange = distKm !== null ? distKm <= radius / 1000 : mode !== 'gps';
-
-    document.getElementById('infoLocName').innerText = loc.name || '—';
-    document.getElementById('infoLocLat').innerText = parseFloat(loc.lat || 0).toFixed(6);
-    document.getElementById('infoLocLng').innerText = parseFloat(loc.lng || 0).toFixed(6);
-    document.getElementById('infoLocRadius').innerText = radius + ' ม.';
-
-    const distEl = document.getElementById('infoLocDist');
-    gpsInfoCard.classList.remove('out-range');
-
-    if (mode === 'fallback' || mode === 'offline') {
-      distEl.innerHTML = '<span style="color:#fbbf24">⚠️ ใช้งานแบบแผนสำรอง / ออฟไลน์</span>';
-      gpsStatus.innerHTML = '<span style="color:#fbbf24">⚠️ ไม่สามารถยืนยัน GPS ได้ ใช้โหมดสำรองแทน</span>';
-      gpsAlertBox.style.display = 'none';
-      currentLocation = loc;
-    } else if (inRange) {
-      distEl.innerHTML = '<span class="gps-dist-ok">✅ ' + distM + ' ม. — อยู่ในพื้นที่</span>';
-      gpsStatus.innerHTML = '<span style="color:#34d399">📍 GPS OK — ' + loc.name + ' (' + distM + ' ม.)</span>';
-      gpsAlertBox.style.display = 'none';
-      currentLocation = loc;
-    } else {
-      distEl.innerHTML = '<span class="gps-dist-bad">⛔ ' + distM + ' ม. — นอกพื้นที่ (กำหนด ' + radius + ' ม.)</span>';
-      gpsStatus.innerHTML = '<span style="color:#f87171">📍 นอกพื้นที่ "' + loc.name + '" (' + distM + ' ม.)</span>';
-      gpsAlertBox.innerHTML = '⛔ ไม่อนุญาตให้สแกน — อยู่ห่างจาก "' + loc.name + '" ' + distM + ' ม. (กำหนด ' + radius + ' ม.)';
-      gpsAlertBox.style.display = 'block';
-      gpsInfoCard.classList.add('out-range');
-      currentLocation = null;
-    }
-
-    gpsInfoCard.style.display = 'block';
-  }
-
-  function bindFallbackButtons() {
-    const btnWifi = document.getElementById('btnWifiFallback');
-    const btnOffline = document.getElementById('btnOfflineMode');
-
-    btnWifi.addEventListener('click', function () {
-      gpsSkipped = true;
-      gpsSkipReason = 'fallback_button';
-      window._locationMode = 'fallback';
-      hideGpsGuide();
-      gpsPermBanner.style.display = 'none';
-      if (allLocations.length > 0) {
-        const selected = getSelectedLocation();
-        updateGpsInfoCard(selected || allLocations[0], 'fallback');
-      }
-      mainStatus.innerText = '⚠️ ใช้งานแผนสำรอง — ระบบพร้อมสแกน';
-      mainStatus.style.color = '#fbbf24';
-      ensureFaceSystemReady();
-    });
-
-    btnOffline.addEventListener('click', function () {
-      if (typeof MeshService === 'undefined') {
-        alert('ไม่พบโมดูลโหมดออฟไลน์');
-        return;
-      }
-      if (!MeshService.isEnabled()) {
-        MeshService.toggle();
-      }
-      window.location.reload();
-    });
-  }
-
-  function getSelectedLocation() {
-    const selected = locationSelect.options[locationSelect.selectedIndex];
-    if (!selected || !selected.dataset.locJson) return null;
-    return JSON.parse(selected.dataset.locJson);
-  }
-
-  function renderLocations(locations, includeDistance) {
-    locationSelect.innerHTML = '';
-    locations.forEach(function (loc) {
-      const opt = document.createElement('option');
-      opt.value = loc.id || loc.name;
-      if (includeDistance && typeof loc.distKm === 'number') {
-        const prefix = loc.distKm <= ((parseFloat(loc.radius) || 100) / 1000) ? '✅ ' : '📌 ';
-        opt.textContent = prefix + loc.name + ' — ' + (loc.distKm * 1000).toFixed(0) + ' ม.';
-      } else {
-        opt.textContent = '📌 ' + loc.name;
-      }
-      opt.dataset.locJson = JSON.stringify(loc);
-      locationSelect.appendChild(opt);
-    });
-  }
-
-  function waitForLocationConfirm() {
-    return new Promise(function (resolve) {
-      btnConfirmLocation.style.display = 'block';
-      btnConfirmLocation.onclick = function () {
-        const loc = getSelectedLocation();
-        if (!loc) {
-          alert('กรุณาเลือกหน่วยบริการ');
-          return;
-        }
-        currentLocation = loc;
-        btnConfirmLocation.style.display = 'none';
-        resolve(loc);
-      };
-    });
-  }
-
-  function checkGPSForSelectedLocation() {
-    return new Promise(function (resolve, reject) {
-      if (!navigator.geolocation) {
-        reject(new Error('❌ อุปกรณ์นี้ไม่รองรับ GPS'));
-        return;
-      }
-
-      mainStatus.innerText = '3/4 รอสัญญาณ GPS... (สูงสุด 15 วินาที)';
-      navigator.geolocation.getCurrentPosition(
-        function (pos) {
-          currentLat = pos.coords.latitude;
-          currentLng = pos.coords.longitude;
-          gpsPermBanner.style.display = 'none';
-          hideGpsGuide();
-
-          const selected = getSelectedLocation() || currentLocation;
-          if (!selected) {
-            reject(new Error('ไม่พบหน่วยบริการที่เลือก'));
-            return;
-          }
-
-          const enriched = {
-            id: selected.id,
-            name: selected.name,
-            lat: selected.lat,
-            lng: selected.lng,
-            radius: selected.radius,
-            distKm: haversineKm(currentLat, currentLng, parseFloat(selected.lat), parseFloat(selected.lng))
-          };
-
-          renderLocations(allLocations.map(function (loc) {
-            return {
-              id: loc.id,
-              name: loc.name,
-              lat: loc.lat,
-              lng: loc.lng,
-              radius: loc.radius,
-              distKm: haversineKm(currentLat, currentLng, parseFloat(loc.lat), parseFloat(loc.lng))
-            };
-          }), true);
-
-          for (let i = 0; i < locationSelect.options.length; i++) {
-            const optionData = JSON.parse(locationSelect.options[i].dataset.locJson);
-            if ((optionData.id || optionData.name) === (selected.id || selected.name)) {
-              locationSelect.selectedIndex = i;
-              break;
-            }
-          }
-
-          updateGpsInfoCard(enriched, 'gps');
-          if (!currentLocation) {
-            reject(new Error('⛔ คุณอยู่นอกพื้นที่ของหน่วยบริการที่เลือก'));
-            return;
-          }
-
-          window._locationMode = 'gps';
-          resolve();
-        },
-        function (err) {
-          showGpsGuide(err.code);
-          const errors = {
-            1: '❗ ถูกปฏิเสธสิทธิ์ GPS — สามารถใช้แผนสำรองหรือโหมดออฟไลน์ได้',
-            2: '❗ ไม่สามารถรับสัญญาณ GPS — สามารถใช้แผนสำรองหรือโหมดออฟไลน์ได้',
-            3: '❗ GPS หมดเวลารอ — สามารถใช้แผนสำรองหรือโหมดออฟไลน์ได้'
-          };
-          reject(new Error(errors[err.code] || ('GPS Error: ' + err.message)));
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
-      );
-    });
-  }
-
-  async function ensureFaceSystemReady() {
-    if (faceSystemInitialized) {
-      btnStart.style.display = 'inline-block';
-      return;
-    }
-    await initFaceSystem();
-  }
-
+  // ====================== โหลด AI Model + Known Faces ======================
   async function initFaceSystem() {
-    if (faceSystemInitialized) {
-      btnStart.style.display = 'inline-block';
-      return;
-    }
+    if (faceSystemInitialized) return;
+    document.getElementById('main-status').innerText = 'กำลังโหลดระบบสแกนใบหน้า...';
 
-    mainStatus.innerText = '4/4 รอ AI Library...';
-    let waited = 0;
-    while (typeof faceapi === 'undefined' && waited < 30000) {
-      await new Promise(function (resolve) { setTimeout(resolve, 300); });
-      waited += 300;
-    }
-
-    if (typeof faceapi === 'undefined') {
-      showError('โหลด face-api.js ไม่สำเร็จ — ลองรีเฟรชหน้าจอ');
-      return;
-    }
-
-    mainStatus.innerText = '4/4 โหลด AI Model...';
     const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
-
     try {
       await Promise.all([
         faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
@@ -1019,316 +482,172 @@
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
       ]);
 
-      const token = getReadToken();
-      const facesUrl = API_URL + '?action=getKnownFaces' + (token ? '&token=' + encodeURIComponent(token) : '');
-      const res = await fetch(facesUrl);
-      const data = await res.json();
-      if (!Array.isArray(data) || data.length === 0) {
-        showError(data && data.error ? ('ไม่สามารถโหลดข้อมูลใบหน้า: ' + data.error) : 'ไม่พบข้อมูลพนักงาน กรุณาลงทะเบียนก่อน');
-        return;
+      const hasFaces = await loadKnownFaces();
+      if (hasFaces) {
+        faceSystemInitialized = true;
+        document.getElementById('btnStart').style.display = 'inline-block';
+        document.getElementById('main-status').innerHTML = '✅ ระบบพร้อมใช้งาน — แตะเพื่อสแกน';
+        document.getElementById('main-status').style.color = '#34d399';
       }
-
-      knownFaces = data.map(function (u) {
-        return {
-          employeeId: u.employeeId || '',
-          name: u.name || u.label || u.employeeId || '',
-          position: u.position || '',
-          descriptor: new Float32Array(u.descriptor)
-        };
-      });
-
-      faceSystemInitialized = true;
-      mainStatus.innerText = '✅ ระบบพร้อมใช้งาน';
-      mainStatus.style.color = '#34d399';
-      btnStart.style.display = 'inline-block';
     } catch (e) {
-      showError('โหลด AI / ฐานข้อมูลล้มเหลว: ' + e.message);
+      document.getElementById('main-status').innerHTML = '❌ โหลดระบบสแกนใบหน้าไม่สำเร็จ<br>กรุณารีเฟรชหน้า';
+      document.getElementById('main-status').style.color = '#f87171';
     }
   }
 
-  function findBestMatch(queryDesc) {
-    let best = { name: 'unknown', distance: 1.0 };
-    knownFaces.forEach(function (u) {
-      const d = faceapi.euclideanDistance(queryDesc, u.descriptor);
-      if (d < best.distance) best = { name: u.name, distance: d };
-    });
-    return best;
+  // ====================== เริ่มสแกน ======================
+  function startCamera() {
+    if (!faceSystemInitialized) {
+      alert('ระบบยังไม่พร้อม กรุณารอสักครู่');
+      return;
+    }
+    if (allLocations.length > 0 && !currentLocation) {
+      alert('กรุณาเลือกหน่วยบริการก่อนเริ่มสแกน');
+      return;
+    }
+
+    document.getElementById('btnStart').style.display = 'none';
+    document.getElementById('main-status').innerText = 'กำลังเปิดกล้อง...';
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+      .then(stream => {
+        video.srcObject = stream;
+        video.classList.add('active');
+        document.getElementById('scanLine').classList.add('active');
+        document.getElementById('overlay-status').innerText = 'มองกล้องเพื่อสแกน';
+        startScanLoop();
+      })
+      .catch(err => {
+        alert('เปิดกล้องไม่ได้: ' + err.message);
+        document.getElementById('btnStart').style.display = 'inline-block';
+      });
   }
 
   function startScanLoop() {
     if (scanInterval) clearInterval(scanInterval);
-    overlayStatus.innerText = 'มองกล้องเพื่อสแกน';
-    overlayStatus.style.background = 'rgba(0,0,0,0.65)';
-
-    scanInterval = setInterval(async function () {
+    scanInterval = setInterval(async () => {
       if (video.paused || video.ended) return;
 
-      const detection = await faceapi
-        .detectSingleFace(video)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
+      const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
       if (!detection) return;
 
-      const best = findBestMatch(detection.descriptor);
+      let best = { name: 'unknown', distance: 1.0 };
+      knownFaces.forEach(u => {
+        const d = faceapi.euclideanDistance(detection.descriptor, u.descriptor);
+        if (d < best.distance) best = { name: u.name, distance: d };
+      });
+
       if (best.distance < MATCH_THRESHOLD) {
         clearInterval(scanInterval);
         document.getElementById('scanLine').classList.remove('active');
-        showModal(best);
-      } else {
-        overlayStatus.innerText = 'ไม่รู้จัก (' + best.distance.toFixed(2) + ')';
-        overlayStatus.style.background = 'rgba(239,68,68,0.6)';
+        showConfirmModal(best.name, best.distance);
       }
-    }, 500);
+    }, 600);
   }
 
-  function startCamera() {
-    if (!meshEnabled() && allLocations.length > 0 && !currentLocation) {
-      alert('⛔ กรุณาผ่านการตรวจสอบ GPS หรือเลือกแผนสำรองก่อนเริ่มสแกน');
-      return;
+  function showConfirmModal(name, distance) {
+    document.getElementById('modalName').innerText = name;
+    document.getElementById('modalTime').innerText = 'เวลา: ' + new Date().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+    document.getElementById('modalScore').innerText = 'ความเหมือน: ' + ((1 - distance) * 100).toFixed(1) + '%';
+    
+    const locEl = document.getElementById('modalLocation');
+    if (currentLocation) {
+      locEl.innerText = '📍 ' + currentLocation.name;
+      locEl.style.display = 'block';
     }
 
-    btnStart.style.display = 'none';
-    mainStatus.innerText = 'กำลังเปิดกล้อง...';
-    mainStatus.style.color = '#94a3b8';
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-      .then(function (stream) {
-        video.srcObject = stream;
-        video.classList.add('active');
-        mainStatus.innerText = '✅ กำลังสแกน...';
-        mainStatus.style.color = '#34d399';
-        document.getElementById('scanLine').classList.add('active');
-        startScanLoop();
-      })
-      .catch(function (err) {
-        showError('เปิดกล้องไม่ได้: ' + err.message);
-        btnStart.style.display = 'inline-block';
-      });
+    document.getElementById('confirmModal').style.display = 'flex';
+    document.getElementById('btnConfirm').onclick = () => confirmAttendance(name);
   }
 
-  function showModal(match) {
-    currentMatch = match.employeeId || match.name;
-    document.getElementById('modalName').innerText = match.name;
+  async function confirmAttendance(name) {
+    const btn = document.getElementById('btnConfirm');
+    btn.disabled = true;
+    btn.innerText = 'กำลังบันทึก...';
 
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-    document.getElementById('modalTime').innerText = 'เวลาเข้างาน: ' + timeStr + ' น.';
-    document.getElementById('modalScore').innerText = 'ความเหมือน: ' + ((1 - match.distance) * 100).toFixed(1) + '%';
+    const payload = {
+      action: 'logAttendance',
+      name: name,
+      lat: currentLat || '',
+      lng: currentLng || '',
+      locationName: currentLocation ? currentLocation.name : '',
+      gpsStatus: currentLocation ? 'ok' : 'skipped'
+    };
 
-    const modalLoc = document.getElementById('modalLocation');
-    if (meshEnabled()) {
-      modalLoc.innerHTML = '📡 โหมดออฟไลน์ — บันทึกในเครื่อง';
-      modalLoc.style.display = 'block';
-      modalLoc.style.background = 'rgba(245,158,11,0.1)';
-      modalLoc.style.borderColor = 'rgba(245,158,11,0.3)';
-      modalLoc.style.color = '#fcd34d';
-    } else if (currentLocation) {
-      modalLoc.innerHTML = '📍 ' + currentLocation.name;
-      modalLoc.style.display = 'block';
-      modalLoc.style.background = 'rgba(99,102,241,0.12)';
-      modalLoc.style.borderColor = 'rgba(99,102,241,0.25)';
-      modalLoc.style.color = '#a5b4fc';
-    } else {
-      modalLoc.style.display = 'none';
-    }
-
-    confirmModal.style.display = 'flex';
-    mainStatus.innerText = 'กรุณายืนยัน...';
-  }
-
-  async function _sendToApi(btn, payload) {
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      alert('✅ ' + (data.message || 'บันทึกเวลาสำเร็จ'));
+      alert(data.message || 'บันทึกเวลาเข้างานสำเร็จ');
       window.location.replace('index.html');
     } catch (e) {
-      alert('❌ บันทึกล้มเหลว: ' + e.message);
+      alert('บันทึกล้มเหลว: ' + e.message);
       btn.disabled = false;
       btn.innerText = '✅ ยืนยันเข้างาน';
     }
   }
 
-  async function confirmAttendance() {
-    const btn = document.getElementById('btnConfirm');
-    btn.disabled = true;
-    btn.innerText = 'กำลังบันทึก...';
-
-    const mode = meshEnabled() ? 'mesh' : (window._locationMode || 'gps');
-    const payload = {
-      action: 'logAttendance',
-      name: currentMatch,
-      lat: currentLat,
-      lng: currentLng,
-      locationName: currentLocation ? currentLocation.name : '',
-      gpsStatus: mode === 'mesh' ? 'mesh_offline' : mode,
-      gpsSkipReason: gpsSkipped ? gpsSkipReason : '',
-      userAgent: navigator.userAgent
-    };
-
-    if (meshEnabled()) {
-      try {
-        const result = MeshService.sendMeshData(payload);
-        alert('📡 ' + result.message);
-        window.location.replace('index.html');
-      } catch (meshErr) {
-        alert('⚠️ โหมดออฟไลน์ล้มเหลว กำลังส่งผ่าน API ปกติ');
-        await _sendToApi(btn, payload);
-      }
-      return;
-    }
-
-    await _sendToApi(btn, payload);
-  }
-
   function cancelAttendance() {
-    confirmModal.style.display = 'none';
-    currentMatch = null;
-
+    document.getElementById('confirmModal').style.display = 'none';
     if (scanInterval) clearInterval(scanInterval);
-
-    if (video.srcObject) {
-      video.srcObject.getTracks().forEach(function (t) { t.stop(); });
-      video.srcObject = null;
-    }
-
-    video.classList.remove('active');
-    document.getElementById('scanLine').classList.remove('active');
-    mainStatus.innerText = '✅ ระบบพร้อมใช้งาน';
-    mainStatus.style.color = '#34d399';
-    overlayStatus.innerText = 'รอโหลด...';
-    overlayStatus.style.background = 'rgba(0,0,0,0.65)';
-    btnStart.style.display = 'inline-block';
+    document.getElementById('btnStart').style.display = 'inline-block';
   }
 
-  function haversineKm(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1);
-    const a = Math.sin(dLat / 2) ** 2 +
-      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
-
-  function deg2rad(deg) {
-    return deg * Math.PI / 180;
-  }
-
+  // ====================== เริ่มต้นระบบ ======================
   async function init() {
     if (!API_URL) {
-      showError('ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่า</a>');
+      document.getElementById('main-status').innerHTML = '❌ ยังไม่ได้ตั้งค่า API URL<br>กรุณาไปที่เมนูตั้งค่าระบบ';
       return;
     }
 
-    window._locationMode = 'gps';
-    window._wifiType = '';
+    // โหลดรายชื่อหน่วยบริการ
+    try {
+      const config = await fetch(API_URL + '?action=getConfig').then(r => r.json());
+      allLocations = Array.isArray(config.locations) ? config.locations : [];
 
-    if (typeof MeshService !== 'undefined') {
-      try {
-        MeshService.injectToggleButton(document.getElementById('statusAreaRoot'));
-      } catch (_) {}
-    }
-
-    bindFallbackButtons();
-
-    if (meshEnabled()) {
-      MeshService.showBanner();
-      const cachedLocations = MeshService.getCachedLocations();
-      if (cachedLocations.length > 0) {
-        allLocations = cachedLocations;
-        renderLocations(cachedLocations, false);
-        currentLocation = cachedLocations[0];
-        locationSelector.style.display = 'block';
-        updateGpsInfoCard(currentLocation, 'offline');
+      if (allLocations.length > 0) {
+        const select = document.getElementById('locationSelect');
+        allLocations.forEach(loc => {
+          const opt = document.createElement('option');
+          opt.textContent = loc.name;
+          opt.dataset.locJson = JSON.stringify(loc);
+          select.appendChild(opt);
+        });
+        document.getElementById('locationSelector').style.display = 'block';
       }
-      mainStatus.innerText = '📡 โหมดออฟไลน์ — ระบบพร้อมสแกน';
-      mainStatus.style.color = '#fcd34d';
-      await ensureFaceSystemReady();
-      return;
-    }
-
-    mainStatus.innerText = '1/4 ตรวจสอบกล้อง...';
-    const cameraOk = await checkCamera();
-    if (!cameraOk) {
-      showError('❌ เข้าถึงกล้องไม่ได้ — กรุณาอนุญาตสิทธิ์กล้องแล้วรีเฟรช');
-      return;
-    }
-
-    mainStatus.innerText = '2/4 โหลดหน่วยบริการ...';
-    mainStatus.style.color = '#34d399';
-
-    let config;
-    try {
-      config = await fetch(API_URL + '?action=getConfig').then(function (r) { return r.json(); });
-      fallbackSettings = config.fallbackSettings || fallbackSettings;
     } catch (e) {
-      showError('เชื่อมต่อ API ไม่ได้: ' + e.message);
-      return;
+      console.error('โหลด locations ล้มเหลว', e);
     }
 
-    allLocations = Array.isArray(config.locations)
-      ? config.locations.filter(function (l) { return l.enabled !== false; })
-      : [];
+    // โหลดระบบสแกนใบหน้า
+    await initFaceSystem();
 
-    if (typeof MeshService !== 'undefined') {
-      try { MeshService.cacheLocations(allLocations); } catch (_) {}
-    }
+    // ปุ่มยืนยันหน่วยบริการ
+    document.getElementById('btnConfirmLocation').onclick = () => {
+      const selectedOpt = document.getElementById('locationSelect').selectedOptions[0];
+      if (!selectedOpt) return alert('กรุณาเลือกหน่วยบริการ');
+      currentLocation = JSON.parse(selectedOpt.dataset.locJson);
+      document.getElementById('btnConfirmLocation').style.display = 'none';
+      document.getElementById('btnChangeLocation').style.display = 'block';
+      document.getElementById('main-status').innerText = '✅ เลือกหน่วยบริการแล้ว — แตะเพื่อสแกน';
+    };
 
-    if (allLocations.length === 0) {
+    // ปุ่มเปลี่ยนหน่วยบริการ
+    document.getElementById('btnChangeLocation').onclick = () => {
       currentLocation = null;
-      gpsStatus.innerHTML = '<span style="color:#34d399">📍 ไม่จำกัดพื้นที่</span>';
-      await ensureFaceSystemReady();
-      return;
-    }
-
-    renderLocations(allLocations, false);
-    locationSelector.style.display = 'block';
-    mainStatus.innerText = '2/4 เลือกหน่วยบริการ แล้วกดยืนยัน';
-    mainStatus.style.color = '#a5b4fc';
-
-    await waitForLocationConfirm();
-
-    mainStatus.innerText = '3/4 ตรวจสอบ GPS...';
-    mainStatus.style.color = '#94a3b8';
-
-    let permState = 'unknown';
-    try {
-      permState = await checkGeolocationPermission();
-    } catch (_) {}
-
-    if (permState === 'unsupported') {
-      showError('❌ อุปกรณ์นี้ไม่รองรับ GPS');
-      showGpsGuide(2);
-      return;
-    }
-
-    if (permState === 'prompt') {
-      gpsPermBanner.style.display = 'block';
-      mainStatus.innerText = '⏳ รอการอนุญาต GPS...';
-    }
-
-    if (permState === 'denied') {
-      showError('❗ ถูกปฏิเสธสิทธิ์ GPS — ใช้แผนสำรองหรือโหมดออฟไลน์ได้');
-      showGpsGuide(1);
-      return;
-    }
-
-    try {
-      await checkGPSForSelectedLocation();
-      await ensureFaceSystemReady();
-    } catch (e) {
-      showError(e.message);
-    }
+      document.getElementById('btnConfirmLocation').style.display = 'block';
+      document.getElementById('btnChangeLocation').style.display = 'none';
+      document.getElementById('gpsInfoCard').style.display = 'none';
+    };
   }
 
+  // เริ่มทำงานเมื่อโหลดหน้า
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    setTimeout(init, 0);
+    init();
   }
 </script>
 </body>

@@ -357,8 +357,16 @@
   </div>
 </div>
 
-<script type="module">
-  import { formatTimeHms } from './src/utils/helpers.js';
+<script>
+  // Polyfill/Inline: แทน import จาก src/utils/helpers.js
+  function formatTimeHms(timeStr) {
+    if (!timeStr || timeStr === '-') return '';
+    const parts = String(timeStr).split(':');
+    if (parts.length >= 2) {
+      return String(parts[0]).padStart(2, '0') + ':' + String(parts[1]).padStart(2, '0');
+    }
+    return timeStr;
+  }
 
   // ===== Config =====
   const SESSION_KEY   = 'adminAuth';

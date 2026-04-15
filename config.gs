@@ -206,6 +206,77 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
   return { success: true, message: 'บันทึกการตั้งค่าลง Google Sheets เรียบร้อย' };
 }
 
+/**
+ * บันทึกตำแหน่งเดียว (Insert or Update)
+ */
+function saveSingleLocation(data) {
+  const auth = authorize('saveConfig', { token: data.token || '' });
+  if (!auth.ok) return { status: 'error', message: 'Unauthorized' };
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('Config');
+  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token'];
+  
+  if (!sheet) {
+    sheet = ss.insertSheet('Config');
+    sheet.getRange(1, 1, 1, schema.length).setValues([schema]);
+  }
+
+  const now = new Date();
+  const id = String(data.id || '').trim();
+  const loc = normalizeLocation(data, 0);
+  const values = sheet.getDataRange().getValues();
+  let targetRow = -1;
+
+  if (id) {
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][0]).trim() === id) {
+        targetRow = i + 1;
+        break;
+      }
+    }
+  }
+
+  const finalId = id || ('loc-' + Utilities.getUuid().substring(0, 8));
+  const rowData = [
+    finalId, loc.name, loc.lat, loc.lng, loc.radius, true,
+    data.updatedBy || 'admin', now, ''
+  ];
+
+  if (targetRow > 0) {
+    sheet.getRange(targetRow, 1, 1, schema.length).setValues([rowData]);
+  } else {
+    sheet.appendRow(rowData);
+  }
+
+  return { success: true, message: 'บันทึกตำแหน่งเรียบร้อย', id: finalId };
+}
+
+/**
+ * ลบตำแหน่งเดียวออกจาก Sheet
+ */
+function deleteSingleLocation(data) {
+  const auth = authorize('saveConfig', { token: data.token || '' });
+  if (!auth.ok) return { status: 'error', message: 'Unauthorized' };
+
+  const id = String(data.id || '').trim();
+  if (!id) return { status: 'error', message: 'Missing ID' };
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Config');
+  if (!sheet) return { status: 'ok', message: 'Sheet not found' };
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][0]).trim() === id) {
+      sheet.deleteRow(i + 1);
+      return { success: true, message: 'ลบตำแหน่งเรียบร้อย' };
+    }
+  }
+
+  return { success: true, message: 'ไม่พบตำแหน่งที่ต้องการลบ (อาจถูกลบไปแล้ว)' };
+}
+
 function getConfig(params) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Config');

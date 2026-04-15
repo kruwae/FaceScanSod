@@ -62,6 +62,8 @@ function doPost(e) {
   if (action === 'registerUser')         result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status, data.position, data.roles, data.role, data.employeeId);
   else if (action === 'logAttendance' || action === 'logCheckout')   result = logAttendance(data, action);
   else if (action === 'saveConfig')      result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy, data.token);
+  else if (action === 'saveLocation')    result = saveSingleLocation(data);
+  else if (action === 'deleteLocation')  result = deleteSingleLocation(data);
   else if (action === 'login')           result = login(data);
   else if (action === 'verifyAdmin')     result = verifyAdmin(data.code);
   else if (action === 'changeAdminCode') result = changeAdminCode(data.currentCode, data.newCode);

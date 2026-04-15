@@ -1089,10 +1089,21 @@
       const enVal = escapeHtml(location.enabled === false ? 'false' : 'true');
       const nameVal = escapeHtml(location.name || '');
 
+      const isSaved = !!location.id;
+      wrap.dataset.id = location.id || '';
+
       wrap.innerHTML = `
         <div class='location-item__top'>
-          <div class='location-item__title'>🏥 ตำแหน่งหน่วยบริการ</div>
-          <button class='location-item__remove' type='button'>ลบ</button>
+          <div class='location-item__title'>
+            🏥 ตำแหน่งหน่วยบริการ
+            <span class='loc-status-badge' style='margin-left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:${isSaved ? "rgba(16,185,129,0.1)" : "rgba(245,158,11,0.1)"};color:${isSaved ? "#10b981" : "#f59e0b"}'>
+              ${isSaved ? "บันทึกแล้ว" : "ยังไม่ได้บันทึก"}
+            </span>
+          </div>
+          <div style='display:flex;gap:8px'>
+            <button class='location-item__save btn' type='button' style='padding:4px 8px;font-size:12px;background:#10b981;color:#fff;border:none;border-radius:4px'>💾 บันทึก</button>
+            <button class='location-item__remove btn' type='button' style='padding:4px 8px;font-size:12px;background:rgba(239,68,68,0.1);color:#ef4444;border:none;border-radius:4px'>ลบ</button>
+          </div>
         </div>
 
         <label style='font-size:0.75em;color:#10b981;margin-bottom:4px;display:block'>
@@ -1154,8 +1165,98 @@
         el.addEventListener('click', () => openMap(latIn, lngIn));
       });
 
-      wrap.querySelector('.location-item__remove').addEventListener('click', () => wrap.remove());
+      // Bind Individual Save
+      wrap.querySelector('.location-item__save').addEventListener('click', function() {
+        saveSingleLocation(wrap);
+      });
+
+      // Bind Individual Delete
+      wrap.querySelector('.location-item__remove').addEventListener('click', function () {
+        const id = wrap.dataset.id;
+        if (!id) {
+          wrap.remove(); // Not saved yet, just remove from DOM
+          return;
+        }
+        if (confirm('ยืนยันหน้าการลบพิกัดนี้ออกจากฐานข้อมูล?')) {
+          deleteSingleLocation(id, wrap);
+        }
+      });
       return wrap;
+    }
+
+    async function saveSingleLocation(rowEl) {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) return alert('กรุณาตั้งค่า API URL ก่อน');
+
+      const btn = rowEl.querySelector('.location-item__save');
+      const oldTxt = btn.innerText;
+      btn.innerText = '⌛...';
+      btn.disabled = true;
+
+      const data = {
+        action: 'saveLocation',
+        id: rowEl.dataset.id,
+        name: rowEl.querySelector('.loc-name').value.trim(),
+        lat: rowEl.querySelector('.loc-lat').value,
+        lng: rowEl.querySelector('.loc-lng').value,
+        radius: rowEl.querySelector('.loc-radius').value,
+        token: '', // Legacy mode handles this
+        updatedBy: 'admin'
+      };
+
+      try {
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+          rowEl.dataset.id = result.id;
+          const badge = rowEl.querySelector('.loc-status-badge');
+          badge.innerText = 'บันทึกแล้ว';
+          badge.style.background = 'rgba(16,185,129,0.1)';
+          badge.style.color = '#10b981';
+          alert('✅ ' + result.message);
+        } else {
+          alert('❌ ' + (result.message || 'บันทึกล้มเหลว'));
+        }
+      } catch (e) {
+        alert('❌ ผิดพลาด: ' + e.message);
+      } finally {
+        btn.innerText = oldTxt;
+        btn.disabled = false;
+      }
+    }
+
+    async function deleteSingleLocation(id, rowEl) {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) return;
+
+      const btn = rowEl.querySelector('.location-item__remove');
+      btn.innerText = '⌛...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'deleteLocation', id, token: '' })
+        });
+        const result = await res.json();
+        if (result.success) {
+          rowEl.remove();
+          alert('✅ ' + result.message);
+        } else {
+          alert('❌ ' + (result.message || 'ลบล้มเหลว'));
+          btn.innerText = 'ลบ';
+          btn.disabled = false;
+        }
+      } catch (e) {
+        alert('❌ ผิดพลาด: ' + e.message);
+        btn.innerText = 'ลบ';
+        btn.disabled = false;
+      }
     }
 
     function addLocation(location = {}) {

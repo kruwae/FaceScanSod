@@ -56,7 +56,7 @@ function doPost(e) {
   }
   let result;
 
-  if (action === 'registerUser')         result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status);
+  if (action === 'registerUser')         result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status, data.position, data.roles, data.role, data.employeeId, data.position);
   else if (action === 'logAttendance')   result = logAttendance(data);
   else if (action === 'saveConfig')      result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy, data.token);
   else if (action === 'login')           result = login(data);

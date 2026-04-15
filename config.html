@@ -189,7 +189,6 @@
       transform: translateY(-1px);
     }
 
-    /* inline password input inside gate */
     .gate-input-wrap {
       display: flex;
       align-items: center;
@@ -201,11 +200,13 @@
       padding: 4px 10px 4px 14px;
       transition: border-color 0.25s;
     }
+
     .gate-input-wrap:focus-within {
       border-color: rgba(6,182,212,0.55);
       background: rgba(6,182,212,0.07);
       box-shadow: 0 0 0 3px rgba(6,182,212,0.12);
     }
+
     .gate-input-wrap input {
       flex: 1;
       background: transparent;
@@ -218,7 +219,11 @@
       outline: none;
       box-shadow: none;
     }
-    .gate-input-wrap input::placeholder { color: #475569; }
+
+    .gate-input-wrap input::placeholder {
+      color: #475569;
+    }
+
     .gate-toggle-pw {
       background: none;
       border: none;
@@ -230,6 +235,7 @@
       position: relative;
       z-index: 2;
     }
+
     .gate-error {
       font-size: 0.82em;
       color: #f87171;
@@ -237,6 +243,7 @@
       margin-bottom: 10px;
       font-weight: 600;
     }
+
     .btn-admin {
       border: none;
       border-radius: 12px;
@@ -247,6 +254,7 @@
       padding: 12px 14px;
       transition: all 0.3s ease;
     }
+
     .btn-admin-login {
       flex: 1;
       min-width: 0;
@@ -257,8 +265,17 @@
       position: relative;
       z-index: 2;
     }
-    .btn-admin-login:hover { transform: translateY(-1px); opacity: 0.92; }
-    .btn-admin-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .btn-admin-login:hover {
+      transform: translateY(-1px);
+      opacity: 0.92;
+    }
+
+    .btn-admin-login:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
 
     .admin-header-actions {
       display: flex;
@@ -495,6 +512,7 @@
       margin-bottom: 12px;
       align-items: stretch;
     }
+
     .maps-input-row input {
       flex: 1;
       padding: 10px 12px;
@@ -507,8 +525,16 @@
       outline: none;
       transition: border-color 0.2s;
     }
-    .maps-input-row input:focus { border-color: rgba(16,185,129,0.7); }
-    .maps-input-row input::placeholder { color: #475569; font-size: 12px; }
+
+    .maps-input-row input:focus {
+      border-color: rgba(16,185,129,0.7);
+    }
+
+    .maps-input-row input::placeholder {
+      color: #475569;
+      font-size: 12px;
+    }
+
     .btn-parse-maps {
       padding: 10px 14px;
       background: linear-gradient(135deg, #10b981, #059669);
@@ -524,7 +550,11 @@
       position: relative;
       z-index: 2;
     }
-    .btn-parse-maps:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,0.35); }
+
+    .btn-parse-maps:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(16,185,129,0.35);
+    }
 
     .location-toolbar {
       display: flex;
@@ -552,6 +582,73 @@
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.12);
       color: #e2e8f0;
+    }
+
+    .toggle-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      user-select: none;
+      position: relative;
+      z-index: 2;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 54px;
+      height: 30px;
+      flex: 0 0 auto;
+    }
+
+    .toggle-switch input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      margin: 0;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: rgba(100, 116, 139, 0.35);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      transition: all 0.25s ease;
+      pointer-events: none;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      left: 4px;
+      top: 3px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      transition: transform 0.25s ease;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: rgba(16, 185, 129, 0.45);
+      border-color: rgba(16, 185, 129, 0.55);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(24px);
+    }
+
+    .toggle-label {
+      font-size: 0.88em;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin: 0;
     }
 
     #msg {
@@ -587,8 +684,6 @@
     }
 
     @media (max-width: 640px) {
-
-      /* gate-actions ยังคง flex เพื่อไม่ให้ปุ่มหาย */
       .gate-actions {
         display: flex;
         flex-wrap: wrap;
@@ -608,6 +703,14 @@
 
       .logout-btn {
         width: 100%;
+      }
+
+      .toggle-wrap {
+        width: 100%;
+      }
+
+      .toggle-switch {
+        flex: 0 0 auto;
       }
     }
   </style>
@@ -651,7 +754,6 @@
         <p class="note">แต่ละตำแหน่งรองรับชื่อหน่วยบริการ พิกัด Latitude/Longitude และรัศมีที่อนุญาตแยกกันได้</p>
       </div>
 
-      <!-- ===== เวลาทำงาน ===== -->
       <div class="card" style="margin-top:0">
         <div class="section-header">
           <div class="section-icon" style="background:rgba(245,158,11,0.15);color:#fcd34d">⏰</div>
@@ -679,7 +781,6 @@
           </div>
         </div>
 
-        <!-- Special Dates Override -->
         <div style="margin-top:10px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <label style="margin-bottom:0">⭐ วันที่มีคำสั่งพิเศษ</label>
@@ -696,7 +797,6 @@
       <button class="btn btn-save" onclick="saveAll()">💾 บันทึกการตั้งค่าทั้งหมด</button>
       <div id="msg"></div>
 
-      <!-- ===== เปลี่ยนรหัสแอดมิน ===== -->
       <div class="card" style="margin-top:16px">
         <div class="section-header">
           <div class="section-icon indigo">🔑</div>
@@ -719,8 +819,13 @@
           <div class="section-icon" style="background:rgba(239,68,68,0.15);color:#fca5a5">🛟</div>
           <span class="section-title-text">แผนสำรองเมื่อ GPS ใช้งานไม่ได้</span>
         </div>
-        <label>เปิดใช้งานแผนสำรอง</label>
-        <input type="text" id="fallbackEnabled" placeholder="true / false" value="false">
+        <div class="toggle-wrap">
+          <label class="toggle-switch" aria-label="เปิดใช้งานแผนสำรอง">
+            <input type="checkbox" id="fallbackEnabled">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">เปิดใช้งานแผนสำรอง</span>
+        </div>
         <p class="note">หากเปิดเป็น <code>true</code> หน้า scan จะแสดงปุ่มแผนสำรองเมื่อค้นหา GPS ไม่ได้</p>
 
         <label>ข้อความสำหรับผู้ใช้</label>
@@ -733,20 +838,17 @@
   </div>
 
   <script>
-    // ============================================================
-    //  Admin Auth — ใช้ session จาก login.html (SESSION_KEY='adminAuth')
-    //  ถ้าไม่มี session → redirect ไป login.html?to=config.html
-    // ============================================================
     const SESSION_KEY = 'adminAuth';
     const MSG_SUCCESS = 'msg-success';
-    const MSG_ERROR   = 'msg-error';
-    const msgDiv       = document.getElementById('msg');
+    const MSG_ERROR = 'msg-error';
+    const msgDiv = document.getElementById('msg');
     const btnLogoutTop = document.getElementById('btnLogoutTop');
     const locationsBox = document.getElementById('locations');
+    const fallbackEnabledEl = document.getElementById('fallbackEnabled');
 
     function isAuthed() {
       try { return sessionStorage.getItem(SESSION_KEY) === '1'; }
-      catch(e) { return false; }
+      catch (e) { return false; }
     }
 
     function requireAuth() {
@@ -754,17 +856,20 @@
     }
 
     function doLogout() {
-      try { sessionStorage.removeItem(SESSION_KEY); } catch(e) {}
+      try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
       window.location.replace('login.html?to=config.html');
     }
 
-    window.addEventListener('pageshow', function(e) {
+    window.addEventListener('pageshow', function (e) {
       if (e.persisted) requireAuth();
     });
 
-    btnLogoutTop.addEventListener('click', doLogout);
+    if (btnLogoutTop) {
+      btnLogoutTop.addEventListener('click', doLogout);
+    }
 
     function showMsg(text, type) {
+      if (!msgDiv) return;
       msgDiv.innerText = text;
       msgDiv.className = type || '';
     }
@@ -799,10 +904,10 @@
       const wrap = document.createElement('div');
       wrap.className = 'location-item';
 
-      const latVal  = escapeHtml(location.lat  ?? '');
-      const lngVal  = escapeHtml(location.lng  ?? '');
-      const radVal  = escapeHtml(location.radius ?? 100);
-      const enVal   = escapeHtml(location.enabled === false ? 'false' : 'true');
+      const latVal = escapeHtml(location.lat ?? '');
+      const lngVal = escapeHtml(location.lng ?? '');
+      const radVal = escapeHtml(location.radius ?? 100);
+      const enVal = escapeHtml(location.enabled === false ? 'false' : 'true');
       const nameVal = escapeHtml(location.name || '');
 
       wrap.innerHTML = `
@@ -847,7 +952,7 @@
       `;
 
       wrap.querySelector('.btn-parse-maps').addEventListener('click', function () {
-        const url    = wrap.querySelector('.loc-maps-url').value.trim();
+        const url = wrap.querySelector('.loc-maps-url').value.trim();
         const coords = parseGoogleMapsUrl(url);
         if (coords) {
           wrap.querySelector('.loc-lat').value = coords.lat;
@@ -868,6 +973,7 @@
     }
 
     function addLocation(location = {}) {
+      if (!locationsBox) return;
       locationsBox.appendChild(createLocationItem(location));
     }
 
@@ -902,43 +1008,54 @@
       })).filter(loc => loc.name || loc.lat || loc.lng);
     }
 
+    function setFallbackEnabled(value) {
+      if (!fallbackEnabledEl) return;
+      fallbackEnabledEl.checked = value === true || String(value).toLowerCase() === 'true';
+    }
+
+    function getFallbackEnabled() {
+      return !!(fallbackEnabledEl && fallbackEnabledEl.checked);
+    }
+
     function loadFromServer() {
       const apiUrl = getApiUrl();
       if (!apiUrl) {
         showMsg('❌ ยังไม่ได้ตั้งค่า API URL', MSG_ERROR);
-        document.getElementById('apiUrl').value = '';
+        const apiInput = document.getElementById('apiUrl');
+        if (apiInput) apiInput.value = '';
         return;
       }
 
-      document.getElementById('apiUrl').value = apiUrl;
+      const apiInput = document.getElementById('apiUrl');
+      if (apiInput) apiInput.value = apiUrl;
 
       fetch(apiUrl + '?action=getConfig')
         .then(r => r.json())
         .then(config => {
-          locationsBox.innerHTML = '';
-          document.getElementById('apiUrl').value = config.apiUrl || apiUrl;
+          if (locationsBox) locationsBox.innerHTML = '';
+          if (apiInput) apiInput.value = config.apiUrl || apiUrl;
 
           const locations = ensureDefaultLocations(Array.isArray(config.locations) ? config.locations : []);
           locations.forEach(loc => addLocation(loc));
 
           if (config.workTimes) {
             const wt = config.workTimes;
-            if (wt.startTime)     document.getElementById('workStartTime').value     = wt.startTime;
+            if (wt.startTime) document.getElementById('workStartTime').value = wt.startTime;
             if (wt.lateThreshold) document.getElementById('workLateThreshold').value = wt.lateThreshold;
-            if (wt.endTime)       document.getElementById('workEndTime').value       = wt.endTime;
+            if (wt.endTime) document.getElementById('workEndTime').value = wt.endTime;
             const sdBox = document.getElementById('specialDatesBox');
             sdBox.innerHTML = '';
             (wt.specialDates || []).forEach(sd => addSpecialDate(sd));
           }
 
           const fallback = config.fallbackSettings || {};
-          document.getElementById('fallbackEnabled').value = fallback.enabled === true ? 'true' : 'false';
+          setFallbackEnabled(fallback.enabled === true);
           document.getElementById('fallbackContactText').value = fallback.contactText || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง';
           showMsg('✅ โหลดข้อมูลจากเซิร์ฟเวอร์แล้ว', MSG_SUCCESS);
         })
         .catch(err => {
           showMsg('❌ โหลดข้อมูลไม่สำเร็จ: ' + err.message, MSG_ERROR);
-          if (!locationsBox.children.length) {
+          if (locationsBox && !locationsBox.children.length) {
             addLocation({ name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true });
             addLocation({ name: 'หน่วยบริการ 2', lat: '', lng: '', radius: 100, enabled: true });
             addLocation({ name: 'หน่วยบริการ 3', lat: '', lng: '', radius: 100, enabled: true });
@@ -948,7 +1065,7 @@
 
     function addSpecialDate(sd = {}) {
       const sdBox = document.getElementById('specialDatesBox');
-      const row   = document.createElement('div');
+      const row = document.createElement('div');
       row.style.cssText = 'display:grid;grid-template-columns:1fr 90px 90px 90px auto;gap:8px;margin-bottom:8px;align-items:end;';
       row.innerHTML = `
         <div><label style='font-size:0.75em;color:#64748b'>วัน/เดือน/ปี (YYYY-MM-DD)</label>
@@ -969,25 +1086,25 @@
 
     function collectSpecialDates() {
       return [...document.querySelectorAll('#specialDatesBox > div')].map(row => ({
-        date:          row.querySelector('.sd-date').value,
-        startTime:     row.querySelector('.sd-start').value,
+        date: row.querySelector('.sd-date').value,
+        startTime: row.querySelector('.sd-start').value,
         lateThreshold: row.querySelector('.sd-late').value,
-        endTime:       row.querySelector('.sd-end').value,
-        note:          row.querySelector('.sd-note').value.trim()
+        endTime: row.querySelector('.sd-end').value,
+        note: row.querySelector('.sd-note').value.trim()
       })).filter(sd => sd.date);
     }
 
     function saveAll() {
-      const apiUrl    = document.getElementById('apiUrl').value.trim();
+      const apiUrl = document.getElementById('apiUrl').value.trim();
       const locations = collectLocations();
       const workTimes = {
-        startTime:     document.getElementById('workStartTime').value     || '08:30',
+        startTime: document.getElementById('workStartTime').value || '08:30',
         lateThreshold: document.getElementById('workLateThreshold').value || '08:30',
-        endTime:       document.getElementById('workEndTime').value        || '16:30',
-        specialDates:  collectSpecialDates()
+        endTime: document.getElementById('workEndTime').value || '16:30',
+        specialDates: collectSpecialDates()
       };
       const fallbackSettings = {
-        enabled: String(document.getElementById('fallbackEnabled').value || 'false').toLowerCase() === 'true',
+        enabled: getFallbackEnabled(),
         contactText: document.getElementById('fallbackContactText').value.trim() || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
       };
       if (!apiUrl) return showMsg('❌ กรุณากรอก API URL', MSG_ERROR);
@@ -1017,9 +1134,9 @@
 
     async function changeCode() {
       const currentCode = document.getElementById('currentCode').value.trim();
-      const newCode     = document.getElementById('newCode').value.trim();
+      const newCode = document.getElementById('newCode').value.trim();
       const confirmCode = document.getElementById('confirmCode').value.trim();
-      const changeMsg   = document.getElementById('changeMsg');
+      const changeMsg = document.getElementById('changeMsg');
       if (!currentCode || !newCode || !confirmCode) {
         changeMsg.innerText = '❌ กรุณากรอกข้อมูลให้ครบ'; changeMsg.className = MSG_ERROR; return;
       }
@@ -1042,7 +1159,7 @@
         if (data.success) {
           changeMsg.innerText = '✅ ' + (data.message || 'เปลี่ยนรหัสสำเร็จ');
           changeMsg.className = MSG_SUCCESS;
-          ['currentCode','newCode','confirmCode'].forEach(id => document.getElementById(id).value = '');
+          ['currentCode', 'newCode', 'confirmCode'].forEach(id => document.getElementById(id).value = '');
           console.log('Admin code changed successfully. Verify the staffOS sheet code column after refresh.');
         } else {
           changeMsg.innerText = '❌ ' + (data.error || 'เปลี่ยนรหัสล้มเหลว');
@@ -1055,7 +1172,7 @@
     }
 
     async function runInitSetup() {
-      const apiUrl  = getApiUrl();
+      const apiUrl = getApiUrl();
       const initMsg = document.getElementById('initMsg') || document.getElementById('msg');
       if (!apiUrl) {
         initMsg.innerText = '❌ กรุณากรอก API URL ก่อนแล้วบันทึก';
@@ -1063,7 +1180,7 @@
       }
       initMsg.innerText = '⏳ กำลังสร้าง staffOS sheet...'; initMsg.className = '';
       try {
-        const res  = await fetch(apiUrl + '?action=initSetup', { method: 'GET' });
+        const res = await fetch(apiUrl + '?action=initSetup', { method: 'GET' });
         const data = await res.json();
         if (data.success) {
           initMsg.innerText = '✅ ' + (data.message || 'เรียบร้อย');
@@ -1085,7 +1202,7 @@
       addLocation({ name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true });
       addLocation({ name: 'หน่วยบริการ 2', lat: '', lng: '', radius: 100, enabled: true });
       addLocation({ name: 'หน่วยบริการ 3', lat: '', lng: '', radius: 100, enabled: true });
-      document.getElementById('fallbackEnabled').value = 'false';
+      setFallbackEnabled(false);
       document.getElementById('fallbackContactText').value = 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง';
     }
   </script>

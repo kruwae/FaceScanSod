@@ -437,6 +437,7 @@
     const countSpan    = document.getElementById('saveCount');
 
     let saveCounter = 0;
+    const MAX_CAPTURES = 3;
 
     // --------- ตรวจสอบ session ---------
     function isAuthed() {
@@ -492,6 +493,12 @@
         const dot = document.getElementById('dot' + i);
         dot.className = 'dot' + (i <= saveCounter ? ' active' : '');
       });
+
+      const saveLabel = saveCounter >= MAX_CAPTURES ? 'ครบ 3 มุมแล้ว' : '📸 บันทึกใบหน้า';
+      btnSave.disabled = saveCounter >= MAX_CAPTURES;
+      btnSave.innerHTML = saveCounter >= MAX_CAPTURES
+        ? '✅ บันทึกครบ 3 ครั้ง <span class="count-badge">' + saveCounter + '</span>'
+        : saveLabel + ' <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
     }
 
     // --------- Load AI ---------
@@ -526,6 +533,11 @@
     async function saveFace() {
       const name = document.getElementById('username').value.trim();
       if (!name) return alert('กรุณาใส่ชื่อก่อน');
+      if (saveCounter >= MAX_CAPTURES) {
+        msgDiv.innerHTML = '<span class="msg-error">❌ บันทึกครบ 3 มุมแล้ว กรุณาเริ่มลงทะเบียนใหม่</span>';
+        updateDots();
+        return;
+      }
 
       // ตรวจสอบ session ยังอยู่ไหม
       if (!isAuthed()) {
@@ -576,16 +588,22 @@
 
         if (data.error) throw new Error(data.error);
 
-        saveCounter++;
+        saveCounter = Math.min(saveCounter + 1, MAX_CAPTURES);
         document.getElementById('saveCount') && (document.getElementById('saveCount').innerText = saveCounter);
         updateDots();
-        msgDiv.innerHTML = '<span class="msg-success">✅ บันทึกครั้งที่ ' + saveCounter + ' สำเร็จ! ขยับหน้าเล็กน้อยแล้วกดอีกครั้ง</span>';
-        btnSave.disabled = false;
-        btnSave.innerHTML = '📸 บันทึกเพิ่ม <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
+        msgDiv.innerHTML = saveCounter >= MAX_CAPTURES
+          ? '<span class="msg-success">✅ บันทึกครบ 3 มุมแล้ว</span>'
+          : '<span class="msg-success">✅ บันทึกครั้งที่ ' + saveCounter + ' สำเร็จ! ขยับหน้าเล็กน้อยแล้วกดอีกครั้ง</span>';
+        if (saveCounter < MAX_CAPTURES) {
+          btnSave.disabled = false;
+          btnSave.innerHTML = '📸 บันทึกเพิ่ม <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
+        } else {
+          btnSave.disabled = true;
+          btnSave.innerHTML = '✅ บันทึกครบ 3 ครั้ง <span class="count-badge">' + saveCounter + '</span>';
+        }
       } catch (e) {
         msgDiv.innerHTML = '<span class="msg-error">❌ บันทึกล้มเหลว: ' + e.message + '</span>';
-        btnSave.disabled = false;
-        btnSave.innerHTML = '📸 บันทึกใบหน้า <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
+        updateDots();
       }
     }
   </script>

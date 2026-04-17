@@ -36,10 +36,56 @@ function denyAction(action, params) {
   return authorize(action, params);
 }
 
-// ============================================================
+function ensureUsersSheetWithContract(sheet) {
+  const requiredHeaders = ['Employee ID', 'Name', 'Position', 'Role', 'Face Descriptor', 'Registered At', 'Registered By', 'Status'];
+  const headerRange = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), requiredHeaders.length)) : null;
+  const existingHeaders = headerRange ? headerRange.getValues()[0].map(h => String(h || '').trim()) : [];
+  if (!existingHeaders.length) {
+    sheet.getRange(1, 1, 1, requiredHeaders.length).setValues([requiredHeaders]);
+    return requiredHeaders;
+  }
 
-//  doPost — write / verify actions
-// ============================================================
+  const normalized = existingHeaders.slice();
+  requiredHeaders.forEach((header, index) => {
+    if (!normalized[index]) normalized[index] = header;
+  });
+  sheet.getRange(1, 1, 1, normalized.length).setValues([normalized]);
+  return normalized;
+}
+
+function registerUser(name, faceDescriptor, registeredBy, status, position, roles, role, employeeId) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Users') || ss.insertSheet('Users');
+  ensureUsersSheetWithContract(sheet);
+
+  const rows = sheet.getDataRange().getValues();
+  const headers = rows.length ? rows[0].map(h => String(h || '').trim()) : [];
+  const now = new Date();
+
+  const normalizedEmployeeId = normalizeEmployeeId(employeeId, rows);
+  const existingIndex = findUserRowIndexByEmployeeId(sheet, normalizedEmployeeId, headers);
+  const normalizedRole = String(role || (Array.isArray(roles) && roles.length ? roles[0] : '') || '').trim();
+
+  const record = {
+    'Employee ID': normalizedEmployeeId,
+    'Name': String(name || '').trim(),
+    'Position': String(position || '').trim(),
+    'Role': normalizedRole,
+    'Face Descriptor': String(faceDescriptor || '').trim(),
+    'Registered At': now,
+    'Registered By': String(registeredBy || '').trim(),
+    'Status': String(status || 'active').trim()
+  };
+
+  if (existingIndex > 0) {
+    setRowByHeaders(sheet, existingIndex + 1, headers, record);
+    return { status: 'success', message: 'User updated', employeeId: normalizedEmployeeId, role: normalizedRole };
+  }
+
+  const targetRow = Math.max(sheet.getLastRow() + 1, 2);
+  setRowByHeaders(sheet, targetRow, headers, record);
+  return { status: 'success', message: 'User registered', employeeId: normalizedEmployeeId, role: normalizedRole };
+}
 
 function doPost(e) {
   let data;
@@ -59,18 +105,27 @@ function doPost(e) {
   }
   let result;
 
-  if (action === 'registerUser')         result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status, data.position, data.roles, data.role, data.employeeId);
-  else if (action === 'logAttendance' || action === 'logCheckout')   result = logAttendance(data, action);
-  else if (action === 'saveConfig')      result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy, data.token);
-  else if (action === 'saveLocation')    result = saveSingleLocation(data);
-  else if (action === 'deleteLocation')  result = deleteSingleLocation(data);
-  else if (action === 'login')           result = login(data);
-  else if (action === 'verifyAdmin')     result = verifyAdmin(data.code);
-  else if (action === 'changeAdminCode') result = changeAdminCode(data.currentCode, data.newCode);
-  else result = { status: 'error', message: 'Unknown action: ' + action };
+  if (action === 'registerUser') {
+    result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status, data.position, data.roles, data.role, data.employeeId);
+  } else if (action === 'logAttendance' || action === 'logCheckout') {
+    result = logAttendance(data, action);
+  } else if (action === 'saveConfig') {
+    result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy, data.token);
+  } else if (action === 'saveLocation') {
+    result = saveSingleLocation(data);
+  } else if (action === 'deleteLocation') {
+    result = deleteSingleLocation(data);
+  } else if (action === 'login') {
+    result = login(data);
+  } else if (action === 'verifyAdmin') {
+    result = verifyAdmin(data.code);
+  } else if (action === 'changeAdminCode') {
+    result = changeAdminCode(data.currentCode, data.newCode);
+  } else {
+    result = { status: 'error', message: 'Unknown action: ' + action };
+  }
 
   return ContentService
     .createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
 }
-

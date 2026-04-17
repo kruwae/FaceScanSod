@@ -160,24 +160,25 @@ function safeHashEqualsV2(input, storedRecord) {
 
 var TOKEN_CACHE_PREFIX = 'auth_token_';
 var TOKEN_TTL_SECONDS = 8 * 60 * 60;
-var LEGACY_MIGRATION_MODE = true;
+var LEGACY_MIGRATION_MODE = false;
 var REQUIRE_AUTH_FOR_ALL_API = false;
 var DEFAULT_ROLE = 'staff';
 var ROLE_HIERARCHY = {
   'viewer': 1,
   'staff': 2,
-  'admin': 3
+  'admin': 3,
+  'super_admin': 4
 };
 var ENDPOINT_ROLE_RULES = {
-  'getKnownFaces': ['staff', 'admin'],
-  'logAttendance': ['staff', 'admin'],
-  'getConfig': ['admin'],
-  'saveConfig': ['admin'],
-  'getAttendanceLogs': ['viewer', 'staff', 'admin'],
-  'getLocations': ['staff', 'admin'],
-  'registerUser': ['admin'],
-  'verifyAdmin': ['admin'],
-  'changeAdminCode': ['admin']
+  'getKnownFaces': ['staff', 'admin', 'super_admin'],
+  'logAttendance': ['staff', 'admin', 'super_admin'],
+  'getConfig': ['admin', 'super_admin'],
+  'saveConfig': ['super_admin'],
+  'getAttendanceLogs': ['viewer', 'staff', 'admin', 'super_admin'],
+  'getLocations': ['staff', 'admin', 'super_admin'],
+  'registerUser': ['admin', 'super_admin'],
+  'verifyAdmin': ['admin', 'super_admin'],
+  'changeAdminCode': ['super_admin']
 };
 
 function generateToken(username, role) {

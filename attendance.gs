@@ -680,8 +680,6 @@ function getKnownFaces(params) {
   var token = String((params && params.token) || '').trim();
   var config = getConfig(params) || {};
   var requiredToken = String(config.readToken || '').trim();
-  // ถ้า readToken ถูกตั้งค่าไว้ → ต้องส่ง token ที่ถูกต้อง
-  // ถ้า readToken ว่าง (ไม่ได้ตั้งค่า) → ข้ามการตรวจสอบ token (open access)
   if (requiredToken && token !== requiredToken) {
     logAction({
       username: auth.user && auth.user.username ? auth.user.username : '',
@@ -695,18 +693,17 @@ function getKnownFaces(params) {
   }
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheetInfo = ensureUsersSheetWithContract(ss);
-  var sheet = sheetInfo.sheet;
-  var headerMap = sheetInfo.headerMap;
-
+  var result = ensureUsersSheetWithContract(ss);
+  var sheet = result.sheet;
+  var hm = result.headerMap;
   var data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
 
-  var employeeIdCol = headerMap['Employee ID'];
-  var nameCol = headerMap['Name'];
-  var positionCol = headerMap['Position'];
-  var descriptorCol = headerMap['Face Descriptor'];
-  var statusCol = headerMap['Status'];
+  var employeeIdCol = hm['Employee ID'];
+  var nameCol = hm['Name'];
+  var positionCol = hm['Position'];
+  var descriptorCol = hm['Face Descriptor'];
+  var statusCol = hm['Status'];
 
   var users = [];
   for (var i = 1; i < data.length; i++) {
@@ -748,6 +745,84 @@ function getKnownFaces(params) {
 
 //  Attendance Log
 // ============================================================
+
+function getKnownFaces(params) {
+  var auth = authorize('getKnownFaces', params);
+  if (!auth.ok) {
+    logAction({
+      username: '',
+      role: DEFAULT_ROLE,
+      action: 'access_denied',
+      endpoint: 'getKnownFaces',
+      status: 'fail',
+      details: { reason: auth.error || 'Unauthorized' }
+    });
+    return { status: 'error', message: auth.error || 'Unauthorized', code: auth.code || 401 };
+  }
+
+  var token = String((params && params.token) || '').trim();
+  var config = getConfig(params) || {};
+  var requiredToken = String(config.readToken || '').trim();
+  if (requiredToken && token !== requiredToken) {
+    logAction({
+      username: auth.user && auth.user.username ? auth.user.username : '',
+      role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
+      action: 'access_denied',
+      endpoint: 'getKnownFaces',
+      status: 'fail',
+      details: { reason: 'invalid_read_token' }
+    });
+    return { status: 'error', message: 'Unauthorized', code: 401 };
+  }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureUsersSheetWithContract(ss);
+  var sheet = result.sheet;
+  var hm = result.headerMap;
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+
+  var employeeIdCol = hm['Employee ID'];
+  var nameCol = hm['Name'];
+  var positionCol = hm['Position'];
+  var descriptorCol = hm['Face Descriptor'];
+  var statusCol = hm['Status'];
+
+  var users = [];
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var employeeId = employeeIdCol ? String(row[employeeIdCol - 1] || '').trim() : '';
+    var name = nameCol ? String(row[nameCol - 1] || '').trim() : '';
+    var position = positionCol ? String(row[positionCol - 1] || '').trim() : '';
+    var jsonStr = descriptorCol ? String(row[descriptorCol - 1] || '').trim() : '';
+    var status = statusCol ? String(row[statusCol - 1] || 'active').toLowerCase() : 'active';
+
+    if (!jsonStr || status === 'inactive') continue;
+
+    try {
+      var descriptor = JSON.parse(jsonStr);
+      users.push({
+        employeeId: employeeId || normalizeEmployeeId('', name, i + 1),
+        label: name || employeeId || ('User ' + (i + 1)),
+        name: name || '',
+        position: position || '',
+        descriptor: descriptor,
+        status: status || 'active'
+      });
+    } catch (e) {}
+  }
+
+  logAction({
+    username: auth.user && auth.user.username ? auth.user.username : '',
+    role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
+    action: 'getKnownFaces',
+    endpoint: 'getKnownFaces',
+    status: 'success',
+    details: { count: users.length }
+  });
+
+  return users;
+}
 
 function logAttendance(payload, actionParam) {
   var actionType = actionParam || 'logAttendance';
@@ -946,4 +1021,3 @@ function getAttendanceLogs(params) {
   }
   return rows;
 }
-

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>สแกนเข้างาน</title>
+<title>สแกน</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js" defer></script>
@@ -42,12 +42,9 @@ video{width:100%;border-radius:16px;margin-top:10px}
 <body>
 
 <div class="container">
-  <h1>📷 สแกนเข้างาน</h1>
+  <h1>📷 สแกน</h1>
 
   <div class="status" id="status">⏳ กำลังโหลด...</div>
-
-  <select id="locationSelect"></select>
-  <button id="btnConfirmLocation">📍 ยืนยันสถานที่</button>
 
   <button id="btnStart">📷 เริ่มสแกน</button>
   <button id="btnReload" onclick="location.reload()">🔄 รีโหลด</button>
@@ -76,6 +73,8 @@ let currentMatch = null;
 let currentLat = null;
 let currentLng = null;
 let currentLocation = null;
+let currentAction = 'logAttendance';
+let scanIntervalId = null;
 
 /* ================= DOM ================= */
 const statusEl = document.getElementById('status');
@@ -132,15 +131,17 @@ function findMatch(query){
 }
 
 /* ================= CAMERA ================= */
-async function startCamera(){
+async function startCamera(actionType='logAttendance'){
+  currentAction = actionType;
   try{
     const stream=await navigator.mediaDevices.getUserMedia({video:true});
     video.srcObject=stream;
     await video.play();
 
-    setStatus('📷 กำลังสแกน...', '#34d399');
+    setStatus(actionType === 'logCheckout' ? '🚪 กำลังสแกนเลิกงาน...' : '📷 กำลังสแกน...', '#34d399');
 
-    setInterval(scanLoop,500);
+    if (scanIntervalId) clearInterval(scanIntervalId);
+    scanIntervalId = setInterval(scanLoop,500);
 
   }catch(e){
     setStatus('❌ เปิดกล้องไม่ได้');
@@ -170,7 +171,9 @@ function showModal(match){
 
   const now=new Date();
   document.getElementById('modalTime').innerText=
-    now.toLocaleTimeString('th-TH');
+    currentAction === 'logCheckout'
+      ? 'เวลาเลิกงาน: ' + now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.'
+      : 'เวลาเข้างาน: ' + now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
 
   document.getElementById('modal').style.display='flex';
 }
@@ -185,7 +188,7 @@ async function confirmAttendance(){
     await fetch(API_URL,{
       method:'POST',
       body:JSON.stringify({
-        action:'logAttendance',
+        action:currentAction,
         name:currentMatch,
         lat:currentLat,
         lng:currentLng
@@ -222,7 +225,7 @@ async function init(){
 }
 
 /* ================= EVENTS ================= */
-document.getElementById('btnStart').onclick=startCamera;
+document.getElementById('btnStart').onclick=()=>startCamera('logAttendance');
 
 document.addEventListener('DOMContentLoaded',init);
 </script>

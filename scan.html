@@ -42,11 +42,12 @@ video{width:100%;border-radius:16px;margin-top:10px}
 <body>
 
 <div class="container">
-  <h1>📷 สแกน</h1>
+  <h1>📷 สแกนเข้างาน / ออกงาน</h1>
 
   <div class="status" id="status">⏳ กำลังโหลด...</div>
 
-  <button id="btnStart">📷 เริ่มสแกน</button>
+  <button id="btnStart" onclick="startSelectedAction()">📷 ลงชื่อเข้างาน</button>
+  <button id="btnCheckOut" onclick="startCamera('logCheckout')" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🚪 ลงชื่อออก</button>
   <button id="btnReload" onclick="location.reload()">🔄 รีโหลด</button>
 
   <video id="video" autoplay muted playsinline></video>
@@ -57,7 +58,7 @@ video{width:100%;border-radius:16px;margin-top:10px}
   <div class="modal-box">
     <h2 id="modalName">...</h2>
     <p id="modalTime"></p>
-    <button onclick="confirmAttendance()">✅ ยืนยัน</button>
+    <button id="btnConfirm" onclick="confirmAttendance()">✅ ยืนยันเข้างาน</button>
     <button onclick="closeModal()">❌ ยกเลิก</button>
   </div>
 </div>
@@ -138,7 +139,7 @@ async function startCamera(actionType='logAttendance'){
     video.srcObject=stream;
     await video.play();
 
-    setStatus(actionType === 'logCheckout' ? '🚪 กำลังสแกนเลิกงาน...' : '📷 กำลังสแกน...', '#34d399');
+    setStatus(actionType === 'logCheckout' ? '🚪 กำลังสแกนลงชื่อออก...' : '📷 กำลังสแกนลงชื่อเข้างาน...', '#34d399');
 
     if (scanIntervalId) clearInterval(scanIntervalId);
     scanIntervalId = setInterval(scanLoop,500);
@@ -172,8 +173,16 @@ function showModal(match){
   const now=new Date();
   document.getElementById('modalTime').innerText=
     currentAction === 'logCheckout'
-      ? 'เวลาเลิกงาน: ' + now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.'
+      ? 'เวลาออกงาน: ' + now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.'
       : 'เวลาเข้างาน: ' + now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+
+  const confirmBtn = document.getElementById('btnConfirm');
+  if (confirmBtn) {
+    confirmBtn.innerText = currentAction === 'logCheckout' ? '✅ ยืนยันออกงาน' : '✅ ยืนยันเข้างาน';
+    confirmBtn.style.background = currentAction === 'logCheckout'
+      ? 'linear-gradient(135deg, #f59e0b, #d97706)'
+      : 'linear-gradient(135deg, #10b981, #059669)';
+  }
 
   document.getElementById('modal').style.display='flex';
 }
@@ -225,7 +234,9 @@ async function init(){
 }
 
 /* ================= EVENTS ================= */
-document.getElementById('btnStart').onclick=()=>startCamera('logAttendance');
+document.getElementById('btnStart').onclick=()=>startSelectedAction();
+document.getElementById('btnCheckOut').onclick=()=>startCamera('logCheckout');
+function startSelectedAction(){ startCamera('logAttendance'); }
 
 document.addEventListener('DOMContentLoaded',init);
 </script>

@@ -1183,8 +1183,11 @@
 
       // เปิดกล้องอัตโนมัติหลังโมเดลและข้อมูลพร้อมใช้งาน
       try {
+        console.log('[scan] before auto startCamera, knownFaces=', Array.isArray(knownFaces) ? knownFaces.length : 'n/a');
         await startCamera('logAttendance');
+        console.log('[scan] after auto startCamera');
       } catch (cameraErr) {
+        console.error('[scan] auto startCamera failed', cameraErr);
         showError('ไม่สามารถเปิดกล้องอัตโนมัติได้: ' + cameraErr.message);
       }
     } catch (e) {
@@ -1369,11 +1372,14 @@
   }
 
   async function init() {
+    console.log('[scan] init() start');
     if (sessionStorage.getItem(SESSION_KEY) !== '1') {
+      console.warn('[scan] blocked by SESSION_KEY');
       window.location.replace('login.html?to=scan.html');
       return;
     }
     if (!API_URL) {
+      console.warn('[scan] blocked by missing API_URL');
       showError('ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่า</a>');
       return;
     }
@@ -1430,6 +1436,7 @@
 
     mainStatus.innerText = '1/4 ตรวจสอบกล้อง...';
     const cameraOk = await checkCamera();
+    console.log('[scan] checkCamera result=', cameraOk);
     if (!cameraOk) {
       showError('❌ เข้าถึงกล้องไม่ได้ — กรุณาอนุญาตสิทธิ์กล้องแล้วรีเฟรช');
       return;

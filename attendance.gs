@@ -329,7 +329,8 @@ function verifyGoogleIdToken(idToken) {
     var parts = token.split('.');
     if (parts.length !== 3) return { success: false, error: 'Invalid Google token format' };
 
-    var payload = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[1])).getDataAsString());
+    var payloadText = Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[1])).getDataAsString();
+    var payload = JSON.parse(payloadText);
     var email = normalizeEmail(payload.email || '');
     var aud = String(payload.aud || '');
     var iss = String(payload.iss || '').toLowerCase();
@@ -339,9 +340,20 @@ function verifyGoogleIdToken(idToken) {
       return { success: false, error: 'Invalid token issuer' };
     }
 
-    var expectedAud = String(GOOGLE_ID_TOKEN_AUDIENCE || GOOGLE_OAUTH_CLIENT_ID || '').trim();
-    if (expectedAud && aud !== expectedAud) {
-      return { success: false, error: 'Invalid token audience' };
+    var configuredAudiences = [
+      String(GOOGLE_ID_TOKEN_AUDIENCE || '').trim(),
+      String(GOOGLE_OAUTH_CLIENT_ID || '').trim()
+    ].filter(function(value) { return !!String(value || '').trim(); });
+
+    if (configuredAudiences.length && configuredAudiences.indexOf(aud) === -1) {
+      return {
+        success: false,
+        error: 'Invalid token audience',
+        debug: {
+          expected: configuredAudiences.join(','),
+          actual: aud
+        }
+      };
     }
 
     if (payload.email_verified !== true && String(payload.email_verified) !== 'true') {
@@ -375,9 +387,13 @@ function login(params) {
         action: 'login',
         endpoint: 'login',
         status: 'fail',
-        details: { reason: 'invalid_google_token', error: googleResult.error }
+        details: {
+          reason: 'invalid_google_token',
+          error: googleResult.error,
+          debug: googleResult.debug || {}
+        }
       });
-      return { status: 'error', message: googleResult.error || 'Unauthorized' };
+      return { status: 'error', message: googleResult.error || 'Unauthorized', debug: googleResult.debug || {} };
     }
 
     var googleAdmin = getGoogleAdminByEmail(googleResult.email);

@@ -824,6 +824,23 @@ function getKnownFaces(params) {
   return users;
 }
 
+function normalizeAttendanceEmployeeId(payload) {
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    var direct = String(payload.employeeId || payload.Employee_ID || payload.employeeID || '').trim();
+    if (direct) return direct;
+    return String(payload.name || payload.Name || '').trim();
+  }
+  return String(payload || '').trim();
+}
+
+function getAttendanceDateKey(dateObj) {
+  return Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+}
+
+function buildAttendanceIdempotencyKey(employeeId, actionType, dateKey) {
+  return [String(employeeId || '').trim(), String(actionType || '').trim(), String(dateKey || '').trim()].join('|');
+}
+
 function logAttendance(payload, actionParam) {
   var actionType = actionParam || 'logAttendance';
   var auth = authorize(actionType, payload);
@@ -839,152 +856,165 @@ function logAttendance(payload, actionParam) {
     return { status: 'error', message: auth.error || 'Unauthorized', code: auth.code || 401 };
   }
 
-  var name, lat, lng, locationName, gpsStatus, gpsSkipReason, userAgent;
-  var meshSynced, meshId, meshClientTime, meshFingerprint;
+  var employeeId, name, lat, lng, locationName, gpsStatus, gpsSkipReason, userAgent;
+  var gpsAccuracy, gpsAltitude, gpsTimestamp, suspiciousGps;
+  var livenessStatus, livenessScore, livenessMethod;
+  var requestId, clientTimestamp, idempotencyKey;
+  var meshSynced, meshId, meshClientTime, meshFingerprint, auditLog;
 
   if (typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
-    name            = payload.name         || '';
-    lat             = payload.lat          || '';
-    lng             = payload.lng          || '';
+    employeeId      = normalizeAttendanceEmployeeId(payload);
+    name            = String(payload.name || payload.Name || employeeId || '').trim();
+    lat             = payload.lat || '';
+    lng             = payload.lng || '';
     locationName    = payload.locationName || '';
-    gpsStatus       = payload.gpsStatus    || 'ok';
+    gpsStatus       = payload.gpsStatus || 'ok';
     gpsSkipReason   = payload.gpsSkipReason || '';
-    userAgent       = payload.userAgent    || '';
-    meshSynced      = payload.meshSynced   || false;
-    meshId          = payload.meshId       || '';
+    userAgent       = payload.userAgent || '';
+    gpsAccuracy     = payload.gpsAccuracy;
+    gpsAltitude     = payload.gpsAltitude;
+    gpsTimestamp    = payload.gpsTimestamp;
+    suspiciousGps   = payload.suspiciousGps;
+    livenessStatus  = payload.livenessStatus || 'unknown';
+    livenessScore   = payload.livenessScore;
+    livenessMethod  = payload.livenessMethod || 'none';
+    requestId       = String(payload.requestId || '').trim();
+    clientTimestamp = payload.clientTimestamp || '';
+    idempotencyKey  = String(payload.idempotencyKey || '').trim();
+    meshSynced      = payload.meshSynced || false;
+    meshId          = payload.meshId || '';
     meshClientTime  = payload.meshClientTime || '';
     meshFingerprint = payload.meshFingerprint || '';
+    auditLog        = payload.auditLog || {};
   } else {
-    name         = arguments[0] || '';
+    employeeId = normalizeAttendanceEmployeeId(arguments[0] || '');
+    name         = employeeId;
     lat          = arguments[1] || '';
     lng          = arguments[2] || '';
     locationName = arguments[6] || '';
     gpsStatus    = 'ok';
+    livenessStatus = 'unknown';
+    livenessMethod = 'none';
+  }
+
+  if (!employeeId) {
+    logAction({
+      username: '',
+      role: DEFAULT_ROLE,
+      action: actionType,
+      endpoint: actionType,
+      status: 'fail',
+      details: { reason: 'missing_employee_id' }
+    });
+    return { status: 'error', message: 'Missing Employee_ID', code: 400 };
   }
 
   const ss     = SpreadsheetApp.getActiveSpreadsheet();
   const schema = [
-    'Name', 'Time', 'Date', 'Latitude', 'Longitude', 'Google Map Link',
+    'Employee ID', 'Name', 'Time', 'Date', 'Latitude', 'Longitude', 'Google Map Link',
     'Location', 'GPS Status', 'GPS Skip Reason',
+    'GPS Accuracy', 'GPS Altitude', 'GPS Timestamp', 'Suspicious GPS',
+    'Liveness Status', 'Liveness Score', 'Liveness Method',
+    'Request ID', 'Client Timestamp', 'Idempotency Key',
     'Mesh Synced', 'Mesh ID', 'Mesh Client Time', 'Mesh Fingerprint',
-    'User Agent', 'Duplicate', 'Action Type', 'Verification'
+    'User Agent', 'Duplicate', 'Action Type', 'Verification', 'Audit Log'
   ];
   const result = ensureSheetWithHeaders(ss, 'Attendance', schema);
   const sheet  = result.sheet;
   const hm     = result.headerMap;
 
-  // --- Geofencing & Anti-Cheat Validation ---
-  let verificationStatus = 'verified';
-  const toleranceKm = 0.05; // 50 meters tolerance for GPS jitter
+  const now = new Date();
+  const dateKey = getAttendanceDateKey(now);
+  const dedupeKey = idempotencyKey || buildAttendanceIdempotencyKey(employeeId, actionType, dateKey);
 
-  if (gpsStatus === 'ok' && lat && lng && locationName && locationName !== '📍 ไม่จำกัดพื้นที่') {
-    const config = getConfig({});
-    const officialLoc = (config.locations || []).find(l => l.name === locationName);
-    
-    if (officialLoc) {
-      const realDist = haversineKm(parseFloat(lat), parseFloat(lng), officialLoc.lat, officialLoc.lng);
-      const allowedRadiusKm = (officialLoc.radius || 100) / 1000;
-      
-      if (realDist > (allowedRadiusKm + toleranceKm)) {
-        verificationStatus = '📍 OUT_OF_RANGE (' + (realDist * 1000).toFixed(0) + 'm)';
-        // Log rejection in Audit Log
-        logAction({
-          username: auth.user && auth.user.username ? auth.user.username : String(name || ''),
-          role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
-          action: actionType + '_rejected',
-          endpoint: 'logAttendance',
-          status: 'fail',
-          details: { reason: 'proximity_check_failed', distance: realDist, allowed: allowedRadiusKm }
-        });
-        
-        return { 
-          status: 'error', 
-          message: '⛔ ปฏิเสธการเช็คอิน: ตรวจพบว่าพิกัดของคุณอยู่ห่างจากหน่วยบริการเกินกำหนด (' + (realDist * 1000).toFixed(0) + ' ม.)'
-        };
-      }
-    }
-  }
-
-  // Time Sync Check (for Mesh/Offline logs)
-  if (meshClientTime) {
-    const clientDate = new Date(meshClientTime);
-    const serverDate = new Date();
-    const driftMs = Math.abs(serverDate - clientDate);
-    if (driftMs > 24 * 60 * 60 * 1000) { // > 24 hours drift
-      verificationStatus += (verificationStatus ? ' | ' : '') + '⚠️ TIME_DRIFT';
-    }
-  }
-
-  const now     = new Date();
-  const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'd/M/yyyy');
-  const timeStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm:ss');
-  const mapLink = (lat && lng) ? 'https://www.google.com/maps?q=' + lat + ',' + lng : '';
-
-  var isDuplicate = false;
   var allData = sheet.getDataRange().getValues();
-  var nameCol = hm['Name'] - 1;
+  var empCol = hm['Employee ID'] - 1;
   var dateCol = hm['Date'] - 1;
   var actionCol = hm['Action Type'] ? hm['Action Type'] - 1 : -1;
+  var requestCol = hm['Request ID'] ? hm['Request ID'] - 1 : -1;
+  var idempotencyCol = hm['Idempotency Key'] ? hm['Idempotency Key'] - 1 : -1;
+  var isDuplicate = false;
+
   for (var i = 1; i < allData.length; i++) {
-    var rowName = String(allData[i][nameCol] || '').trim();
+    var rowEmployeeId = String(allData[i][empCol] || '').trim();
     var rowDate = String(allData[i][dateCol] || '').replace(/^'/, '').trim();
     var rowType = actionCol >= 0 ? String(allData[i][actionCol] || 'logAttendance') : 'logAttendance';
-    if (rowName === String(name).trim() && rowDate === dateStr && rowType === actionType) {
+    var rowRequestId = requestCol >= 0 ? String(allData[i][requestCol] || '').trim() : '';
+    var rowIdempotency = idempotencyCol >= 0 ? String(allData[i][idempotencyCol] || '').trim() : '';
+    if ((rowEmployeeId === employeeId && rowDate === dateKey && rowType === actionType) || (dedupeKey && (rowRequestId === dedupeKey || rowIdempotency === dedupeKey))) {
       isDuplicate = true;
       break;
     }
   }
+
+  if (isDuplicate) {
+    logAction({
+      username: employeeId,
+      role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
+      action: actionType + '_duplicate',
+      endpoint: actionType,
+      status: 'fail',
+      details: { reason: 'duplicate_or_replay', employeeId: employeeId, requestId: requestId, idempotencyKey: dedupeKey }
+    });
+    return { success: true, duplicate: true, message: '⚠️ พบว่า ' + employeeId + ' ลงเวลารายการนี้ไปแล้ว' };
+  }
+
+  const mapLink = (lat && lng) ? 'https://www.google.com/maps?q=' + lat + ',' + lng : '';
+  const verificationStatus = (String(gpsStatus || '').toLowerCase() === 'ok' && String(suspiciousGps || '').toLowerCase() === 'true') ? '⚠️ GPS_SUSPICIOUS' : 'verified';
 
   const rowNumber = sheet.getLastRow() + 1;
   sheet.getRange(rowNumber, 1, 1, Math.max(sheet.getLastColumn(), schema.length))
        .setValues([new Array(Math.max(sheet.getLastColumn(), schema.length)).fill('')]);
 
   setRowByHeaders(sheet, rowNumber, hm, {
+    'Employee ID':       employeeId,
     'Name':              name,
-    'Time':              timeStr,
-    'Date':              "'" + dateStr,
+    'Time':              Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm:ss'),
+    'Date':              "'" + dateKey,
     'Latitude':          lat || '-',
     'Longitude':         lng || '-',
-    'Google Map Link':   mapLink,
+    'Google Map Link':    mapLink,
     'Location':          locationName,
     'GPS Status':        gpsStatus,
     'GPS Skip Reason':   gpsSkipReason,
+    'GPS Accuracy':      gpsAccuracy === undefined ? '' : gpsAccuracy,
+    'GPS Altitude':      gpsAltitude === undefined ? '' : gpsAltitude,
+    'GPS Timestamp':     gpsTimestamp === undefined ? '' : gpsTimestamp,
+    'Suspicious GPS':    suspiciousGps === undefined ? '' : suspiciousGps,
+    'Liveness Status':   livenessStatus,
+    'Liveness Score':    livenessScore === undefined ? '' : livenessScore,
+    'Liveness Method':   livenessMethod,
+    'Request ID':        requestId,
+    'Client Timestamp':  clientTimestamp,
+    'Idempotency Key':   dedupeKey,
     'Mesh Synced':       meshSynced ? 'YES' : '',
     'Mesh ID':           meshId,
     'Mesh Client Time':  meshClientTime,
     'Mesh Fingerprint':  meshFingerprint,
     'User Agent':        userAgent,
-    'Duplicate':         isDuplicate ? 'DUPLICATE' : '',
+    'Duplicate':         '',
     'Action Type':       actionType,
-    'Verification':      verificationStatus
+    'Verification':      verificationStatus,
+    'Audit Log':         JSON.stringify(auditLog || {})
   });
-
-  if (isDuplicate) {
-    logAction({
-      username: auth.user && auth.user.username ? auth.user.username : String(name || ''),
-      role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
-      action: actionType,
-      endpoint: actionType,
-      status: 'success',
-      details: { duplicate: true, name: String(name || ''), locationName: String(locationName || '') }
-    });
-    return {
-      success: true,
-      duplicate: true,
-      message: '⚠️ พบว่า ' + name + ' ลงชื่อเข้างานไปแล้วในวันนี้ (บันทึกเพิ่ม Flag: DUPLICATE)'
-    };
-  }
 
   logAction({
-    username: auth.user && auth.user.username ? auth.user.username : String(name || ''),
+    username: employeeId,
     role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
-    action: 'logAttendance',
-    endpoint: 'logAttendance',
+    action: actionType,
+    endpoint: actionType,
     status: 'success',
-    details: { duplicate: false, name: String(name || ''), locationName: String(locationName || '') }
+    details: {
+      employeeId: employeeId,
+      requestId: requestId,
+      idempotencyKey: dedupeKey,
+      duplicate: false,
+      livenessStatus: livenessStatus,
+      suspiciousGps: suspiciousGps
+    }
   });
 
-  return { success: true, message: 'บันทึกเวลาเสร็จสิ้น' };
+  return { success: true, message: 'บันทึกเวลาเสร็จสิ้น', employeeId: employeeId };
 }
 
 function getAttendanceLogs(params) {

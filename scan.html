@@ -1189,6 +1189,7 @@
       } catch (cameraErr) {
         console.error('[scan] auto startCamera failed', cameraErr);
         showError('ไม่สามารถเปิดกล้องอัตโนมัติได้: ' + cameraErr.message);
+        overlayStatus.innerText = 'รอโหลด...';
       }
     } catch (e) {
       showError('โหลด AI / ฐานข้อมูลล้มเหลว: ' + e.message);
@@ -1206,7 +1207,7 @@
 
   function startScanLoop() {
     if (scanInterval) clearInterval(scanInterval);
-    overlayStatus.innerText = 'มองกล้องเพื่อสแกน';
+    overlayStatus.innerText = 'กำลังตรวจจับใบหน้า...';
     overlayStatus.style.background = 'rgba(0,0,0,0.65)';
 
     scanInterval = setInterval(async function () {
@@ -1242,6 +1243,7 @@
     if (btnCheckOut) btnCheckOut.style.display = 'none';
     mainStatus.innerText = 'กำลังเปิดกล้อง...';
     mainStatus.style.color = '#94a3b8';
+    overlayStatus.innerText = 'กำลังเปิดกล้อง...';
 
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
       .then(function (stream) {
@@ -1249,6 +1251,7 @@
         video.classList.add('active');
         mainStatus.innerText = '✅ กำลังสแกน...';
         mainStatus.style.color = '#34d399';
+        overlayStatus.innerText = 'กำลังตรวจจับใบหน้า...';
         document.getElementById('scanLine').classList.add('active');
         startScanLoop();
       })
@@ -1256,6 +1259,7 @@
         showError('เปิดกล้องไม่ได้: ' + err.message);
         btnStart.style.display = 'inline-block';
         if (btnCheckOut) btnCheckOut.style.display = 'inline-block';
+        overlayStatus.innerText = 'รอโหลด...';
       });
   }
 

@@ -42,13 +42,15 @@ video{width:100%;border-radius:16px;margin-top:10px}
 <body>
 
 <div class="container">
-  <h1>📷 สแกนเข้างาน / ออกงาน</h1>
+  <h1>📷 สแกนเข้างาน</h1>
 
   <div class="status" id="status">⏳ กำลังโหลด...</div>
 
-  <button id="btnStart" onclick="startSelectedAction()">📷 ลงชื่อเข้างาน</button>
-  <button id="btnCheckOut" onclick="startCamera('logCheckout')" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🚪 ลงชื่อออก</button>
-  <button id="btnReload" onclick="location.reload()">🔄 รีโหลด</button>
+  <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px;">
+    <button id="btnStart" onclick="startSelectedAction()">📷 สแกนเข้างาน</button>
+    <button id="btnCheckOut" onclick="startCamera('logCheckout')" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🚪 สแกนเลิกงาน</button>
+    <button id="btnReload" onclick="location.reload()">🔄 รีโหลด</button>
+  </div>
 
   <video id="video" autoplay muted playsinline></video>
 </div>
@@ -67,6 +69,7 @@ video{width:100%;border-radius:16px;margin-top:10px}
 /* ================= CONFIG ================= */
 const API_URL = localStorage.getItem('gasApiUrl') || '';
 const MATCH_THRESHOLD = 0.45;
+const DEFAULT_LOCATION_NAME = '📍 ไม่จำกัดพื้นที่';
 
 /* ================= STATE ================= */
 let knownFaces = [];
@@ -76,6 +79,11 @@ let currentLng = null;
 let currentLocation = null;
 let currentAction = 'logAttendance';
 let scanIntervalId = null;
+let currentUserHistory = null;
+let gpsRangeAllowed = false;
+let selectedLocation = null;
+let currentLocationLabel = DEFAULT_LOCATION_NAME;
+let pendingAttendancePayload = null;
 
 /* ================= DOM ================= */
 const statusEl = document.getElementById('status');
@@ -93,6 +101,8 @@ async function getLocation(){
     navigator.geolocation.getCurrentPosition(pos=>{
       currentLat=pos.coords.latitude;
       currentLng=pos.coords.longitude;
+      currentLocationLabel = DEFAULT_LOCATION_NAME;
+      gpsRangeAllowed = true;
       resolve();
     },err=>{
       reject(err);
@@ -114,9 +124,11 @@ async function initFace(){
   const data=await res.json();
 
   knownFaces=data.map(u=>({
-    name:u.name,
+    name:u.name || u.label || 'unknown',
     descriptor:new Float32Array(u.descriptor)
   }));
+
+  gpsRangeAllowed = true;
 }
 
 /* ================= MATCH ================= */
@@ -131,9 +143,22 @@ function findMatch(query){
   return best;
 }
 
+async function fetchUserHistory(employeeId){
+  try{
+    const res = await fetch(API_URL+'?action=getUserHistory&employeeId='+encodeURIComponent(employeeId));
+    return await res.json();
+  }catch(_){
+    return null;
+  }
+}
+
 /* ================= CAMERA ================= */
 async function startCamera(actionType='logAttendance'){
   currentAction = actionType;
+  if (!gpsRangeAllowed) {
+    setStatus('⛔ กรุณาตรวจ GPS หรือเลือกพื้นที่ก่อนเริ่มสแกน', '#f87171');
+    return;
+  }
   try{
     const stream=await navigator.mediaDevices.getUserMedia({video:true});
     video.srcObject=stream;
@@ -194,15 +219,26 @@ function closeModal(){
 /* ================= API ================= */
 async function confirmAttendance(){
   try{
-    await fetch(API_URL,{
+    const payload = pendingAttendancePayload || {
+      action:currentAction,
+      name:currentMatch,
+      lat:currentLat,
+      lng:currentLng,
+      locationName:currentLocationLabel,
+      gpsStatus:'ok'
+    };
+
+    const res = await fetch(API_URL,{
       method:'POST',
-      body:JSON.stringify({
-        action:currentAction,
-        name:currentMatch,
-        lat:currentLat,
-        lng:currentLng
-      })
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
     });
+
+    const data = await res.json().catch(() => ({}));
+    if (data && data.status === 'error') {
+      alert(data.message || '❌ บันทึกล้มเหลว');
+      return;
+    }
 
     alert('✅ บันทึกสำเร็จ');
     location.reload();

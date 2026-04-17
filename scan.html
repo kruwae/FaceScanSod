@@ -1180,6 +1180,13 @@
       mainStatus.style.color = '#34d399';
       btnStart.style.display = 'inline-block';
       if (btnCheckOut) btnCheckOut.style.display = 'inline-block';
+
+      // เปิดกล้องอัตโนมัติหลังโมเดลและข้อมูลพร้อมใช้งาน
+      try {
+        await startCamera('logAttendance');
+      } catch (cameraErr) {
+        showError('ไม่สามารถเปิดกล้องอัตโนมัติได้: ' + cameraErr.message);
+      }
     } catch (e) {
       showError('โหลด AI / ฐานข้อมูลล้มเหลว: ' + e.message);
     }

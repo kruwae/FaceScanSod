@@ -664,7 +664,7 @@ function registerUser(name, faceDescriptor, registeredBy, status, position, role
 }
 
 function getKnownFaces(params) {
-  const auth = authorize('getKnownFaces', params);
+  var auth = authorize('getKnownFaces', params);
   if (!auth.ok) {
     logAction({
       username: '',
@@ -677,9 +677,9 @@ function getKnownFaces(params) {
     return { status: 'error', message: auth.error || 'Unauthorized', code: auth.code || 401 };
   }
 
-  const token = String((params && params.token) || '').trim();
-  const config = getConfig(params);
-  const requiredToken = String(config.readToken || '').trim();
+  var token = String((params && params.token) || '').trim();
+  var config = getConfig(params) || {};
+  var requiredToken = String(config.readToken || '').trim();
   // ถ้า readToken ถูกตั้งค่าไว้ → ต้องส่ง token ที่ถูกต้อง
   // ถ้า readToken ว่าง (ไม่ได้ตั้งค่า) → ข้ามการตรวจสอบ token (open access)
   if (requiredToken && token !== requiredToken) {
@@ -694,33 +694,33 @@ function getKnownFaces(params) {
     return { status: 'error', message: 'Unauthorized', code: 401 };
   }
 
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheetInfo = ensureUsersSheetWithContract(ss);
-  const sheet = sheetInfo.sheet;
-  const headerMap = sheetInfo.headerMap;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetInfo = ensureUsersSheetWithContract(ss);
+  var sheet = sheetInfo.sheet;
+  var headerMap = sheetInfo.headerMap;
 
-  const data = sheet.getDataRange().getValues();
+  var data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
 
-  const employeeIdCol = headerMap['Employee ID'];
-  const nameCol = headerMap['Name'];
-  const positionCol = headerMap['Position'];
-  const descriptorCol = headerMap['Face Descriptor'];
-  const statusCol = headerMap['Status'];
+  var employeeIdCol = headerMap['Employee ID'];
+  var nameCol = headerMap['Name'];
+  var positionCol = headerMap['Position'];
+  var descriptorCol = headerMap['Face Descriptor'];
+  var statusCol = headerMap['Status'];
 
-  const users = [];
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    const employeeId = employeeIdCol ? String(row[employeeIdCol - 1] || '').trim() : '';
-    const name = nameCol ? String(row[nameCol - 1] || '').trim() : '';
-    const position = positionCol ? String(row[positionCol - 1] || '').trim() : '';
-    const jsonStr = descriptorCol ? String(row[descriptorCol - 1] || '').trim() : '';
-    const status = statusCol ? String(row[statusCol - 1] || 'active').toLowerCase() : 'active';
+  var users = [];
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var employeeId = employeeIdCol ? String(row[employeeIdCol - 1] || '').trim() : '';
+    var name = nameCol ? String(row[nameCol - 1] || '').trim() : '';
+    var position = positionCol ? String(row[positionCol - 1] || '').trim() : '';
+    var jsonStr = descriptorCol ? String(row[descriptorCol - 1] || '').trim() : '';
+    var status = statusCol ? String(row[statusCol - 1] || 'active').toLowerCase() : 'active';
 
     if (!jsonStr || status === 'inactive') continue;
 
     try {
-      const descriptor = JSON.parse(jsonStr);
+      var descriptor = JSON.parse(jsonStr);
       users.push({
         employeeId: employeeId || normalizeEmployeeId('', name, i + 1),
         label: name || employeeId || ('User ' + (i + 1)),

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>สแกนเข้างาน</title>
+<title>สแกนเข้างาน / เลิกงาน</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js" defer></script>
@@ -42,13 +42,17 @@ video{width:100%;border-radius:16px;margin-top:10px}
 <body>
 
 <div class="container">
-  <h1>📷 สแกนเข้างาน</h1>
+  <h1 id="pageTitle">📷 สแกนเข้างาน</h1>
 
   <div class="status" id="status">⏳ กำลังโหลด...</div>
 
   <select id="locationSelect"></select>
   <button id="btnConfirmLocation">📍 ยืนยันสถานที่</button>
 
+  <select id="actionSelect">
+    <option value="logAttendance">📷 เข้างาน</option>
+    <option value="logCheckout">🚪 เลิกงาน</option>
+  </select>
   <button id="btnStart">📷 เริ่มสแกน</button>
   <button id="btnReload" onclick="location.reload()">🔄 รีโหลด</button>
 
@@ -60,7 +64,7 @@ video{width:100%;border-radius:16px;margin-top:10px}
   <div class="modal-box">
     <h2 id="modalName">...</h2>
     <p id="modalTime"></p>
-    <button onclick="confirmAttendance()">✅ ยืนยัน</button>
+    <button id="btnConfirm">✅ ยืนยัน</button>
     <button onclick="closeModal()">❌ ยกเลิก</button>
   </div>
 </div>
@@ -76,6 +80,8 @@ let currentMatch = null;
 let currentLat = null;
 let currentLng = null;
 let currentLocation = null;
+let currentAction = 'logAttendance';
+let scanIntervalId = null;
 
 /* ================= DOM ================= */
 const statusEl = document.getElementById('status');
@@ -132,15 +138,34 @@ function findMatch(query){
 }
 
 /* ================= CAMERA ================= */
-async function startCamera(){
+async function startCamera(actionType='logAttendance'){
+  currentAction = actionType;
+  const pageTitle = document.getElementById('pageTitle');
+  const actionSelect = document.getElementById('actionSelect');
+  const confirmBtn = document.getElementById('btnConfirm');
+
+  if (actionSelect) actionSelect.value = actionType;
+  if (pageTitle) pageTitle.innerText = actionType === 'logCheckout' ? '🚪 สแกนเลิกงาน' : '📷 สแกนเข้างาน';
+
+  if (confirmBtn) {
+    if (actionType === 'logCheckout') {
+      confirmBtn.innerText = '🚪 ยืนยันเลิกงาน';
+      confirmBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+    } else {
+      confirmBtn.innerText = '✅ ยืนยันเข้างาน';
+      confirmBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+    }
+  }
+
   try{
     const stream=await navigator.mediaDevices.getUserMedia({video:true});
     video.srcObject=stream;
     await video.play();
 
-    setStatus('📷 กำลังสแกน...', '#34d399');
+    setStatus(actionType === 'logCheckout' ? '🚪 กำลังสแกนเลิกงาน...' : '📷 กำลังสแกนเข้างาน...', '#34d399');
 
-    setInterval(scanLoop,500);
+    if (scanIntervalId) clearInterval(scanIntervalId);
+    scanIntervalId = setInterval(scanLoop,500);
 
   }catch(e){
     setStatus('❌ เปิดกล้องไม่ได้');
@@ -169,8 +194,20 @@ function showModal(match){
   document.getElementById('modalName').innerText=match.name;
 
   const now=new Date();
+  const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   document.getElementById('modalTime').innerText=
-    now.toLocaleTimeString('th-TH');
+    currentAction === 'logCheckout' ? `เวลาเลิกงาน: ${timeStr} น.` : `เวลาเข้างาน: ${timeStr} น.`;
+
+  const confirmBtn = document.getElementById('btnConfirm');
+  if (confirmBtn) {
+    if (currentAction === 'logCheckout') {
+      confirmBtn.innerText = '🚪 ยืนยันเลิกงาน';
+      confirmBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+    } else {
+      confirmBtn.innerText = '✅ ยืนยันเข้างาน';
+      confirmBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+    }
+  }
 
   document.getElementById('modal').style.display='flex';
 }
@@ -185,7 +222,7 @@ async function confirmAttendance(){
     await fetch(API_URL,{
       method:'POST',
       body:JSON.stringify({
-        action:'logAttendance',
+        action:currentAction,
         name:currentMatch,
         lat:currentLat,
         lng:currentLng
@@ -222,7 +259,8 @@ async function init(){
 }
 
 /* ================= EVENTS ================= */
-document.getElementById('btnStart').onclick=startCamera;
+document.getElementById('btnStart').onclick=()=>startCamera(document.getElementById('actionSelect').value);
+document.getElementById('btnConfirm').onclick=confirmAttendance;
 
 document.addEventListener('DOMContentLoaded',init);
 </script>

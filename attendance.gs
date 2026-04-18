@@ -372,6 +372,25 @@ function getGoogleAdminByEmail(email) {
   return admin;
 }
 
+function getGoogleAdminEmails() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
+  var sheet = result.sheet;
+  var hm = result.headerMap;
+  var data = sheet.getDataRange().getValues();
+  var emails = [];
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var role = String(row[hm['Role'] - 1] || '').toLowerCase();
+    var status = String(row[hm['Status'] - 1] || '').toLowerCase();
+    var email = normalizeEmail(row[hm['Email'] - 1] || '');
+    if (role === 'admin' && status === 'active' && email) emails.push(email);
+  }
+
+  return emails;
+}
+
 function login(params) {
   var username = String((params && params.username) || 'admin').trim();
   var authMethod = String((params && params.authMethod) || 'code').trim().toLowerCase();
@@ -396,20 +415,25 @@ function login(params) {
       return { status: 'error', message: googleResult.error || 'Unauthorized', debug: googleResult.debug || {} };
     }
 
-    var googleAdmin = getGoogleAdminByEmail(googleResult.email);
-    if (!googleAdmin) {
+    var allowedGoogleEmails = getGoogleAdminEmails();
+    var normalizedGoogleEmail = normalizeEmail(googleResult.email);
+    var googleAdmin = getGoogleAdminByEmail(normalizedGoogleEmail);
+
+    if (!googleAdmin && allowedGoogleEmails.indexOf(normalizedGoogleEmail) === -1) {
       logAction({
         username: maskSensitiveValue(googleResult.email),
         role: DEFAULT_ROLE,
         action: 'login',
         endpoint: 'login',
         status: 'fail',
-        details: { reason: 'google_email_not_whitelisted', email: maskSensitiveValue(googleResult.email) }
+        details: { reason: 'google_email_not_whitelisted', email: maskSensitiveValue(googleResult.email), allowedEmails: allowedGoogleEmails.map(maskSensitiveValue) }
       });
-      return { status: 'error', message: 'อีเมลนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน' };
+      return { status: 'error', message: 'อีเมลนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน', debug: { allowedEmails: allowedGoogleEmails } };
     }
 
-    username = googleAdmin.username || username;
+    if (googleAdmin) {
+      username = googleAdmin.username || username;
+    }
     role = 'admin';
     token = storeToken(generateToken(username, role), username, role);
 

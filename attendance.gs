@@ -329,7 +329,11 @@ function verifyGoogleIdToken(idToken) {
     var parts = token.split('.');
     if (parts.length !== 3) return { success: false, error: 'Invalid Google token format' };
 
-    var payloadText = Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[1])).getDataAsString();
+    // Pad to multiple-of-4 — base64DecodeWebSafe requires padding in some GAS runtime versions
+    var b64Segment = parts[1];
+    while (b64Segment.length % 4 !== 0) b64Segment += '=';
+    var payloadText = Utilities.newBlob(Utilities.base64DecodeWebSafe(b64Segment)).getDataAsString();
+
     var payload = JSON.parse(payloadText);
     var email = normalizeEmail(payload.email || '');
     var aud = String(payload.aud || '');
@@ -419,6 +423,10 @@ function login(params) {
     var normalizedGoogleEmail = normalizeEmail(googleResult.email);
     var googleAdmin = getGoogleAdminByEmail(normalizedGoogleEmail);
 
+    // DEBUG: log whitelist check — remove after confirming Chrome email matches sheet
+    Logger.log('[login/google] checking email: "%s" | whitelist count: %s | whitelist: [%s]',
+      normalizedGoogleEmail, allowedGoogleEmails.length, allowedGoogleEmails.join(', '));
+
     if (!googleAdmin && allowedGoogleEmails.indexOf(normalizedGoogleEmail) === -1) {
       logAction({
         username: maskSensitiveValue(googleResult.email),
@@ -426,9 +434,16 @@ function login(params) {
         action: 'login',
         endpoint: 'login',
         status: 'fail',
-        details: { reason: 'google_email_not_whitelisted', email: maskSensitiveValue(googleResult.email), allowedEmails: allowedGoogleEmails.map(maskSensitiveValue) }
+        details: { reason: 'google_email_not_whitelisted', email: maskSensitiveValue(googleResult.email) }
       });
-      return { status: 'error', message: 'อีเมลนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน', debug: { allowedEmails: allowedGoogleEmails } };
+      return {
+        status: 'error',
+        message: 'อีเมลนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน',
+        debug: {
+          receivedEmail: maskSensitiveValue(normalizedGoogleEmail),
+          hint: 'Ensure this email is in the staffOS sheet with role=admin and status=active'
+        }
+      };
     }
 
     if (googleAdmin) {

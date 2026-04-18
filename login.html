@@ -360,9 +360,16 @@
           localStorage.getItem('GAS_API_URL') ||
           localStorage.getItem('gasApiUrl') || ''
         ).trim();
-        if (fromStorage) return fromStorage;
-      } catch(e) {}
-      return (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '').trim();
+        if (fromStorage) {
+          console.log('[DEBUG getApiUrl] source=localStorage value=', fromStorage);
+          return fromStorage;
+        }
+      } catch(e) {
+        console.warn('[DEBUG getApiUrl] localStorage blocked:', e);
+      }
+      const fromWindow = (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '').trim();
+      console.log('[DEBUG getApiUrl] source=window.GAS_API_URL value=', fromWindow);
+      return fromWindow;
     }
 
     function normalizeCodeInput(value) {
@@ -380,6 +387,9 @@
     async function loginWithCode(code) {
       const trimmed = normalizeCodeInput(code);
       const apiUrl  = getApiUrl();
+
+      // TEMP DEBUG — remove after Chrome confirmed working
+      console.log('[loginWithCode] apiUrl:', apiUrl, '| code length:', trimmed.length);
 
       if (!apiUrl) {
         return { ok: false, error: 'ยังไม่ได้ตั้งค่า API URL — ไปตั้งค่าที่ config.html ก่อน' };
@@ -402,6 +412,8 @@
         });
         clearTimeout(timer);
         const data = await res.json();
+        // TEMP DEBUG
+        console.log('[loginWithCode] response:', JSON.stringify(data));
 
         if (data.status === 'ok' && data.token) {
           try { localStorage.setItem('token', data.token); } catch (e) {}
@@ -421,6 +433,19 @@
     async function loginWithGoogle(idToken) {
       const apiUrl = getApiUrl();
 
+      // TEMP DEBUG — remove after Chrome confirmed working
+      console.log('[loginWithGoogle] apiUrl:', apiUrl, '| idToken present:', !!idToken);
+      if (idToken) {
+        try {
+          const parts = idToken.split('.');
+          const pad = s => { while (s.length % 4) s += '='; return s; };
+          const payload = JSON.parse(atob(pad(parts[1].replace(/-/g,'+').replace(/_/g,'/'))));
+          console.log('[loginWithGoogle] Google token email:', payload.email,
+            '| email_verified:', payload.email_verified,
+            '| aud:', payload.aud);
+        } catch(dbgErr) { console.warn('[loginWithGoogle] could not decode token for debug:', dbgErr); }
+      }
+
       if (!apiUrl) {
         return { ok: false, error: 'ยังไม่ได้ตั้งค่า API URL — ไปตั้งค่าที่ config.html ก่อน' };
       }
@@ -436,6 +461,8 @@
         });
         clearTimeout(timer);
         const data = await res.json();
+        // TEMP DEBUG
+        console.log('[loginWithGoogle] response:', JSON.stringify(data));
 
         if (data.status === 'ok' && data.token) {
           try { localStorage.setItem('token', data.token); } catch (e) {}

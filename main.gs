@@ -51,7 +51,9 @@ function denyAction(action, params) {
 function doPost(e) {
   let data;
   try {
-    data = JSON.parse(e.postData.contents);
+    // Null-safe: Chrome may deliver e.postData as null if body is dropped
+    var rawBody = (e && e.postData && e.postData.contents) ? e.postData.contents : '';
+    data = rawBody ? JSON.parse(rawBody) : {};
   } catch (err) {
     return ContentService
       .createTextOutput(JSON.stringify({ status: 'error', message: 'Invalid JSON body' }))

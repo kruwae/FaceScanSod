@@ -7,8 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="js/api-config.js"></script>
   <script>
-    const GAS_API_URL = '';
+    const GAS_API_URL = (typeof window !== 'undefined' && window.GAS_API_URL) ? window.GAS_API_URL : '';
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -669,28 +670,22 @@
     hideError();
 
     try {
-      const startDmy = toDmy(start);
-      const endDmy = toDmy(end);
-      const response = await fetch(API_URL + '?action=getAttendanceLogs');
+      const params = new URLSearchParams();
+      params.set('action', 'getAttendanceLogs');
+      params.set('date', end);
+      const response = await fetch(API_URL + '?' + params.toString(), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
       const payload = await response.json();
-      const logs = normalizeAttendanceLogs(payload);
-      allRecords = processLogs(logs, startDmy, endDmy);
+      const logs = Array.isArray(payload.data) ? payload.data : [];
+      allRecords = processLogs(logs, toDmy(start), toDmy(end));
       renderTable(allRecords);
       updateSummary(allRecords);
     } catch (e) {
       showError('❌ โหลดข้อมูลล้มเหลว: ' + e.message + '<br><small>ตรวจสอบว่า GAS รองรับ action=getAttendanceLogs</small>');
       body.innerHTML = '<tr><td colspan="8" class="empty-row">⚠️ ไม่สามารถโหลดข้อมูลได้</td></tr>';
     }
-  }
-
-  function normalizeAttendanceLogs(payload) {
-    if (Array.isArray(payload)) return payload;
-    if (!payload || typeof payload !== 'object') return [];
-    if (Array.isArray(payload.logs)) return payload.logs;
-    if (Array.isArray(payload.data)) return payload.data;
-    if (Array.isArray(payload.records)) return payload.records;
-    if (Array.isArray(payload.items)) return payload.items;
-    return [];
   }
 
   const CHECKOUT_MIN = 13 * 60 + 30;

@@ -74,6 +74,44 @@
       z-index: 1;
     }
 
+    .page-header {
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.88em;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.25s ease;
+      margin-bottom: 14px;
+    }
+
+    .back-btn:hover {
+      color: #e2e8f0;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .admin-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(6, 182, 212, 0.14);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      color: #a5f3fc;
+      font-size: 0.84em;
+      margin-bottom: 12px;
+    }
+
     .glass {
       background: var(--panel);
       border: 1px solid var(--panel-border);
@@ -253,6 +291,29 @@
       color: var(--muted);
       line-height: 1.7;
       max-width: 760px;
+    }
+
+    .admin-header-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 14px;
+    }
+
+    .logout-btn {
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: rgba(239, 68, 68, 0.1);
+      color: #fecaca;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-family: 'Sarabun', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .logout-btn:hover {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: rgba(239, 68, 68, 0.42);
     }
 
     .stats {
@@ -543,6 +604,15 @@
     </section>
 
     <main id="adminContent" class="dashboard">
+      <div class="page-header">
+        <a href="index.html" class="back-btn">← กลับหน้าหลัก</a>
+        <div class="admin-badge">⚙️ StaffOS Admin Panel</div>
+      </div>
+
+      <div class="admin-header-actions">
+        <button class="logout-btn" id="btnLogoutTop" type="button">ออกจากระบบ</button>
+      </div>
+
       <section class="hero glass">
         <div class="hero-top">
           <div>
@@ -737,6 +807,7 @@
     const formTitle = document.getElementById('formTitle');
     const formSubtitle = document.getElementById('formSubtitle');
     const formModeBadge = document.getElementById('formModeBadge');
+    const btnLogoutTop = document.getElementById('btnLogoutTop');
 
     function safeGet(storage, key) {
       try { return storage.getItem(key) || ''; } catch (e) { return ''; }
@@ -778,12 +849,13 @@
     }
 
     function getApiUrl() {
-      return String(
+      const fromStorage = String(
         safeGet(localStorage, 'GAS_API_URL') ||
         safeGet(localStorage, 'gasApiUrl') ||
-        window.GAS_API_URL ||
         ''
       ).trim();
+      if (fromStorage) return fromStorage;
+      return String(window.GAS_API_URL || '').trim();
     }
 
     function getToken() {
@@ -794,32 +866,40 @@
       ).trim();
     }
 
+    async function fetchJson(url, options) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 20000);
+      try {
+        const res = await fetch(url, { ...(options || {}), signal: ctrl.signal });
+        const data = await res.json();
+        if (!res.ok || (data && data.status === 'error')) {
+          throw new Error(data?.message || 'เรียก API ไม่สำเร็จ');
+        }
+        return data;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     async function apiGet(action, extraParams) {
       const apiUrl = getApiUrl();
       if (!apiUrl) throw new Error('ยังไม่ได้ตั้งค่า API URL');
       const params = new URLSearchParams({ action: action, token: getToken(), ...(extraParams || {}) });
-      const res = await fetch(apiUrl + '?' + params.toString());
-      const data = await res.json();
-      if (!res.ok || (data && data.status === 'error')) {
-        throw new Error(data?.message || 'โหลดข้อมูลไม่สำเร็จ');
-      }
-      return data;
+      return fetchJson(apiUrl + '?' + params.toString(), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
     }
 
     async function apiPost(action, payload) {
       const apiUrl = getApiUrl();
       if (!apiUrl) throw new Error('ยังไม่ได้ตั้งค่า API URL');
       const body = { action: action, token: getToken(), ...(payload || {}) };
-      const res = await fetch(apiUrl, {
+      return fetchJson(apiUrl + '?action=' + encodeURIComponent(action), {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(body)
       });
-      const data = await res.json();
-      if (!res.ok || (data && data.status === 'error')) {
-        throw new Error(data?.message || 'บันทึกข้อมูลไม่สำเร็จ');
-      }
-      return data;
     }
 
     function showAdmin() {
@@ -877,6 +957,11 @@
     function requireAuth() {
       if (isAuthed() && canAccessStaffPage()) return showAdmin();
       showLock(isAuthed() ? 'หน้านี้อนุญาตเฉพาะ admin และ super_admin' : 'กรุณาเข้าสู่ระบบ Admin');
+    }
+
+    function doLogout() {
+      try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+      window.location.replace('login.html?to=staff.html');
     }
 
     function escapeHtml(value) {
@@ -1083,7 +1168,10 @@
         filterItems();
       } catch (err) {
         staffTableBody.innerHTML = '<tr><td colspan="7" class="empty-state">' + escapeHtml(err.message || 'โหลดข้อมูลไม่สำเร็จ') + '</td></tr>';
-        setTableStatus(err.message || 'โหลดข้อมูลไม่สำเร็จ', '#fca5a5');
+        const hint = err.name === 'AbortError'
+          ? 'Server ตอบกลับช้าเกินไป'
+          : (/unauthorized/i.test(String(err.message || '')) ? 'token หมดอายุหรือไม่มีสิทธิ์' : 'ตรวจสอบ API URL หรือการ deploy GAS');
+        setTableStatus((err.message || 'โหลดข้อมูลไม่สำเร็จ') + ' • ' + hint, '#fca5a5');
       }
     }
 
@@ -1180,6 +1268,7 @@
     document.getElementById('btnRefreshTable').addEventListener('click', () => loadStaffList());
     document.getElementById('btnSeedDemo').addEventListener('click', handleSeedDemo);
     deleteBtn.addEventListener('click', () => handleDelete());
+    btnLogoutTop.addEventListener('click', doLogout);
 
     staffTableBody.addEventListener('click', function (event) {
       const actionBtn = event.target.closest('[data-action]');

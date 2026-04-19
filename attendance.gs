@@ -705,8 +705,6 @@ function staffMemberToPublicObject(row, rowNumber) {
 function getStaffList(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
->>>>>>> REPLACE
-
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var result = ensureStaffSheetWithContract(ss);
@@ -727,8 +725,6 @@ function getStaffList(params) {
 function getStaffMember(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
->>>>>>> REPLACE
-
 
   var username = String((params && params.username) || '').trim();
   if (!username) return { status: 'error', message: 'Missing username', code: 400 };
@@ -748,8 +744,6 @@ function getStaffMember(params) {
 function createStaffMember(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
->>>>>>> REPLACE
-
 
   var input = normalizeStaffMemberInput(params || {});
   if (!input.username) return { status: 'error', message: 'Missing username', code: 400 };
@@ -771,8 +765,6 @@ function createStaffMember(params) {
 function updateStaffMember(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
->>>>>>> REPLACE
-
 
   var input = normalizeStaffMemberInput(params || {});
   var targetUsername = String((params && params.username) || '').trim();
@@ -800,8 +792,6 @@ function updateStaffMember(params) {
 function deleteStaffMember(params) {
   var auth = requireRole(['super_admin'], params);
   if (!auth.ok) return auth;
->>>>>>> REPLACE
-
 
   var username = String((params && params.username) || '').trim();
   if (!username) return { status: 'error', message: 'Missing username', code: 400 };
@@ -820,8 +810,6 @@ function deleteStaffMember(params) {
 function toggleStaffPermission(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
->>>>>>> REPLACE
-
 
   var username = String((params && params.username) || '').trim();
   var permission = String((params && params.permission) || '').trim();
@@ -856,7 +844,6 @@ function toggleStaffPermission(params) {
 function updateStaffScope(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
->>>>>>> REPLACE
 
   var username = String((params && params.username) || '').trim();
   if (!username) return { status: 'error', message: 'Missing username', code: 400 };
@@ -1652,7 +1639,35 @@ function getAttendanceLogs(params) {
 
   var headers = data[0].map(function(h) { return String(h || '').trim(); });
   var filterDate = String((params && params.date) || '').trim();
+  var filterStartDate = String((params && (params.startDate || params.dateFrom)) || '').trim();
+  var filterEndDate = String((params && (params.endDate || params.dateTo)) || '').trim();
   var filterName = String((params && params.name) || '').trim().toLowerCase();
+
+  function parseAttendanceDate(value) {
+    var raw = String(value || '').replace(/^'/, '').trim();
+    if (!raw) return null;
+
+    var iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (iso) {
+      return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+    }
+
+    var dmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmy) {
+      return new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+    }
+
+    var parsed = new Date(raw);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  function normalizeDateOnly(dateObj) {
+    if (!dateObj) return null;
+    return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  }
+
+  var startDateObj = normalizeDateOnly(parseAttendanceDate(filterStartDate));
+  var endDateObj = normalizeDateOnly(parseAttendanceDate(filterEndDate));
 
   var rows = [];
   for (var i = 1; i < data.length; i++) {
@@ -1664,6 +1679,12 @@ function getAttendanceLogs(params) {
     if (filterDate) {
       var rowDate = String(row['Date'] || '').replace(/^'/, '').trim();
       if (rowDate !== filterDate) continue;
+    }
+    if (startDateObj || endDateObj) {
+      var parsedRowDate = normalizeDateOnly(parseAttendanceDate(row['Date'] || ''));
+      if (!parsedRowDate) continue;
+      if (startDateObj && parsedRowDate < startDateObj) continue;
+      if (endDateObj && parsedRowDate > endDateObj) continue;
     }
     if (filterName) {
       var rowName = String(row['Name'] || '').toLowerCase();

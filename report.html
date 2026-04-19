@@ -531,7 +531,41 @@
 <script src="auth-badge.js"></script>
 <script>
   const SESSION_KEY = 'adminAuth';
-  const API_URL = (localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
+
+  function getApiUrl() {
+    try {
+      const fromStorage = (
+        localStorage.getItem('GAS_API_URL') ||
+        localStorage.getItem('gasApiUrl') ||
+        ''
+      ).trim();
+      if (fromStorage) return fromStorage;
+    } catch (e) {}
+    return (typeof GAS_API_URL !== 'undefined' ? String(GAS_API_URL || '').trim() : '');
+  }
+
+  function getToken() {
+    try {
+      return String(localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  async function apiFetchJson(url, options) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
+    try {
+      const res = await fetch(url, { ...(options || {}), signal: ctrl.signal });
+      const data = await res.json();
+      if (!res.ok || (data && data.status === 'error')) {
+        throw new Error(data?.message || 'เรียก API ไม่สำเร็จ');
+      }
+      return data;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
   function isAuthed() {
     try { return sessionStorage.getItem(SESSION_KEY) === '1'; }
@@ -557,16 +591,27 @@
 
   async function verifyCode(code) {
     const trimmed = normalizeCodeInput(code);
-    if (!API_URL) return false;
+    const apiUrl = getApiUrl();
+    if (!apiUrl) return { ok: false, error: 'ยังไม่ได้ตั้งค่า API URL' };
     try {
-      const r = await fetch(API_URL, {
+      const d = await apiFetchJson(apiUrl + '?action=login', {
         method: 'POST',
-        body: JSON.stringify({ action: 'verifyAdmin', code: trimmed })
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'login', authMethod: 'code', username: 'admin', code: trimmed })
       });
-      const d = await r.json();
-      return d.success === true;
-    } catch (_) {
-      return false;
+      if (d.status === 'ok' && d.token) {
+        try { localStorage.setItem('token', d.token); } catch (e) {}
+        try { localStorage.setItem('readToken', d.readToken || ''); } catch (e) {}
+        try { sessionStorage.setItem('adminRole', d.role || 'admin'); } catch (e) {}
+        try { sessionStorage.setItem('adminName', d.username || 'Admin'); } catch (e) {}
+        return { ok: true, token: d.token };
+      }
+      return { ok: false, error: d.message || 'เข้าสู่ระบบไม่สำเร็จ' };
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        return { ok: false, error: 'Server ตอบกลับช้าเกินไป กรุณาลองใหม่' };
+      }
+      return { ok: false, error: err.message || 'เชื่อมต่อ Server ไม่ได้' };
     }
   }
 
@@ -580,15 +625,15 @@
     }
     msg.style.color = '#94a3b8';
     msg.innerText = '⏳ กำลังตรวจสอบ...';
-    const ok = await verifyCode(code);
-    if (ok) {
+    const result = await verifyCode(code);
+    if (result.ok) {
       try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (e) {}
       document.getElementById('adminLock').style.display = 'none';
       document.getElementById('adminContent').style.display = 'block';
       initPage();
     } else {
       msg.style.color = '#fca5a5';
-      msg.innerText = '❌ รหัสไม่ถูกต้อง';
+      msg.innerText = '❌ ' + (result.error || 'รหัสไม่ถูกต้อง');
     }
   }
 
@@ -614,8 +659,12 @@
     setDefaultDates();
     await loadWorkTimes();
     updateTimeInfoBar();
-    if (!API_URL) {
+    if (!getApiUrl()) {
       showError('❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a>');
+      return;
+    }
+    if (!getToken()) {
+      showError('❌ ยังไม่มี token การเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
       return;
     }
     await loadReport();
@@ -638,8 +687,10 @@
 
   async function loadWorkTimes() {
     try {
-      if (!API_URL) return;
-      const config = await fetch(API_URL + '?action=getConfig').then(r => r.json());
+      const apiUrl = getApiUrl();
+      if (!apiUrl || !getToken()) return;
+      const params = new URLSearchParams({ action: 'getConfig', token: getToken() });
+      const config = await apiFetchJson(apiUrl + '?' + params.toString());
       if (config.workTimes) {
         workTimes = { ...workTimes, ...config.workTimes };
       }
@@ -660,10 +711,13 @@
   let allRecords = [];
 
   async function loadReport() {
-    if (!API_URL) { showError('❌ ยังไม่ได้ตั้งค่า API URL'); return; }
+    const apiUrl = getApiUrl();
+    if (!apiUrl) { showError('❌ ยังไม่ได้ตั้งค่า API URL'); return; }
+    if (!getToken()) { showError('❌ ไม่พบ token สำหรับเรียกรายงาน กรุณาเข้าสู่ระบบใหม่'); return; }
     const start = document.getElementById('filterStart').value;
     const end = document.getElementById('filterEnd').value;
     if (!start || !end) { showError('⚠️ กรุณาเลือกช่วงวันที่'); return; }
+    if (start > end) { showError('⚠️ วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด'); return; }
 
     const body = document.getElementById('reportBody');
     body.innerHTML = '<tr><td colspan="8" class="loading-row"><div class="spinner"></div><br>กำลังโหลดข้อมูล...</td></tr>';
@@ -672,18 +726,24 @@
     try {
       const params = new URLSearchParams();
       params.set('action', 'getAttendanceLogs');
-      params.set('date', end);
-      const response = await fetch(API_URL + '?' + params.toString(), {
+      params.set('token', getToken());
+      params.set('startDate', start);
+      params.set('endDate', end);
+      const nameFilter = document.getElementById('filterName').value.trim();
+      if (nameFilter) params.set('name', nameFilter);
+      const payload = await apiFetchJson(apiUrl + '?' + params.toString(), {
         method: 'GET',
         headers: { 'Accept': 'application/json' }
       });
-      const payload = await response.json();
       const logs = Array.isArray(payload.data) ? payload.data : [];
       allRecords = processLogs(logs, toDmy(start), toDmy(end));
       renderTable(allRecords);
       updateSummary(allRecords);
     } catch (e) {
-      showError('❌ โหลดข้อมูลล้มเหลว: ' + e.message + '<br><small>ตรวจสอบว่า GAS รองรับ action=getAttendanceLogs</small>');
+      const hint = /unauthorized/i.test(String(e.message || ''))
+        ? 'สิทธิ์หมดอายุหรือไม่มี token กรุณาเข้าสู่ระบบใหม่'
+        : 'ฝั่ง GAS รองรับ action=getAttendanceLogs แล้ว แต่ต้องส่ง token และช่วงวันที่ให้ตรง';
+      showError('❌ โหลดข้อมูลล้มเหลว: ' + e.message + '<br><small>' + hint + '</small>');
       body.innerHTML = '<tr><td colspan="8" class="empty-row">⚠️ ไม่สามารถโหลดข้อมูลได้</td></tr>';
     }
   }

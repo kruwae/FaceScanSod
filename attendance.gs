@@ -16,6 +16,30 @@ var PASSWORD_ALGORITHM = 'sha256';
 var GOOGLE_OAUTH_CLIENT_ID = '';
 var GOOGLE_ID_TOKEN_AUDIENCE = '';
 
+var ROLE_SUPER_ADMIN = 'super_admin';
+var ROLE_ADMIN = 'admin';
+var ROLE_HEAD_UNIT = 'head_unit';
+var ROLE_STAFF = 'staff';
+var ROLE_ALIASES = {
+  'superadmin': ROLE_SUPER_ADMIN,
+  'super-admin': ROLE_SUPER_ADMIN,
+  'root': ROLE_SUPER_ADMIN,
+  'administrator': ROLE_ADMIN,
+  'manager': ROLE_HEAD_UNIT,
+  'headunit': ROLE_HEAD_UNIT
+};
+var ROLE_HIERARCHY = {
+  'staff': 1,
+  'head_unit': 2,
+  'admin': 3,
+  'super_admin': 4
+};
+var DEFAULT_ROLE = ROLE_STAFF;
+var DEFAULT_STAFF_STATUS = 'active';
+var STAFFOS_SCOPE_HEADER = 'Scope';
+var STAFFOS_UNIT_HEADER = 'Unit';
+var STAFFOS_PERMISSION_HEADERS = ['Can Register Face', 'Can View Report', 'Can Manage Staff', 'Can Manage Config'];
+
 function normalizePasswordInput(password) {
   return String(password || '')
     .replace(/\u00A0/g, ' ')
@@ -160,24 +184,28 @@ function safeHashEqualsV2(input, storedRecord) {
 
 var TOKEN_CACHE_PREFIX = 'auth_token_';
 var TOKEN_TTL_SECONDS = 8 * 60 * 60;
-var LEGACY_MIGRATION_MODE = true;
+var LEGACY_MIGRATION_MODE = false;
 var REQUIRE_AUTH_FOR_ALL_API = false;
-var DEFAULT_ROLE = 'staff';
-var ROLE_HIERARCHY = {
-  'viewer': 1,
-  'staff': 2,
-  'admin': 3
-};
 var ENDPOINT_ROLE_RULES = {
-  'getKnownFaces': ['staff', 'admin'],
-  'logAttendance': ['staff', 'admin'],
-  'getConfig': ['admin'],
-  'saveConfig': ['admin'],
-  'getAttendanceLogs': ['viewer', 'staff', 'admin'],
-  'getLocations': ['staff', 'admin'],
-  'registerUser': ['admin'],
-  'verifyAdmin': ['admin'],
-  'changeAdminCode': ['admin']
+  'getKnownFaces': ['staff', 'head_unit', 'admin', 'super_admin'],
+  'logAttendance': ['staff', 'head_unit', 'admin', 'super_admin'],
+  'logCheckout': ['staff', 'head_unit', 'admin', 'super_admin'],
+  'getConfig': ['admin', 'super_admin'],
+  'saveConfig': ['admin', 'super_admin'],
+  'getAttendanceLogs': ['staff', 'head_unit', 'admin', 'super_admin'],
+  'getLocations': ['staff', 'head_unit', 'admin', 'super_admin'],
+  'registerUser': ['head_unit', 'admin', 'super_admin'],
+  'verifyAdmin': ['admin', 'super_admin'],
+  'changeAdminCode': ['admin', 'super_admin'],
+  'getStaffList': ['admin', 'super_admin'],
+  'getStaffMember': ['admin', 'super_admin'],
+  'createStaffMember': ['admin', 'super_admin'],
+  'updateStaffMember': ['admin', 'super_admin'],
+  'deleteStaffMember': ['super_admin'],
+  'toggleStaffPermission': ['admin', 'super_admin'],
+  'updateStaffScope': ['admin', 'super_admin'],
+  'getMyAccess': ['staff', 'head_unit', 'admin', 'super_admin'],
+  'whoAmI': ['staff', 'head_unit', 'admin', 'super_admin']
 };
 
 function generateToken(username, role) {
@@ -199,118 +227,535 @@ function storeToken(token, username, role) {
 function normalizeRole(role) {
   var value = String(role || '').trim().toLowerCase();
   if (!value) return DEFAULT_ROLE;
+  if (ROLE_ALIASES[value]) value = ROLE_ALIASES[value];
   if (!ROLE_HIERARCHY[value]) return DEFAULT_ROLE;
   return value;
 }
 
-function getUserRole(username) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('Users');
-  if (!sheet) return DEFAULT_ROLE;
+function isRoleAtLeast(role, minimumRole) {
+  return (ROLE_HIERARCHY[normalizeRole(role)] || 0) >= (ROLE_HIERARCHY[normalizeRole(minimumRole)] || 0);
+}
 
-  var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return DEFAULT_ROLE;
+function normalizeScopeValue(value) {
+  return String(value || '').trim();
+}
 
-  var headers = data[0].map(function(h) { return String(h).trim(); });
-  var headerMap = buildHeaderMap(headers);
-  var usernameCol = headerMap['username'] || headerMap['Username'];
-  var roleCol = headerMap['role'] || headerMap['Role'];
+function normalizeScopeList(scope) {
+  var raw = String(scope || '').trim();
+  if (!raw) return [];
+  return raw.split(/[,\n;]/).map(function(item) {
+    return normalizeScopeValue(item);
+  }).filter(function(item) {
+    return !!item;
+  });
+}
 
-  if (!usernameCol || !roleCol) return DEFAULT_ROLE;
+function scopeMatchesAccess(scope, unit) {
+  var list = normalizeScopeList(scope);
+  if (!list.length) return true;
+  if (!unit) return false;
 
-  var target = String(username || '').trim().toLowerCase();
-  for (var i = 1; i < data.length; i++) {
-    var rowUsername = String(data[i][usernameCol - 1] || '').trim().toLowerCase();
-    if (rowUsername === target) {
-      var role = normalizeRole(data[i][roleCol - 1]);
-      return role;
+  var normalizedUnit = normalizeScopeValue(unit).toLowerCase();
+  for (var i = 0; i < list.length; i++) {
+    var entry = normalizeScopeValue(list[i]).toLowerCase();
+    if (entry === '*' || entry === 'all' || entry === 'global') return true;
+    if (entry === normalizedUnit) return true;
+  }
+  return false;
+}
+
+function derivePermissionSetFromRole(role) {
+  var normalized = normalizeRole(role);
+  var permissions = {
+    canRegisterFace: false,
+    canViewReport: false,
+    canManageStaff: false,
+    canManageConfig: false
+  };
+
+  if (normalized === ROLE_SUPER_ADMIN) {
+    permissions.canRegisterFace = true;
+    permissions.canViewReport = true;
+    permissions.canManageStaff = true;
+    permissions.canManageConfig = true;
+    return permissions;
+  }
+
+  if (normalized === ROLE_ADMIN) {
+    permissions.canRegisterFace = true;
+    permissions.canViewReport = true;
+    permissions.canManageStaff = true;
+    permissions.canManageConfig = true;
+    return permissions;
+  }
+
+  if (normalized === ROLE_HEAD_UNIT) {
+    permissions.canRegisterFace = true;
+    permissions.canViewReport = true;
+    return permissions;
+  }
+
+  return permissions;
+}
+
+function parseBooleanValue(value) {
+  if (value === true || value === 1) return true;
+  var raw = String(value || '').trim().toLowerCase();
+  return raw === 'true' || raw === 'yes' || raw === '1' || raw === 'y' || raw === 'on';
+}
+
+function ensureSheetWithHeaders(ss, sheetName, schema) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) sheet = ss.insertSheet(sheetName);
+
+  var headers = schema.slice();
+  var existingHeaders = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), headers.length)).getValues()[0] : [];
+  var existingMap = buildHeaderMap(existingHeaders.map(function(h) { return String(h || '').trim(); }));
+
+  var changed = false;
+  for (var i = 0; i < headers.length; i++) {
+    if (!existingMap[headers[i]]) {
+      existingHeaders[i] = headers[i];
+      changed = true;
     }
   }
-  return DEFAULT_ROLE;
-}
 
-function validateToken(token) {
-  var value = String(token || '').trim();
-  if (!value) return { ok: false, error: 'Unauthorized' };
-
-  var cache = CacheService.getScriptCache();
-  var raw = cache.get(TOKEN_CACHE_PREFIX + value);
-  if (!raw) return { ok: false, error: 'Unauthorized' };
-
-  var data;
-  try {
-    data = JSON.parse(raw);
-  } catch (e) {
-    return { ok: false, error: 'Unauthorized' };
+  if (!existingHeaders.length) {
+    existingHeaders = headers.slice();
+    changed = true;
   }
 
-  if (!data || !data.expiresAt || Date.now() > Number(data.expiresAt)) {
-    cache.remove(TOKEN_CACHE_PREFIX + value);
-    return { ok: false, error: 'Unauthorized' };
+  if (changed) {
+    sheet.getRange(1, 1, 1, existingHeaders.length).setValues([existingHeaders]);
   }
 
-  data.role = normalizeRole(data.role);
-  return { ok: true, user: { username: data.username, role: data.role } };
+  var headerMap = buildHeaderMap(existingHeaders.map(function(h) { return String(h || '').trim(); }));
+  return { sheet: sheet, headerMap: headerMap };
 }
 
-function requireRole(allowedRoles, params) {
-  var auth = validateToken(params && params.token);
-  if (!auth.ok) return auth;
+function buildHeaderMap(headers) {
+  var map = {};
+  for (var i = 0; i < headers.length; i++) {
+    var key = String(headers[i] || '').trim();
+    if (!key) continue;
+    map[key] = i + 1;
+    map[key.toLowerCase()] = i + 1;
+  }
+  return map;
+}
 
-  var role = normalizeRole(auth.user && auth.user.role);
-  var allowed = (allowedRoles || []).map(normalizeRole);
+function setRowByHeaders(sheet, rowNumber, headerMap, data) {
+  for (var key in data) {
+    if (!data.hasOwnProperty(key)) continue;
+    var col = headerMap[key] || headerMap[String(key).toLowerCase()];
+    if (col) sheet.getRange(rowNumber, col).setValue(data[key]);
+  }
+}
 
-  if (!allowed.length) return { ok: true, user: auth.user };
-
-  if (role === 'admin') return { ok: true, user: auth.user };
-
-  for (var i = 0; i < allowed.length; i++) {
-    if (allowed[i] === role) return { ok: true, user: auth.user };
+function ensureStaffHeaders(sheet, existingMap) {
+  var result = { headers: STAFFOS_HEADERS.slice(), map: {} };
+  for (var i = 0; i < STAFFOS_HEADERS.length; i++) {
+    result.map[STAFFOS_HEADERS[i]] = i + 1;
+    result.map[STAFFOS_HEADERS[i].toLowerCase()] = i + 1;
   }
 
-  return { ok: false, error: 'Forbidden', code: 403, user: auth.user };
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, result.headers.length).setValues([result.headers]);
+    return result;
+  }
+
+  var current = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), result.headers.length)).getValues()[0];
+  var normalized = [];
+  for (var j = 0; j < result.headers.length; j++) {
+    normalized[j] = current[j] || result.headers[j];
+  }
+
+  var added = false;
+  for (var k = 0; k < result.headers.length; k++) {
+    if (!normalized[k]) {
+      normalized[k] = result.headers[k];
+      added = true;
+    }
+  }
+
+  if (sheet.getLastColumn() < result.headers.length) {
+    sheet.getRange(1, 1, 1, result.headers.length).setValues([normalized]);
+  } else if (added) {
+    sheet.getRange(1, 1, 1, normalized.length).setValues([normalized]);
+  }
+
+  var finalMap = buildHeaderMap(normalized);
+  result.map = finalMap;
+  return result;
 }
 
-function authorize(action, params) {
-  if (LEGACY_MIGRATION_MODE) return { ok: true, migrated: true, user: { role: DEFAULT_ROLE } };
-  return requireRole(ENDPOINT_ROLE_RULES[action] || [], params);
-}
-
-function logout(params) {
-  var token = String((params && params.token) || '').trim();
-  if (token) CacheService.getScriptCache().remove(TOKEN_CACHE_PREFIX + token);
-  return { status: 'ok', message: 'Logged out' };
-}
-
-function normalizeEmail(value) {
-  return String(value || '').trim().toLowerCase();
-}
-
-function getAdminByEmail(email) {
-  var target = normalizeEmail(email);
-  if (!target) return null;
-
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+function ensureStaffSheetWithContract(ss) {
   var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
   var sheet = result.sheet;
-  var hm = result.headerMap;
+  var headerMap = result.headerMap;
+
+  var existing = sheet.getDataRange().getValues();
+  if (existing.length > 0) {
+    var headerRow = existing[0].map(function(h) { return String(h || '').trim(); });
+    var extendedHeaders = headerRow.slice();
+    var required = [STAFFOS_SCOPE_HEADER, STAFFOS_UNIT_HEADER]
+      .concat(STAFFOS_PERMISSION_HEADERS);
+    var changed = false;
+    required.forEach(function(header) {
+      if (extendedHeaders.indexOf(header) === -1) {
+        extendedHeaders.push(header);
+        changed = true;
+      }
+    });
+    if (changed) {
+      sheet.getRange(1, 1, 1, extendedHeaders.length).setValues([extendedHeaders]);
+      headerMap = buildHeaderMap(extendedHeaders);
+    }
+  }
+
+  return { sheet: sheet, headerMap: headerMap };
+}
+
+function normalizeStaffRow(row, headerMap) {
+  var map = headerMap || {};
+  var role = normalizeRole(row[(map['Role'] || map['role']) - 1]);
+  var status = String(row[(map['Status'] || map['status']) - 1] || DEFAULT_STAFF_STATUS).trim().toLowerCase() || DEFAULT_STAFF_STATUS;
+  var scope = normalizeScopeValue(row[(map[STAFFOS_SCOPE_HEADER] || map[STAFFOS_SCOPE_HEADER.toLowerCase()]) - 1] || '');
+  var unit = normalizeScopeValue(row[(map[STAFFOS_UNIT_HEADER] || map[STAFFOS_UNIT_HEADER.toLowerCase()]) - 1] || '');
+  var permissions = derivePermissionSetFromRole(role);
+
+  for (var i = 0; i < STAFFOS_PERMISSION_HEADERS.length; i++) {
+    var header = STAFFOS_PERMISSION_HEADERS[i];
+    var key = headerToPermissionKey(header);
+    var idx = map[header] || map[header.toLowerCase()];
+    if (idx) permissions[key] = parseBooleanValue(row[idx - 1]);
+  }
+
+  return {
+    username: String(row[(map['Username'] || map['username']) - 1] || '').trim(),
+    code: String(row[(map['Code'] || map['code']) - 1] || ''),
+    role: role,
+    status: status,
+    note: String(row[(map['Note'] || map['note']) - 1] || '').trim(),
+    createdAt: row[(map['Created At'] || map['created at']) - 1] || '',
+    updatedAt: row[(map['Updated At'] || map['updated at']) - 1] || '',
+    email: normalizeEmail(row[(map['Email'] || map['email']) - 1] || ''),
+    hashVersion: String(row[(map['Hash Version'] || map['hash version']) - 1] || '').trim().toLowerCase(),
+    hashSalt: String(row[(map['Hash Salt'] || map['hash salt']) - 1] || '').trim(),
+    scope: scope,
+    unit: unit,
+    permissions: permissions
+  };
+}
+
+function headerToPermissionKey(header) {
+  var raw = String(header || '').trim();
+  if (raw === 'Can Register Face') return 'canRegisterFace';
+  if (raw === 'Can View Report') return 'canViewReport';
+  if (raw === 'Can Manage Staff') return 'canManageStaff';
+  if (raw === 'Can Manage Config') return 'canManageConfig';
+  return raw;
+}
+
+function upsertStaffPermissionColumns(sheet, headerMap) {
+  var currentHeaders = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), STAFFOS_HEADERS.length + 4)).getValues()[0];
+  var headers = currentHeaders.slice();
+  var changed = false;
+
+  if (headers.indexOf(STAFFOS_SCOPE_HEADER) === -1) { headers.push(STAFFOS_SCOPE_HEADER); changed = true; }
+  if (headers.indexOf(STAFFOS_UNIT_HEADER) === -1) { headers.push(STAFFOS_UNIT_HEADER); changed = true; }
+  for (var i = 0; i < STAFFOS_PERMISSION_HEADERS.length; i++) {
+    if (headers.indexOf(STAFFOS_PERMISSION_HEADERS[i]) === -1) {
+      headers.push(STAFFOS_PERMISSION_HEADERS[i]);
+      changed = true;
+    }
+  }
+
+  if (changed) sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  return buildHeaderMap(headers);
+}
+
+function findStaffRowByUsername(sheet, headerMap, username) {
   var data = sheet.getDataRange().getValues();
+  var target = String(username || '').trim().toLowerCase();
+  for (var i = 1; i < data.length; i++) {
+    var rowUsername = String(data[i][(headerMap['Username'] || headerMap['username']) - 1] || '').trim().toLowerCase();
+    if (rowUsername === target) return i + 1;
+  }
+  return 0;
+}
+
+function normalizeStaffMemberInput(input) {
+  var data = input || {};
+  var role = normalizeRole(data.role);
+  var permissions = derivePermissionSetFromRole(role);
+
+  for (var i = 0; i < STAFFOS_PERMISSION_HEADERS.length; i++) {
+    var header = STAFFOS_PERMISSION_HEADERS[i];
+    var key = headerToPermissionKey(header);
+    if (data.hasOwnProperty(key)) permissions[key] = parseBooleanValue(data[key]);
+  }
+
+  return {
+    username: String(data.username || '').trim(),
+    code: normalizePasswordInput(data.code || data.password || data.newCode || ''),
+    role: role,
+    status: String(data.status || DEFAULT_STAFF_STATUS).trim().toLowerCase() || DEFAULT_STAFF_STATUS,
+    note: String(data.note || '').trim(),
+    email: normalizeEmail(data.email || ''),
+    scope: normalizeScopeValue(data.scope || data.unit || data.unitScope || ''),
+    unit: normalizeScopeValue(data.unit || data.scopeUnit || data.unitScope || ''),
+    permissions: permissions
+  };
+}
+
+function applyStaffPermissionRow(sheet, rowNumber, headerMap, input, existingRow) {
+  var permissions = input.permissions || derivePermissionSetFromRole(input.role);
+  var updatedAt = new Date();
+  var codeRecord = null;
+
+  if (input.code) {
+    var salt = createUserSalt(input.username + '|' + input.code);
+    codeRecord = buildPasswordRecord(input.code, salt, HASH_VERSION_V2);
+  }
+
+  setRowByHeaders(sheet, rowNumber, headerMap, {
+    'Username': input.username,
+    'Role': input.role,
+    'Status': input.status,
+    'Note': input.note,
+    'Updated At': updatedAt,
+    'Email': input.email,
+    'Scope': input.scope,
+    'Unit': input.unit,
+    'Can Register Face': permissions.canRegisterFace ? 'TRUE' : 'FALSE',
+    'Can View Report': permissions.canViewReport ? 'TRUE' : 'FALSE',
+    'Can Manage Staff': permissions.canManageStaff ? 'TRUE' : 'FALSE',
+    'Can Manage Config': permissions.canManageConfig ? 'TRUE' : 'FALSE'
+  });
+
+  if (codeRecord) {
+    setRowByHeaders(sheet, rowNumber, headerMap, {
+      'Code': codeRecord.hash,
+      'Hash Version': codeRecord.version,
+      'Hash Salt': codeRecord.salt
+    });
+  } else if (existingRow) {
+    setRowByHeaders(sheet, rowNumber, headerMap, {
+      'Code': existingRow.code,
+      'Hash Version': existingRow.hashVersion || detectHashVersion(existingRow.code),
+      'Hash Salt': existingRow.hashSalt || ''
+    });
+  }
+
+  if (!existingRow || !existingRow.createdAt) {
+    setRowByHeaders(sheet, rowNumber, headerMap, {
+      'Created At': existingRow && existingRow.createdAt ? existingRow.createdAt : new Date()
+    });
+  }
+}
+
+function staffMemberToPublicObject(row, rowNumber) {
+  return {
+    rowNumber: rowNumber,
+    username: row.username,
+    role: row.role,
+    status: row.status,
+    note: row.note,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    email: row.email,
+    scope: row.scope,
+    unit: row.unit,
+    permissions: row.permissions
+  };
+}
+
+function getStaffList(params) {
+  var auth = requireRole(['admin', 'super_admin'], params);
+  if (!auth.ok) return auth;
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureStaffSheetWithContract(ss);
+  var sheet = result.sheet;
+  var headerMap = upsertStaffPermissionColumns(sheet, result.headerMap);
+  var data = sheet.getDataRange().getValues();
+  var items = [];
 
   for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    var role = String(row[hm['Role'] - 1] || '').toLowerCase();
-    var status = String(row[hm['Status'] - 1] || '').toLowerCase();
-    var rowEmail = normalizeEmail(row[hm['Email'] - 1] || '');
-    if (role === 'admin' && status === 'active' && rowEmail === target) {
-      return {
-        rowNumber: i + 1,
-        username: String(row[hm['Username'] - 1] || 'admin').trim(),
-        email: rowEmail,
-        role: 'admin'
-      };
+    var row = normalizeStaffRow(data[i], headerMap);
+    if (!row.username) continue;
+    items.push(staffMemberToPublicObject(row, i + 1));
+  }
+
+  return { status: 'ok', data: items, role: auth.user.role };
+}
+
+function getStaffMember(params) {
+  var auth = requireRole(['admin', 'super_admin'], params);
+  if (!auth.ok) return auth;
+
+  var username = String((params && params.username) || '').trim();
+  if (!username) return { status: 'error', message: 'Missing username', code: 400 };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureStaffSheetWithContract(ss);
+  var sheet = result.sheet;
+  var headerMap = upsertStaffPermissionColumns(sheet, result.headerMap);
+  var rowNumber = findStaffRowByUsername(sheet, headerMap, username);
+  if (!rowNumber) return { status: 'error', message: 'Not found', code: 404 };
+
+  var rowValues = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var row = normalizeStaffRow(rowValues, headerMap);
+  return { status: 'ok', data: staffMemberToPublicObject(row, rowNumber) };
+}
+
+function createStaffMember(params) {
+  var auth = requireRole(['admin', 'super_admin'], params);
+  if (!auth.ok) return auth;
+
+  var input = normalizeStaffMemberInput(params || {});
+  if (!input.username) return { status: 'error', message: 'Missing username', code: 400 };
+  if (!input.code) return { status: 'error', message: 'Missing code', code: 400 };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureStaffSheetWithContract(ss);
+  var sheet = result.sheet;
+  var headerMap = upsertStaffPermissionColumns(sheet, result.headerMap);
+  if (findStaffRowByUsername(sheet, headerMap, input.username)) {
+    return { status: 'error', message: 'Username already exists', code: 409 };
+  }
+
+  var rowNumber = sheet.getLastRow() + 1;
+  applyStaffPermissionRow(sheet, rowNumber, headerMap, input, null);
+  return { status: 'ok', message: 'Staff member created', data: getStaffMember({ token: params.token, username: input.username }).data };
+}
+
+function updateStaffMember(params) {
+  var auth = requireRole(['admin', 'super_admin'], params);
+  if (!auth.ok) return auth;
+
+  var input = normalizeStaffMemberInput(params || {});
+  var targetUsername = String((params && params.username) || '').trim();
+  if (!targetUsername) return { status: 'error', message: 'Missing username', code: 400 };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureStaffSheetWithContract(ss);
+  var sheet = result.sheet;
+  var headerMap = upsertStaffPermissionColumns(sheet, result.headerMap);
+  var rowNumber = findStaffRowByUsername(sheet, headerMap, targetUsername);
+  if (!rowNumber) return { status: 'error', message: 'Not found', code: 404 };
+
+  var currentValues = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var existingRow = normalizeStaffRow(currentValues, headerMap);
+  if (input.username && input.username !== targetUsername) {
+    var conflict = findStaffRowByUsername(sheet, headerMap, input.username);
+    if (conflict && conflict !== rowNumber) return { status: 'error', message: 'Username already exists', code: 409 };
+  }
+  input.username = input.username || targetUsername;
+  if (!input.code) input.code = '';
+  applyStaffPermissionRow(sheet, rowNumber, headerMap, input, existingRow);
+  return { status: 'ok', message: 'Staff member updated', data: getStaffMember({ token: params.token, username: input.username }).data };
+}
+
+function deleteStaffMember(params) {
+  var auth = requireRole(['super_admin'], params);
+  if (!auth.ok) return auth;
+
+  var username = String((params && params.username) || '').trim();
+  if (!username) return { status: 'error', message: 'Missing username', code: 400 };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureStaffSheetWithContract(ss);
+  var sheet = result.sheet;
+  var headerMap = upsertStaffPermissionColumns(sheet, result.headerMap);
+  var rowNumber = findStaffRowByUsername(sheet, headerMap, username);
+  if (!rowNumber) return { status: 'error', message: 'Not found', code: 404 };
+
+  sheet.deleteRow(rowNumber);
+  return { status: 'ok', message: 'Staff member deleted' };
+}
+
+function toggleStaffPermission(params) {
+  var auth = requireRole(['admin', 'super_admin'], params);
+  if (!auth.ok) return auth;
+
+  var username = String((params && params.username) || '').trim();
+  var permission = String((params && params.permission) || '').trim();
+  var value = parseBooleanValue(params && params.value);
+  var permissionKey = headerToPermissionKey(permission);
+  if (!username || !permissionKey) return { status: 'error', message: 'Missing parameters', code: 400 };
+
+  var allowedKeys = ['canRegisterFace', 'canViewReport', 'canManageStaff', 'canManageConfig'];
+  if (allowedKeys.indexOf(permissionKey) === -1) {
+    return { status: 'error', message: 'Invalid permission', code: 400 };
+  }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureStaffSheetWithContract(ss);
+  var sheet = result.sheet;
+  var headerMap = upsertStaffPermissionColumns(sheet, result.headerMap);
+  var rowNumber = findStaffRowByUsername(sheet, headerMap, username);
+  if (!rowNumber) return { status: 'error', message: 'Not found', code: 404 };
+
+  var header = {
+    canRegisterFace: 'Can Register Face',
+    canViewReport: 'Can View Report',
+    canManageStaff: 'Can Manage Staff',
+    canManageConfig: 'Can Manage Config'
+  }[permissionKey];
+
+  sheet.getRange(rowNumber, headerMap[header]).setValue(value ? 'TRUE' : 'FALSE');
+  sheet.getRange(rowNumber, headerMap['Updated At']).setValue(new Date());
+  return { status: 'ok', message: 'Permission updated', permission: permissionKey, value: value };
+}
+
+function updateStaffScope(params) {
+  var auth = requireRole(['admin', 'super_admin'], params);
+  if (!auth.ok) return auth;
+
+  var username = String((params && params.username) || '').trim();
+  if (!username) return { status: 'error', message: 'Missing username', code: 400 };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureStaffSheetWithContract(ss);
+  var sheet = result.sheet;
+  var headerMap = upsertStaffPermissionColumns(sheet, result.headerMap);
+  var rowNumber = findStaffRowByUsername(sheet, headerMap, username);
+  if (!rowNumber) return { status: 'error', message: 'Not found', code: 404 };
+
+  var scope = normalizeScopeValue((params && params.scope) || '');
+  var unit = normalizeScopeValue((params && params.unit) || '');
+  sheet.getRange(rowNumber, headerMap[STAFFOS_SCOPE_HEADER]).setValue(scope);
+  sheet.getRange(rowNumber, headerMap[STAFFOS_UNIT_HEADER]).setValue(unit);
+  sheet.getRange(rowNumber, headerMap['Updated At']).setValue(new Date());
+  return { status: 'ok', message: 'Scope updated', scope: scope, unit: unit };
+}
+
+function getStaffMemberByEmail(email) {
+  var normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return null;
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureStaffSheetWithContract(ss);
+  var sheet = result.sheet;
+  var headerMap = upsertStaffPermissionColumns(sheet, result.headerMap);
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    var row = normalizeStaffRow(data[i], headerMap);
+    if (row.email === normalizedEmail) {
+      return staffMemberToPublicObject(row, i + 1);
     }
   }
   return null;
+}
+
+function getAdminByEmail(email) {
+  var member = getStaffMemberByEmail(email);
+  if (!member) return null;
+  if (member.role !== ROLE_ADMIN && member.role !== ROLE_SUPER_ADMIN) return null;
+  if (member.status !== 'active') return null;
+  return member;
 }
 
 function verifyAdminByEmail(email) {
@@ -318,7 +763,7 @@ function verifyAdminByEmail(email) {
   if (!admin) {
     return { success: false, error: 'ไม่พบอีเมลแอดมินหรือบัญชีถูกระงับ' };
   }
-  return { success: true, username: admin.username, email: admin.email, hashVersion: 'email' };
+  return { success: true, username: admin.username, email: admin.email, hashVersion: 'email', role: admin.role };
 }
 
 function verifyGoogleIdToken(idToken) {
@@ -329,7 +774,6 @@ function verifyGoogleIdToken(idToken) {
     var parts = token.split('.');
     if (parts.length !== 3) return { success: false, error: 'Invalid Google token format' };
 
-    // Pad to multiple-of-4 — base64DecodeWebSafe requires padding in some GAS runtime versions
     var b64Segment = parts[1];
     while (b64Segment.length % 4 !== 0) b64Segment += '=';
     var payloadText = Utilities.newBlob(Utilities.base64DecodeWebSafe(b64Segment)).getDataAsString();
@@ -371,25 +815,20 @@ function verifyGoogleIdToken(idToken) {
 }
 
 function getGoogleAdminByEmail(email) {
-  var admin = getAdminByEmail(email);
-  if (!admin) return null;
-  return admin;
+  return getAdminByEmail(email);
 }
 
 function getGoogleAdminEmails() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
+  var result = ensureStaffSheetWithContract(ss);
   var sheet = result.sheet;
-  var hm = result.headerMap;
+  var headerMap = upsertStaffPermissionColumns(sheet, result.headerMap);
   var data = sheet.getDataRange().getValues();
   var emails = [];
 
   for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    var role = String(row[hm['Role'] - 1] || '').toLowerCase();
-    var status = String(row[hm['Status'] - 1] || '').toLowerCase();
-    var email = normalizeEmail(row[hm['Email'] - 1] || '');
-    if (role === 'admin' && status === 'active' && email) emails.push(email);
+    var row = normalizeStaffRow(data[i], headerMap);
+    if ((row.role === ROLE_ADMIN || row.role === ROLE_SUPER_ADMIN) && row.status === 'active' && row.email) emails.push(row.email);
   }
 
   return emails;
@@ -423,7 +862,6 @@ function login(params) {
     var normalizedGoogleEmail = normalizeEmail(googleResult.email);
     var googleAdmin = getGoogleAdminByEmail(normalizedGoogleEmail);
 
-    // DEBUG: log whitelist check — remove after confirming Chrome email matches sheet
     Logger.log('[login/google] checking email: "%s" | whitelist count: %s | whitelist: [%s]',
       normalizedGoogleEmail, allowedGoogleEmails.length, allowedGoogleEmails.join(', '));
 
@@ -441,15 +879,18 @@ function login(params) {
         message: 'อีเมลนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน',
         debug: {
           receivedEmail: maskSensitiveValue(normalizedGoogleEmail),
-          hint: 'Ensure this email is in the staffOS sheet with role=admin and status=active'
+          hint: 'Ensure this email is in the staffOS sheet with role=admin/super_admin and status=active'
         }
       };
     }
 
     if (googleAdmin) {
       username = googleAdmin.username || username;
+      role = normalizeRole(googleAdmin.role);
+    } else {
+      role = ROLE_ADMIN;
     }
-    role = 'admin';
+
     token = storeToken(generateToken(username, role), username, role);
 
     logAction({
@@ -480,7 +921,7 @@ function login(params) {
     }
 
     username = verifiedEmail.username || username;
-    role = 'admin';
+    role = normalizeRole(verifiedEmail.role || ROLE_ADMIN);
     token = storeToken(generateToken(username, role), username, role);
 
     logAction({
@@ -509,7 +950,7 @@ function login(params) {
     return { status: 'error', message: (verified && verified.error) || 'Unauthorized' };
   }
 
-  role = 'admin';
+  role = normalizeRole(verified.role || ROLE_ADMIN);
   token = storeToken(generateToken(username, role), username, role);
   logAction({
     username: username,
@@ -529,20 +970,66 @@ function migrateAdminPasswordIfNeeded(sheet, rowNumber, hm, plainCode) {
   return hashed;
 }
 
+function getStaffMemberByUsername(username) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureStaffSheetWithContract(ss);
+  var sheet = result.sheet;
+  var headerMap = upsertStaffPermissionColumns(sheet, result.headerMap);
+  var rowNumber = findStaffRowByUsername(sheet, headerMap, username);
+  if (!rowNumber) return null;
+  var rowValues = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
+  return normalizeStaffRow(rowValues, headerMap);
+}
+
+function canAccessScope(user, scope, unit) {
+  if (!user) return false;
+  var role = normalizeRole(user.role);
+  if (role === ROLE_SUPER_ADMIN || role === ROLE_ADMIN) return true;
+  if (role === ROLE_HEAD_UNIT) return scopeMatchesAccess(scope || user.scope, unit || user.unit);
+  return scopeMatchesAccess(scope || user.scope, unit || user.unit);
+}
+
+function getMyAccess(params) {
+  var auth = validateToken(params && params.token);
+  if (!auth.ok) return auth;
+
+  var member = getStaffMemberByUsername(auth.user.username);
+  if (!member) {
+    return { status: 'error', message: 'Not found', code: 404 };
+  }
+
+  return {
+    status: 'ok',
+    data: {
+      username: member.username,
+      role: member.role,
+      status: member.status,
+      scope: member.scope,
+      unit: member.unit,
+      permissions: member.permissions
+    }
+  };
+}
+
+function whoAmI(params) {
+  return getMyAccess(params);
+}
+
 /**
  * initSetup — เรียก 1 ครั้งหลัง deploy เพื่อสร้าง staffOS sheet
  * URL: ?action=initSetup
  */
 function initSetup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
+  var result = ensureStaffSheetWithContract(ss);
   var sheet = result.sheet;
-  var hm    = result.headerMap;
+  var hm = upsertStaffPermissionColumns(sheet, result.headerMap);
 
   var data = sheet.getDataRange().getValues();
   var hasAdmin = false;
   for (var i = 1; i < data.length; i++) {
-    if (String(data[i][hm['Role'] - 1] || '').toLowerCase() === 'admin') {
+    var role = normalizeRole(data[i][(hm['Role'] || hm['role']) - 1]);
+    if (role === ROLE_ADMIN || role === ROLE_SUPER_ADMIN) {
       hasAdmin = true;
       break;
     }
@@ -556,14 +1043,20 @@ function initSetup() {
     setRowByHeaders(sheet, row, hm, {
       'Username'    : 'admin',
       'Code'        : adminRecord.hash,
-      'Role'        : 'admin',
+      'Role'        : ROLE_ADMIN,
       'Status'      : 'active',
       'Note'        : 'Default admin — เปลี่ยนรหัสหลัง deploy',
       'Created At'  : now,
       'Updated At'  : now,
       'Email'       : '',
       'Hash Version': adminRecord.version,
-      'Hash Salt'   : adminRecord.salt
+      'Hash Salt'   : adminRecord.salt,
+      'Scope'       : '',
+      'Unit'        : '',
+      'Can Register Face': 'TRUE',
+      'Can View Report'  : 'TRUE',
+      'Can Manage Staff'  : 'TRUE',
+      'Can Manage Config' : 'TRUE'
     });
     return { success: true, created: true, message: 'สร้าง staffOS sheet และ admin เริ่มต้นเรียบร้อย (รหัสเริ่มต้นถูกเก็บแบบเข้ารหัสแล้ว)' };
   }
@@ -578,24 +1071,25 @@ function verifyAdmin(code) {
   }
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var result = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
+  var result = ensureStaffSheetWithContract(ss);
   var sheet = result.sheet;
-  var hm = result.headerMap;
+  var hm = upsertStaffPermissionColumns(sheet, result.headerMap);
   var data = sheet.getDataRange().getValues();
 
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-    var role = String(row[hm['Role'] - 1] || '').toLowerCase();
-    var status = String(row[hm['Status'] - 1] || '').toLowerCase();
-    var stored = String(row[hm['Code'] - 1] || '');
-    var version = String(row[hm['Hash Version'] - 1] || '').trim().toLowerCase();
-    var salt = String(row[hm['Hash Salt'] - 1] || '').trim();
+    var role = normalizeRole(row[(hm['Role'] || hm['role']) - 1]);
+    var status = String(row[(hm['Status'] || hm['status']) - 1] || '').toLowerCase();
+    var stored = String(row[(hm['Code'] || hm['code']) - 1] || '');
+    var version = String(row[(hm['Hash Version'] || hm['hash version']) - 1] || '').trim().toLowerCase();
+    var salt = String(row[(hm['Hash Salt'] || hm['hash salt']) - 1] || '').trim();
     var parsed = parsePasswordRecord(stored);
 
-    if (role !== 'admin' || status !== 'active') continue;
+    if (role !== ROLE_ADMIN && role !== ROLE_SUPER_ADMIN) continue;
+    if (status !== 'active') continue;
 
     if (version === HASH_VERSION_V2 || parsed.version === HASH_VERSION_V2) {
-      var v2Salt = salt || parsed.salt || createUserSalt(row[hm['Username'] - 1] || 'admin');
+      var v2Salt = salt || parsed.salt || createUserSalt(row[(hm['Username'] || hm['username']) - 1] || 'admin');
       var v2Record = buildPasswordRecord(input, v2Salt, HASH_VERSION_V2);
 
       if (safeStringEquals(normalizeHash(stored), normalizeHash(v2Record.hash))) {
@@ -604,21 +1098,21 @@ function verifyAdmin(code) {
           if (hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
           if (hm['Hash Salt']) sheet.getRange(i + 1, hm['Hash Salt']).setValue(v2Salt);
           sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
-          return { success: true, migrated: true, hashVersion: HASH_VERSION_V2 };
+          return { success: true, migrated: true, hashVersion: HASH_VERSION_V2, role: role };
         }
-        return { success: true, hashVersion: HASH_VERSION_V2 };
+        return { success: true, hashVersion: HASH_VERSION_V2, role: role };
       }
     }
 
     if (version === HASH_VERSION_V1 || parsed.version === HASH_VERSION_V1 || !version) {
       var v1Record = buildPasswordRecord(input, '', HASH_VERSION_V1);
       if (safeStringEquals(normalizeHash(stored), normalizeHash(v1Record.hash)) || safeStringEquals(stored, input)) {
-        return { success: true, hashVersion: HASH_VERSION_V1 };
+        return { success: true, hashVersion: HASH_VERSION_V1, role: role };
       }
     }
 
     if (stored === input) {
-      return { success: true, hashVersion: HASH_VERSION_V1 };
+      return { success: true, hashVersion: HASH_VERSION_V1, role: role };
     }
   }
 
@@ -630,38 +1124,39 @@ function changeAdminCode(currentCode, newCode) {
   if (String(newCode).trim().length < 4) return { success: false, error: 'รหัสใหม่ต้องมีอย่างน้อย 4 ตัวอักษร' };
 
   var ss      = SpreadsheetApp.getActiveSpreadsheet();
-  var result  = ensureSheetWithHeaders(ss, STAFFOS_SHEET, STAFFOS_HEADERS);
+  var result  = ensureStaffSheetWithContract(ss);
   var sheet   = result.sheet;
-  var hm      = result.headerMap;
+  var hm      = upsertStaffPermissionColumns(sheet, result.headerMap);
   var data    = sheet.getDataRange().getValues();
   var current = normalizePasswordInput(currentCode);
 
   for (var i = 1; i < data.length; i++) {
     var row    = data[i];
-    var role   = String(row[hm['Role']   - 1] || '').toLowerCase();
-    var status = String(row[hm['Status'] - 1] || '').toLowerCase();
-    var stored = String(row[hm['Code']   - 1] || '');
-    var version = String(row[hm['Hash Version'] - 1] || '').trim().toLowerCase();
-    var salt = String(row[hm['Hash Salt'] - 1] || '').trim();
+    var role   = normalizeRole(row[(hm['Role'] || hm['role']) - 1]);
+    var status = String(row[(hm['Status'] || hm['status']) - 1] || '').toLowerCase();
+    var stored = String(row[(hm['Code'] || hm['code']) - 1] || '');
+    var version = String(row[(hm['Hash Version'] || hm['hash version']) - 1] || '').trim().toLowerCase();
+    var salt = String(row[(hm['Hash Salt'] || hm['hash salt']) - 1] || '').trim();
     var parsed = parsePasswordRecord(stored);
 
-    if (role !== 'admin' || status !== 'active') continue;
+    if (role !== ROLE_ADMIN && role !== ROLE_SUPER_ADMIN) continue;
+    if (status !== 'active') continue;
 
     var matched = false;
     if (version === HASH_VERSION_V2 || parsed.version === HASH_VERSION_V2) {
-      var currentV2Salt = salt || parsed.salt || createUserSalt(row[hm['Username'] - 1] || 'admin');
+      var currentV2Salt = salt || parsed.salt || createUserSalt(row[(hm['Username'] || hm['username']) - 1] || 'admin');
       matched = safeStringEquals(normalizeHash(buildPasswordRecord(current, currentV2Salt, HASH_VERSION_V2).hash), normalizeHash(stored));
     } else {
       matched = safeStringEquals(normalizeHash(buildPasswordRecord(current, '', HASH_VERSION_V1).hash), normalizeHash(stored)) || safeStringEquals(stored, current);
     }
 
     if (matched) {
-      var updatedSalt = createUserSalt((row[hm['Username'] - 1] || 'admin') + '|' + newCode);
+      var updatedSalt = createUserSalt((row[(hm['Username'] || hm['username']) - 1] || 'admin') + '|' + newCode);
       var newRecord = buildPasswordRecord(newCode, updatedSalt, HASH_VERSION_V2);
       sheet.getRange(i + 1, hm['Code']).setValue(newRecord.hash);
       if (hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
       if (hm['Hash Salt']) sheet.getRange(i + 1, hm['Hash Salt']).setValue(newRecord.salt);
-      if (hm['Email']) sheet.getRange(i + 1, hm['Email']).setValue(String(row[hm['Email'] - 1] || '').trim());
+      if (hm['Email']) sheet.getRange(i + 1, hm['Email']).setValue(String(row[(hm['Email'] || hm['email']) - 1] || '').trim());
       sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
       return { success: true, message: 'เปลี่ยนรหัสแอดมินเรียบร้อย', hashVersion: HASH_VERSION_V2 };
     }
@@ -800,84 +1295,6 @@ function getKnownFaces(params) {
 
 //  Attendance Log
 // ============================================================
-
-function getKnownFaces(params) {
-  var auth = authorize('getKnownFaces', params);
-  if (!auth.ok) {
-    logAction({
-      username: '',
-      role: DEFAULT_ROLE,
-      action: 'access_denied',
-      endpoint: 'getKnownFaces',
-      status: 'fail',
-      details: { reason: auth.error || 'Unauthorized' }
-    });
-    return { status: 'error', message: auth.error || 'Unauthorized', code: auth.code || 401 };
-  }
-
-  var token = String((params && params.token) || '').trim();
-  var config = getConfig(params) || {};
-  var requiredToken = String(config.readToken || '').trim();
-  if (requiredToken && token !== requiredToken) {
-    logAction({
-      username: auth.user && auth.user.username ? auth.user.username : '',
-      role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
-      action: 'access_denied',
-      endpoint: 'getKnownFaces',
-      status: 'fail',
-      details: { reason: 'invalid_read_token' }
-    });
-    return { status: 'error', message: 'Unauthorized', code: 401 };
-  }
-
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var result = ensureUsersSheetWithContract(ss);
-  var sheet = result.sheet;
-  var hm = result.headerMap;
-  var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return [];
-
-  var employeeIdCol = hm['Employee ID'];
-  var nameCol = hm['Name'];
-  var positionCol = hm['Position'];
-  var descriptorCol = hm['Face Descriptor'];
-  var statusCol = hm['Status'];
-
-  var users = [];
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    var employeeId = employeeIdCol ? String(row[employeeIdCol - 1] || '').trim() : '';
-    var name = nameCol ? String(row[nameCol - 1] || '').trim() : '';
-    var position = positionCol ? String(row[positionCol - 1] || '').trim() : '';
-    var jsonStr = descriptorCol ? String(row[descriptorCol - 1] || '').trim() : '';
-    var status = statusCol ? String(row[statusCol - 1] || 'active').toLowerCase() : 'active';
-
-    if (!jsonStr || status === 'inactive') continue;
-
-    try {
-      var descriptor = JSON.parse(jsonStr);
-      users.push({
-        employeeId: employeeId || normalizeEmployeeId('', name, i + 1),
-        label: name || employeeId || ('User ' + (i + 1)),
-        name: name || '',
-        position: position || '',
-        descriptor: descriptor,
-        status: status || 'active'
-      });
-    } catch (e) {}
-  }
-
-  logAction({
-    username: auth.user && auth.user.username ? auth.user.username : '',
-    role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
-    action: 'getKnownFaces',
-    endpoint: 'getKnownFaces',
-    status: 'success',
-    details: { count: users.length }
-  });
-
-  return users;
-}
 
 function normalizeAttendanceEmployeeId(payload) {
   if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
@@ -1082,7 +1499,7 @@ function getAttendanceLogs(params) {
   const sheet = ss.getSheetByName('Attendance');
   if (!sheet) return [];
 
-  const data = sheet.getDataRange().getDisplayValues(); // ใช้ getDisplayValues() เพื่อเอาข้อความแบบเดียวกับที่เห็นบนชีต (ป้องกันปัญหาเวลาได้ค่าเป็น 1899:xx)
+  const data = sheet.getDataRange().getDisplayValues();
   if (data.length <= 1) return [];
 
   const headers = data[0].map(function(h) { return String(h).trim(); });

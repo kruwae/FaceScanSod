@@ -323,6 +323,8 @@
     const destLabel = {
       'config.html':   '⚙️ ตั้งค่าระบบ (config)',
       'register.html': '👤 ลงทะเบียนพนักงาน (register)',
+      'report.html':   '📊 รายงานการลงชื่อ (report)',
+      'staff.html':    '👥 จัดการพนักงาน (staff)'
     };
     destBadge.textContent = destLabel[destPage] || ('→ ' + destPage);
 
@@ -418,6 +420,7 @@
         if (data.status === 'ok' && data.token) {
           try { localStorage.setItem('token', data.token); } catch (e) {}
           try { localStorage.setItem('readToken', data.readToken || ''); } catch (e) {}
+          try { sessionStorage.setItem('adminRole', data.role || data.userRole || 'admin'); } catch (e) {}
           return { ok: true, token: data.token };
         }
 
@@ -467,6 +470,7 @@
         if (data.status === 'ok' && data.token) {
           try { localStorage.setItem('token', data.token); } catch (e) {}
           try { localStorage.setItem('readToken', data.readToken || ''); } catch (e) {}
+          try { sessionStorage.setItem('adminRole', data.role || data.userRole || 'admin'); } catch (e) {}
           return { ok: true, token: data.token };
         }
 

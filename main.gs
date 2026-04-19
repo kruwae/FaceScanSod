@@ -5,33 +5,31 @@
 //           Execute as: Me | Who has access: Anyone
 // ============================================================
 
-//  doGet — read-only actions
-// ============================================================
-
-function doGet(e) {
-  const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
-  let result;
-
-  if (!action) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: 'error', message: 'Unknown action: undefined' }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  if (action === 'login')                    result = login(e.parameter);
-  else if (action === 'getConfig')           result = getConfig(e.parameter);
-  else if (action === 'getKnownFaces')       result = getKnownFaces(e.parameter);
-  else if (action === 'getLocations')        result = getLocations(e.parameter);
-  else if (action === 'getAttendanceLogs')   result = getAttendanceLogs(e.parameter);
-  else if (action === 'logout')              result = logout(e.parameter);
-  else if (action === 'initSetup')           result = initSetup();
-  else if (action === 'registerUser')        result = registerUser(e.parameter.name, e.parameter.faceDescriptor, e.parameter.registeredBy, e.parameter.status, e.parameter.position, e.parameter.roles, e.parameter.role, e.parameter.employeeId);
-  else if (action === 'logAttendance' || action === 'logCheckout') result = logAttendance(e.parameter, action);
-  else if (action === 'saveConfig')          result = saveConfig(e.parameter.apiUrl, e.parameter.locations, e.parameter.workTimes, e.parameter.fallbackSettings, e.parameter.updatedBy, e.parameter.token);
-  else if (action === 'saveLocation')         result = saveSingleLocation(e.parameter);
-  else if (action === 'deleteLocation')       result = deleteSingleLocation(e.parameter);
-  else if (action === 'verifyAdmin')         result = verifyAdmin(e.parameter.code);
-  else if (action === 'changeAdminCode')     result = changeAdminCode(e.parameter.currentCode, e.parameter.newCode);
+function dispatchAction(action, params, method) {
+  var result;
+  if (action === 'login') result = login(params);
+  else if (action === 'getConfig') result = getConfig(params);
+  else if (action === 'getKnownFaces') result = getKnownFaces(params);
+  else if (action === 'getLocations') result = getLocations(params);
+  else if (action === 'getAttendanceLogs') result = getAttendanceLogs(params);
+  else if (action === 'logout') result = logout(params);
+  else if (action === 'initSetup') result = initSetup();
+  else if (action === 'registerUser') result = registerUser(params.name, params.faceDescriptor, params.registeredBy, params.status, params.position, params.roles, params.role, params.employeeId);
+  else if (action === 'logAttendance' || action === 'logCheckout') result = logAttendance(params, action);
+  else if (action === 'saveConfig') result = saveConfig(params.apiUrl, params.locations, params.workTimes, params.fallbackSettings, params.updatedBy, params.token);
+  else if (action === 'saveLocation') result = saveSingleLocation(params);
+  else if (action === 'deleteLocation') result = deleteSingleLocation(params);
+  else if (action === 'verifyAdmin') result = verifyAdmin(params.code);
+  else if (action === 'changeAdminCode') result = changeAdminCode(params.currentCode, params.newCode);
+  else if (action === 'getStaffList') result = getStaffList(params);
+  else if (action === 'getStaffMember') result = getStaffMember(params);
+  else if (action === 'createStaffMember') result = createStaffMember(params);
+  else if (action === 'updateStaffMember') result = updateStaffMember(params);
+  else if (action === 'deleteStaffMember') result = deleteStaffMember(params);
+  else if (action === 'toggleStaffPermission') result = toggleStaffPermission(params);
+  else if (action === 'updateStaffScope') result = updateStaffScope(params);
+  else if (action === 'getMyAccess') result = getMyAccess(params);
+  else if (action === 'whoAmI') result = whoAmI(params);
   else result = { status: 'error', message: 'Unknown action: ' + action };
 
   return ContentService
@@ -39,19 +37,26 @@ function doGet(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function denyAction(action, params) {
-  return authorize(action, params);
+//  doGet — read-only actions
+// ============================================================
+
+function doGet(e) {
+  const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
+  if (!action) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'error', message: 'Unknown action: undefined' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  return dispatchAction(action, e.parameter, 'GET');
 }
 
 // ============================================================
-
-//  doPost — write / verify actions
+// doPost — write / verify actions
 // ============================================================
 
 function doPost(e) {
-  let data;
+  var data;
   try {
-    // Null-safe: Chrome may deliver e.postData as null if body is dropped
     var rawBody = (e && e.postData && e.postData.contents) ? e.postData.contents : '';
     data = rawBody ? JSON.parse(rawBody) : {};
   } catch (err) {
@@ -66,27 +71,10 @@ function doPost(e) {
       .createTextOutput(JSON.stringify({ status: 'error', message: 'Unknown action: undefined' }))
       .setMimeType(ContentService.MimeType.JSON);
   }
-  let result;
 
-  if (action === 'registerUser')         result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status, data.position, data.roles, data.role, data.employeeId);
-  else if (action === 'logAttendance' || action === 'logCheckout')   result = logAttendance(data, action);
-  else if (action === 'saveConfig')      result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy, data.token);
-  else if (action === 'saveLocation')    result = saveSingleLocation(data);
-  else if (action === 'deleteLocation')  result = deleteSingleLocation(data);
-  else if (action === 'login')           result = login(data);
-  else if (action === 'verifyAdmin')     result = verifyAdmin(data.code);
-  else if (action === 'changeAdminCode') result = changeAdminCode(data.currentCode, data.newCode);
-  else if (action === 'getConfig')       result = getConfig(data);
-  else if (action === 'getKnownFaces')   result = getKnownFaces(data);
-  else if (action === 'getLocations')    result = getLocations(data);
-  else if (action === 'getAttendanceLogs') result = getAttendanceLogs(data);
-  else if (action === 'registerUser')    result = registerUser(data.name, data.faceDescriptor, data.registeredBy, data.status, data.position, data.roles, data.role, data.employeeId);
-  else if (action === 'saveConfig')      result = saveConfig(data.apiUrl, data.locations, data.workTimes, data.fallbackSettings, data.updatedBy, data.token);
-  else if (action === 'saveLocation')    result = saveSingleLocation(data);
-  else if (action === 'deleteLocation')  result = deleteSingleLocation(data);
-  else result = { status: 'error', message: 'Unknown action: ' + action };
+  return dispatchAction(action, data, 'POST');
+}
 
-  return ContentService
-    .createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
+function denyAction(action, params) {
+  return authorize(action, params);
 }

@@ -772,6 +772,19 @@
       try { return sessionStorage.getItem(SESSION_KEY) === '1'; } catch (e) { return false; }
     }
 
+    function getStoredRole() {
+      try {
+        return (localStorage.getItem('adminRole') || localStorage.getItem('role') || '').trim().toLowerCase();
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function canAccessStaffPage() {
+      const role = getStoredRole();
+      return role === 'admin' || role === 'super_admin';
+    }
+
     function doLogout() {
       try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
       window.location.replace('login.html?to=staff.html');
@@ -864,14 +877,18 @@
     }
 
     function requireAuth() {
-      if (!isAuthed()) {
+      if (!isAuthed() || !canAccessStaffPage()) {
         document.getElementById('adminLock').style.display = 'flex';
         document.getElementById('adminContent').style.display = 'none';
-      } else {
-        document.getElementById('adminLock').style.display = 'none';
-        document.getElementById('adminContent').style.display = 'block';
-        initPage();
+        lockMsg.style.color = '#fca5a5';
+        lockMsg.innerText = !isAuthed()
+          ? 'กรุณาเข้าสู่ระบบ Admin'
+          : 'หน้านี้อนุญาตเฉพาะ admin และ super_admin';
+        return;
       }
+      document.getElementById('adminLock').style.display = 'none';
+      document.getElementById('adminContent').style.display = 'block';
+      initPage();
     }
 
     window.addEventListener('pageshow', function() {

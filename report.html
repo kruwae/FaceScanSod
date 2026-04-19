@@ -671,9 +671,9 @@
     try {
       const startDmy = toDmy(start);
       const endDmy = toDmy(end);
-      const url = `${API_URL}?action=getAttendanceLogs`;
-      const data = await fetch(url).then(r => r.json());
-      const logs = Array.isArray(data) ? data : (data.logs || data.data || []);
+      const response = await fetch(API_URL + '?action=getAttendanceLogs');
+      const payload = await response.json();
+      const logs = normalizeAttendanceLogs(payload);
       allRecords = processLogs(logs, startDmy, endDmy);
       renderTable(allRecords);
       updateSummary(allRecords);
@@ -681,6 +681,16 @@
       showError('❌ โหลดข้อมูลล้มเหลว: ' + e.message + '<br><small>ตรวจสอบว่า GAS รองรับ action=getAttendanceLogs</small>');
       body.innerHTML = '<tr><td colspan="8" class="empty-row">⚠️ ไม่สามารถโหลดข้อมูลได้</td></tr>';
     }
+  }
+
+  function normalizeAttendanceLogs(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== 'object') return [];
+    if (Array.isArray(payload.logs)) return payload.logs;
+    if (Array.isArray(payload.data)) return payload.data;
+    if (Array.isArray(payload.records)) return payload.records;
+    if (Array.isArray(payload.items)) return payload.items;
+    return [];
   }
 
   const CHECKOUT_MIN = 13 * 60 + 30;

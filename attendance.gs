@@ -705,6 +705,8 @@ function staffMemberToPublicObject(row, rowNumber) {
 function getStaffList(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
+>>>>>>> REPLACE
+
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var result = ensureStaffSheetWithContract(ss);
@@ -725,6 +727,8 @@ function getStaffList(params) {
 function getStaffMember(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
+>>>>>>> REPLACE
+
 
   var username = String((params && params.username) || '').trim();
   if (!username) return { status: 'error', message: 'Missing username', code: 400 };
@@ -744,6 +748,8 @@ function getStaffMember(params) {
 function createStaffMember(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
+>>>>>>> REPLACE
+
 
   var input = normalizeStaffMemberInput(params || {});
   if (!input.username) return { status: 'error', message: 'Missing username', code: 400 };
@@ -765,6 +771,8 @@ function createStaffMember(params) {
 function updateStaffMember(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
+>>>>>>> REPLACE
+
 
   var input = normalizeStaffMemberInput(params || {});
   var targetUsername = String((params && params.username) || '').trim();
@@ -792,6 +800,8 @@ function updateStaffMember(params) {
 function deleteStaffMember(params) {
   var auth = requireRole(['super_admin'], params);
   if (!auth.ok) return auth;
+>>>>>>> REPLACE
+
 
   var username = String((params && params.username) || '').trim();
   if (!username) return { status: 'error', message: 'Missing username', code: 400 };
@@ -810,6 +820,8 @@ function deleteStaffMember(params) {
 function toggleStaffPermission(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
+>>>>>>> REPLACE
+
 
   var username = String((params && params.username) || '').trim();
   var permission = String((params && params.permission) || '').trim();
@@ -844,6 +856,7 @@ function toggleStaffPermission(params) {
 function updateStaffScope(params) {
   var auth = requireRole(['admin', 'super_admin'], params);
   if (!auth.ok) return auth;
+>>>>>>> REPLACE
 
   var username = String((params && params.username) || '').trim();
   if (!username) return { status: 'error', message: 'Missing username', code: 400 };

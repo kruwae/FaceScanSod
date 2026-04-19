@@ -4,38 +4,46 @@ function ensureSheetWithHeaders(ss, sheetName, headers) {
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) sheet = ss.insertSheet(sheetName);
 
-  const lastColumn = sheet.getLastColumn();
-  const existingHeaders = lastColumn > 0 ? sheet.getRange(1, 1, 1, lastColumn).getValues()[0] : [];
-  const hasAnyHeader = existingHeaders.some(h => h !== '' && h != null);
+  const schema = headers.slice();
+  const existingHeaders = sheet.getLastRow() > 0
+    ? sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), schema.length)).getValues()[0]
+    : [];
+  const existingMap = buildHeaderMap(existingHeaders.map(function(h) { return String(h || '').trim(); }));
 
-  if (!hasAnyHeader) {
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    return { sheet, headerMap: buildHeaderMap(headers) };
+  let changed = false;
+  for (let i = 0; i < schema.length; i++) {
+    if (!existingMap[schema[i]]) {
+      existingHeaders[i] = schema[i];
+      changed = true;
+    }
   }
 
-  const mergedHeaders = existingHeaders.slice();
-  headers.forEach(header => {
-    if (!mergedHeaders.includes(header)) mergedHeaders.push(header);
-  });
-
-  if (mergedHeaders.length !== existingHeaders.length) {
-    sheet.getRange(1, 1, 1, mergedHeaders.length).setValues([mergedHeaders]);
+  if (!existingHeaders.length) {
+    changed = true;
   }
 
-  return { sheet, headerMap: buildHeaderMap(mergedHeaders) };
+  const finalHeaders = existingHeaders.length ? existingHeaders : schema.slice();
+  if (changed) {
+    sheet.getRange(1, 1, 1, finalHeaders.length).setValues([finalHeaders]);
+  }
+
+  return { sheet, headerMap: buildHeaderMap(finalHeaders.map(function(h) { return String(h || '').trim(); })) };
 }
 
 function buildHeaderMap(headers) {
   const map = {};
   headers.forEach((header, index) => {
-    if (header) map[String(header).trim()] = index + 1;
+    const key = String(header || '').trim();
+    if (!key) return;
+    map[key] = index + 1;
+    map[key.toLowerCase()] = index + 1;
   });
   return map;
 }
 
 function setRowByHeaders(sheet, rowNumber, headerMap, valuesByHeader) {
   Object.keys(valuesByHeader).forEach(header => {
-    const col = headerMap[header];
+    const col = headerMap[header] || headerMap[String(header).toLowerCase()];
     if (col) sheet.getRange(rowNumber, col).setValue(valuesByHeader[header]);
   });
 }

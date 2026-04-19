@@ -871,7 +871,15 @@
       const timer = setTimeout(() => ctrl.abort(), 20000);
       try {
         const res = await fetch(url, { ...(options || {}), signal: ctrl.signal });
-        const data = await res.json();
+        const text = await res.text();
+        let data;
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch (parseErr) {
+          const match = text.match(/(?:ReferenceError|TypeError|SyntaxError|Error):[^<\n]+/i);
+          const snippet = match ? match[0] : String(text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220);
+          throw new Error(snippet || 'API ส่งข้อมูลที่ไม่ใช่ JSON กลับมา');
+        }
         if (!res.ok || (data && data.status === 'error')) {
           throw new Error(data?.message || 'เรียก API ไม่สำเร็จ');
         }
@@ -932,12 +940,11 @@
       btnLockLogin.disabled = true;
       lockMsg.textContent = 'กำลังตรวจสอบสิทธิ์...';
       try {
-        const res = await fetch(apiUrl, {
+        const data = await fetchJson(apiUrl + '?action=login', {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'login', authMethod: 'code', username: 'admin', code: code })
         });
-        const data = await res.json();
         if (data && data.status === 'ok' && data.token) {
           try { localStorage.setItem('token', data.token); } catch (e) {}
           try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (e) {}
@@ -948,7 +955,7 @@
           showLock(data?.message || 'รหัสไม่ถูกต้อง');
         }
       } catch (err) {
-        showLock('เชื่อมต่อ Server ไม่ได้');
+        showLock(err.message || 'เชื่อมต่อ Server ไม่ได้');
       } finally {
         btnLockLogin.disabled = false;
       }

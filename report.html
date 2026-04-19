@@ -548,19 +548,39 @@
 
   function toDmy(isoDate) {
     if (!isoDate) return '';
-    const parts = isoDate.split('-');
+    const parts = String(isoDate).split('-');
     if (parts.length !== 3) return isoDate;
-    return Number(parts[2]) + '/' + Number(parts[1]) + '/' + parts[0];
+    return `${Number(parts[2])}/${Number(parts[1])}/${parts[0]}`;
+  }
+
+  function normalizeDateKey(value) {
+    const dt = parseSheetDate(value);
+    if (!dt) return String(value || '').trim();
+    return fmtBangkok(dt);
   }
 
   function parseSheetDate(value) {
     const raw = String(value || '').replace(/^'/, '').trim();
     if (!raw) return null;
-    const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (m) {
-      const dt = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+
+    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (iso) {
+      const dt = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
       if (!isNaN(dt.getTime())) return dt;
     }
+
+    const dmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmy) {
+      const dt = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+      if (!isNaN(dt.getTime())) return dt;
+    }
+
+    const dateOnly = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+    if (dateOnly) {
+      const dt = new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+      if (!isNaN(dt.getTime())) return dt;
+    }
+
     const dt = new Date(raw);
     if (!isNaN(dt.getTime())) return dt;
     return null;
@@ -574,7 +594,7 @@
     // รวบรวมทุก entries ของแต่ละคน/วัน
     logs.forEach(log => {
       const rawName = (log['Name'] || log.name || 'ไม่ระบุ').toString().trim();
-      const rawDate = (log['Date'] || log.date || '').toString().replace(/^'/, '').trim();
+      const rawDate = normalizeDateKey(log['Date'] || log.date || '');
       const rawTime = (log['Time'] || log.time || '').toString().trim();
       const parsedDate = parseSheetDate(rawDate);
 
@@ -668,6 +688,8 @@
       const ad = parseSheetDate(a.date);
       const bd = parseSheetDate(b.date);
       if (ad && bd && ad.getTime() !== bd.getTime()) return bd - ad;
+      if (ad && !bd) return -1;
+      if (!ad && bd) return 1;
       return a.name.localeCompare(b.name, 'th');
     });
   }

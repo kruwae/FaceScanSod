@@ -28,6 +28,7 @@ function dispatchAction(action, params, method) {
   else if (action === 'deleteStaffMember') result = deleteStaffMember(params);
   else if (action === 'toggleStaffPermission') result = toggleStaffPermission(params);
   else if (action === 'updateStaffScope') result = updateStaffScope(params);
+  else if (action === 'seedStaffOsDemoData') result = seedStaffOsDemoData(params);
   else if (action === 'getMyAccess') result = getMyAccess(params);
   else if (action === 'whoAmI') result = whoAmI(params);
   else result = { status: 'error', message: 'Unknown action: ' + action };

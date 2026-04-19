@@ -7,6 +7,7 @@
   <title>Admin Login | ระบบสแกนหน้า</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
+  <script src="auth-badge.js"></script>
   <!-- ES module removed: ใช้ inline getApiUrl() ด้านล่างแทน เพื่อหลีกเลี่ยง CORS/infinite recursion -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
@@ -430,6 +431,7 @@
           try { localStorage.setItem('token', data.token); } catch (e) {}
           try { localStorage.setItem('readToken', data.readToken || ''); } catch (e) {}
           try { sessionStorage.setItem('adminRole', data.role || data.userRole || 'admin'); } catch (e) {}
+          try { sessionStorage.setItem('adminName', data.name || data.username || data.displayName || 'Admin'); } catch (e) {}
           return { ok: true, token: data.token };
         }
 
@@ -480,6 +482,7 @@
           try { localStorage.setItem('token', data.token); } catch (e) {}
           try { localStorage.setItem('readToken', data.readToken || ''); } catch (e) {}
           try { sessionStorage.setItem('adminRole', data.role || data.userRole || 'admin'); } catch (e) {}
+          try { sessionStorage.setItem('adminName', data.name || data.username || data.displayName || 'Admin'); } catch (e) {}
           return { ok: true, token: data.token };
         }
 

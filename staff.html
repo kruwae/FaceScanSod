@@ -2,48 +2,770 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>👥 จัดการบุคลากร | Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>จัดการ StaffOS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
+  <script src="auth-badge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-1: #07111f;
+      --bg-2: #0f1f38;
+      --panel: rgba(10, 18, 34, 0.78);
+      --panel-border: rgba(148, 163, 184, 0.16);
+      --text: #e2e8f0;
+      --muted: #93a6c4;
+      --accent: #22c55e;
+      --accent-2: #14b8a6;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --info: #38bdf8;
+      --shadow: 0 28px 80px rgba(2, 6, 23, 0.42);
+    }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.16), transparent 28%),
+        linear-gradient(155deg, var(--bg-1) 0%, #0b1730 45%, var(--bg-2) 100%);
+      padding: 22px 16px 32px;
+    }
+
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.28;
+    }
+
+    body::before {
+      width: 280px;
+      height: 280px;
+      left: -70px;
+      top: -60px;
+      background: rgba(56, 189, 248, 0.28);
+    }
+
+    body::after {
+      width: 320px;
+      height: 320px;
+      right: -90px;
+      bottom: -100px;
+      background: rgba(34, 197, 94, 0.22);
+    }
+
+    .page-wrap {
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .glass {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .lock-shell {
+      min-height: calc(100vh - 44px);
+      display: grid;
+      place-items: center;
+    }
+
+    .lock-card {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 28px;
+      padding: 34px 26px 26px;
+      text-align: center;
+    }
+
+    .lock-badge {
+      width: 82px;
+      height: 82px;
+      margin: 0 auto 18px;
+      border-radius: 24px;
+      display: grid;
+      place-items: center;
+      font-size: 34px;
+      background: linear-gradient(135deg, #14b8a6, #22c55e);
+      box-shadow: 0 22px 44px rgba(20, 184, 166, 0.28);
+    }
+
+    h1 {
+      font-size: clamp(1.7rem, 2vw, 2.3rem);
+      line-height: 1.15;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 0.95rem;
+      margin-top: 10px;
+    }
+
+    .lock-field,
+    .search-input,
+    .form-grid input,
+    .form-grid textarea,
+    .form-grid select {
+      width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.72);
+      color: var(--text);
+      border-radius: 16px;
+      padding: 14px 15px;
+      font: inherit;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .lock-field:focus,
+    .search-input:focus,
+    .form-grid input:focus,
+    .form-grid textarea:focus,
+    .form-grid select:focus {
+      border-color: rgba(34, 197, 94, 0.65);
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+    }
+
+    .lock-form {
+      margin-top: 26px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 16px;
+      padding: 13px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, background 0.2s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.55; cursor: wait; transform: none; }
+
+    .btn-primary {
+      color: white;
+      background: linear-gradient(135deg, #14b8a6, #22c55e);
+      box-shadow: 0 16px 34px rgba(34, 197, 94, 0.22);
+    }
+
+    .btn-secondary {
+      color: var(--text);
+      background: rgba(148, 163, 184, 0.12);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .btn-danger {
+      color: #fee2e2;
+      background: rgba(239, 68, 68, 0.16);
+      border: 1px solid rgba(239, 68, 68, 0.28);
+    }
+
+    .btn-ghost {
+      color: #bfdbfe;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    .lock-msg,
+    .status-line {
+      min-height: 24px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .dashboard {
+      display: none;
+      gap: 18px;
+    }
+
+    .hero {
+      border-radius: 28px;
+      padding: 26px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: auto -80px -80px auto;
+      width: 240px;
+      height: 240px;
+      background: radial-gradient(circle, rgba(34, 197, 94, 0.22), transparent 68%);
+      pointer-events: none;
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #bbf7d0;
+      font-size: 0.84rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .hero-actions,
+    .toolbar-actions,
+    .form-actions,
+    .row-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .hero-note {
+      margin-top: 12px;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 760px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .stat-card {
+      border-radius: 22px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-bottom: 10px;
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.95fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      border-radius: 26px;
+      padding: 22px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .section-head h2 {
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+
+    .section-sub {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .toolbar {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(2, 6, 23, 0.34);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 930px;
+    }
+
+    th, td {
+      padding: 14px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+      vertical-align: top;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.84rem;
+      font-weight: 700;
+      background: rgba(15, 23, 42, 0.72);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    td {
+      font-size: 0.92rem;
+      color: #e5eefc;
+    }
+
+    tbody tr:hover {
+      background: rgba(148, 163, 184, 0.06);
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .chip.role-super_admin { color: #dcfce7; background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.25); }
+    .chip.role-admin { color: #dbeafe; background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.25); }
+    .chip.role-head_unit { color: #fef3c7; background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.24); }
+    .chip.role-staff { color: #e2e8f0; background: rgba(148, 163, 184, 0.14); border-color: rgba(148, 163, 184, 0.18); }
+    .chip.status-active { color: #dcfce7; background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.25); }
+    .chip.status-inactive { color: #fee2e2; background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.24); }
+
+    .stack {
+      display: grid;
+      gap: 4px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .form-card {
+      position: sticky;
+      top: 18px;
+    }
+
+    .mode-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(20, 184, 166, 0.12);
+      border: 1px solid rgba(20, 184, 166, 0.24);
+      color: #99f6e4;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field label {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #d8e6fb;
+    }
+
+    .field textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(15, 23, 42, 0.54);
+    }
+
+    .checkbox-item input {
+      width: 18px;
+      height: 18px;
+      accent-color: #22c55e;
+      flex: 0 0 auto;
+    }
+
+    .helper {
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.6;
+    }
+
+    .empty-state {
+      padding: 30px 18px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .small-btn {
+      padding: 9px 12px;
+      border-radius: 12px;
+      font-size: 0.84rem;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 1024px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .form-card {
+        position: static;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding-inline: 12px;
+      }
+
+      .hero,
+      .card,
+      .lock-card {
+        padding: 20px;
+        border-radius: 22px;
+      }
+
+      .grid-2,
+      .checkbox-grid,
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-actions,
+      .toolbar-actions,
+      .form-actions,
+      .row-actions {
+        width: 100%;
+      }
+
+      .hero-actions .btn,
+      .toolbar-actions .btn,
+      .form-actions .btn,
+      .row-actions .btn {
+        flex: 1 1 auto;
+      }
+
+      table {
+        min-width: 820px;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div id="adminLock">
-    <input type="password" id="lockCode" onkeydown="if(event.key==='Enter') doLogin()">
-    <button onclick="doLogin()">Login</button>
-    <div id="lockMsg"></div>
-  </div>
-  <div id="adminContent" style="display:none;">
-    <h1>Staff Admin</h1>
+  <div class="page-wrap">
+    <section id="adminLock" class="lock-shell">
+      <div class="lock-card glass">
+        <div class="lock-badge">👥</div>
+        <h1>จัดการ StaffOS</h1>
+        <p class="subtitle">เพิ่ม แก้ไข ค้นหา และลบบัญชีผู้ใช้งานในตาราง <strong>staffOS</strong> ได้จากหน้านี้โดยตรง</p>
+        <div class="lock-form">
+          <input class="lock-field" type="password" id="lockCode" placeholder="กรอกรหัสแอดมิน" onkeydown="if(event.key==='Enter') doLogin()">
+          <button class="btn btn-primary" id="btnLockLogin" onclick="doLogin()">เข้าสู่ระบบ</button>
+          <div class="lock-msg" id="lockMsg"></div>
+        </div>
+      </div>
+    </section>
+
+    <main id="adminContent" class="dashboard">
+      <section class="hero glass">
+        <div class="hero-top">
+          <div>
+            <div class="hero-kicker">StaffOS Control</div>
+            <h1>CRUD ตารางบุคลากร</h1>
+            <p class="hero-note">จัดการบัญชีผู้ใช้ในระบบสแกนหน้าแบบครบวงจร รองรับค้นหา รีเฟรชรายการ เพิ่มสมาชิกใหม่ แก้ไขสิทธิ์ และลบผู้ใช้จากหน้าเดียว</p>
+          </div>
+          <div class="hero-actions">
+            <button class="btn btn-secondary" id="btnResetFormTop">ล้างฟอร์ม</button>
+            <button class="btn btn-ghost" id="btnRefreshTop">รีเฟรชข้อมูล</button>
+            <button class="btn btn-primary" id="btnNewTop">เพิ่ม Staff ใหม่</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-label">ทั้งหมด</div>
+            <div class="stat-value" id="statTotal">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">ใช้งานอยู่</div>
+            <div class="stat-value" id="statActive">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Admin / Super</div>
+            <div class="stat-value" id="statAdmin">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">ผลการค้นหา</div>
+            <div class="stat-value" id="statFiltered">0</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="layout">
+        <div class="card glass">
+          <div class="section-head">
+            <div>
+              <h2>รายการบุคลากร</h2>
+              <div class="section-sub">ดึงข้อมูลจาก action `getStaffList` และจัดการรายการแบบเรียลไทม์</div>
+            </div>
+            <div class="toolbar-actions">
+              <button class="btn btn-secondary small-btn" id="btnSeedDemo" type="button">Seed Demo</button>
+              <button class="btn btn-ghost small-btn" id="btnRefreshTable" type="button">โหลดใหม่</button>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <input class="search-input" id="searchInput" type="search" placeholder="ค้นหา username, email, role, unit, scope...">
+            <div class="status-line" id="tableStatus">กำลังเตรียมระบบ...</div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ผู้ใช้</th>
+                  <th>บทบาท</th>
+                  <th>สถานะ</th>
+                  <th>ขอบเขต</th>
+                  <th>สิทธิ์</th>
+                  <th>อัปเดตล่าสุด</th>
+                  <th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="staffTableBody">
+                <tr>
+                  <td colspan="7" class="empty-state">ยังไม่มีข้อมูล</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside class="card glass form-card">
+          <div class="mode-badge" id="formModeBadge">โหมดเพิ่มข้อมูล</div>
+          <div class="section-head">
+            <div>
+              <h2 id="formTitle">เพิ่ม StaffOS</h2>
+              <div class="section-sub" id="formSubtitle">กรอกข้อมูลผู้ใช้ใหม่แล้วกดบันทึก</div>
+            </div>
+          </div>
+
+          <form id="staffForm" class="form-grid">
+            <div class="grid-2">
+              <div class="field">
+                <label for="username">Username</label>
+                <input id="username" name="username" required autocomplete="off" placeholder="เช่น staff01">
+              </div>
+              <div class="field">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" autocomplete="off" placeholder="name@example.com">
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="field">
+                <label for="role">Role</label>
+                <select id="role" name="role">
+                  <option value="staff">staff</option>
+                  <option value="head_unit">head_unit</option>
+                  <option value="admin">admin</option>
+                  <option value="super_admin">super_admin</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                  <option value="active">active</option>
+                  <option value="inactive">inactive</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="field">
+                <label for="unit">Unit</label>
+                <input id="unit" name="unit" autocomplete="off" placeholder="เช่น OPD / unit-a / hq">
+              </div>
+              <div class="field">
+                <label for="scope">Scope</label>
+                <input id="scope" name="scope" autocomplete="off" placeholder="เช่น school-wide หรือ unit-a,unit-b">
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="code">Code / Password</label>
+              <input id="code" name="code" type="password" placeholder="กรอกรหัสสำหรับผู้ใช้ใหม่">
+              <div class="helper" id="passwordHint">ตอนเพิ่มข้อมูลจำเป็นต้องใส่รหัส ส่วนตอนแก้ไขสามารถเว้นว่างเพื่อใช้รหัสเดิม</div>
+            </div>
+
+            <div class="field">
+              <label for="note">หมายเหตุ</label>
+              <textarea id="note" name="note" placeholder="รายละเอียดเพิ่มเติม"></textarea>
+            </div>
+
+            <div class="field">
+              <label>Permissions</label>
+              <div class="checkbox-grid">
+                <label class="checkbox-item"><input type="checkbox" id="canRegisterFace"> <span>Can Register Face</span></label>
+                <label class="checkbox-item"><input type="checkbox" id="canViewReport"> <span>Can View Report</span></label>
+                <label class="checkbox-item"><input type="checkbox" id="canManageStaff"> <span>Can Manage Staff</span></label>
+                <label class="checkbox-item"><input type="checkbox" id="canManageConfig"> <span>Can Manage Config</span></label>
+              </div>
+              <div class="helper">สิทธิ์เริ่มต้นจะเปลี่ยนตาม role อัตโนมัติ และยังปรับเองได้ก่อนบันทึก</div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" id="submitBtn" type="submit">บันทึกข้อมูล</button>
+              <button class="btn btn-secondary" id="resetBtn" type="button">ล้างฟอร์ม</button>
+              <button class="btn btn-danger hidden" id="deleteBtn" type="button">ลบผู้ใช้นี้</button>
+            </div>
+          </form>
+        </aside>
+      </section>
+    </main>
   </div>
 
   <script>
     const SESSION_KEY = 'adminAuth';
+    const DEFAULT_ROLE = 'staff';
+    const ROLE_ORDER = ['super_admin', 'admin', 'head_unit', 'staff'];
+    const DEFAULT_PERMISSION_BY_ROLE = {
+      super_admin: { canRegisterFace: true, canViewReport: true, canManageStaff: true, canManageConfig: true },
+      admin: { canRegisterFace: true, canViewReport: true, canManageStaff: true, canManageConfig: true },
+      head_unit: { canRegisterFace: true, canViewReport: true, canManageStaff: false, canManageConfig: false },
+      staff: { canRegisterFace: false, canViewReport: false, canManageStaff: false, canManageConfig: false }
+    };
+
+    const state = {
+      items: [],
+      filtered: [],
+      currentUsername: '',
+      mode: 'create',
+      loading: false
+    };
+
+    const adminLock = document.getElementById('adminLock');
+    const adminContent = document.getElementById('adminContent');
     const lockCode = document.getElementById('lockCode');
     const lockMsg = document.getElementById('lockMsg');
+    const btnLockLogin = document.getElementById('btnLockLogin');
+    const tableStatus = document.getElementById('tableStatus');
+    const staffTableBody = document.getElementById('staffTableBody');
+    const searchInput = document.getElementById('searchInput');
+    const staffForm = document.getElementById('staffForm');
+    const roleInput = document.getElementById('role');
+    const codeInput = document.getElementById('code');
+    const passwordHint = document.getElementById('passwordHint');
+    const submitBtn = document.getElementById('submitBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const formTitle = document.getElementById('formTitle');
+    const formSubtitle = document.getElementById('formSubtitle');
+    const formModeBadge = document.getElementById('formModeBadge');
+
+    function safeGet(storage, key) {
+      try { return storage.getItem(key) || ''; } catch (e) { return ''; }
+    }
 
     function isAuthed() {
-      try { return sessionStorage.getItem(SESSION_KEY) === '1'; } catch (e) { return false; }
+      return safeGet(sessionStorage, SESSION_KEY) === '1';
     }
 
     function getSessionRole() {
-      try {
-        return String(
-          sessionStorage.getItem('adminRole') ||
-          localStorage.getItem('adminRole') ||
-          sessionStorage.getItem('role') ||
-          localStorage.getItem('role') ||
-          localStorage.getItem('userRole') ||
-          localStorage.getItem('roles') ||
-          sessionStorage.getItem('roles') ||
-          ''
-        ).trim().toLowerCase();
-      } catch (e) {
-        return '';
-      }
+      return String(
+        safeGet(sessionStorage, 'adminRole') ||
+        safeGet(localStorage, 'adminRole') ||
+        safeGet(sessionStorage, 'role') ||
+        safeGet(localStorage, 'role') ||
+        safeGet(localStorage, 'userRole') ||
+        safeGet(localStorage, 'roles') ||
+        safeGet(sessionStorage, 'roles') ||
+        ''
+      ).trim().toLowerCase();
+    }
+
+    function getSessionName() {
+      return String(
+        safeGet(sessionStorage, 'adminName') ||
+        safeGet(localStorage, 'adminName') ||
+        safeGet(sessionStorage, 'username') ||
+        'Admin'
+      ).trim() || 'Admin';
     }
 
     function canAccessStaffPage() {
@@ -51,39 +773,104 @@
       return role === 'admin' || role === 'super_admin';
     }
 
+    function canDelete() {
+      return getSessionRole() === 'super_admin';
+    }
+
+    function getApiUrl() {
+      return String(
+        safeGet(localStorage, 'GAS_API_URL') ||
+        safeGet(localStorage, 'gasApiUrl') ||
+        window.GAS_API_URL ||
+        ''
+      ).trim();
+    }
+
+    function getToken() {
+      return String(
+        safeGet(localStorage, 'token') ||
+        safeGet(sessionStorage, 'token') ||
+        ''
+      ).trim();
+    }
+
+    async function apiGet(action, extraParams) {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) throw new Error('ยังไม่ได้ตั้งค่า API URL');
+      const params = new URLSearchParams({ action: action, token: getToken(), ...(extraParams || {}) });
+      const res = await fetch(apiUrl + '?' + params.toString());
+      const data = await res.json();
+      if (!res.ok || (data && data.status === 'error')) {
+        throw new Error(data?.message || 'โหลดข้อมูลไม่สำเร็จ');
+      }
+      return data;
+    }
+
+    async function apiPost(action, payload) {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) throw new Error('ยังไม่ได้ตั้งค่า API URL');
+      const body = { action: action, token: getToken(), ...(payload || {}) };
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok || (data && data.status === 'error')) {
+        throw new Error(data?.message || 'บันทึกข้อมูลไม่สำเร็จ');
+      }
+      return data;
+    }
+
     function showAdmin() {
-      document.getElementById('adminLock').style.display = 'none';
-      document.getElementById('adminContent').style.display = 'block';
+      adminLock.style.display = 'none';
+      adminContent.style.display = 'grid';
+      if (typeof renderAuthBadge === 'function') renderAuthBadge();
+      document.title = 'จัดการ StaffOS';
+      setPageHeader();
+      loadStaffList();
+    }
+
+    function setPageHeader() {
+      const user = getSessionName();
+      const role = getSessionRole() || 'admin';
+      formSubtitle.textContent = 'เข้าสู่ระบบในชื่อ ' + user + ' (' + role + ')';
     }
 
     function showLock(msg) {
-      document.getElementById('adminLock').style.display = 'block';
-      document.getElementById('adminContent').style.display = 'none';
+      adminLock.style.display = 'grid';
+      adminContent.style.display = 'none';
       lockMsg.textContent = msg || '';
     }
 
     async function doLogin() {
       const code = String(lockCode.value || '').trim();
-      if (!code) return showLock('กรุณากรอกรหัส');
+      if (!code) return showLock('กรุณากรอกรหัสแอดมิน');
+      const apiUrl = getApiUrl();
+      if (!apiUrl) return showLock('ยังไม่ได้ตั้งค่า API URL');
+
+      btnLockLogin.disabled = true;
+      lockMsg.textContent = 'กำลังตรวจสอบสิทธิ์...';
       try {
-        const apiUrl = String((localStorage.getItem('GAS_API_URL') || localStorage.getItem('gasApiUrl') || '')).trim();
-        if (!apiUrl) return showLock('ยังไม่ได้ตั้งค่า API URL');
         const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'login', authMethod: 'code', username: 'admin', code })
+          body: JSON.stringify({ action: 'login', authMethod: 'code', username: 'admin', code: code })
         });
         const data = await res.json();
         if (data && data.status === 'ok' && data.token) {
-          localStorage.setItem('token', data.token);
-          if (data.readToken) localStorage.setItem('readToken', data.readToken);
-          sessionStorage.setItem(SESSION_KEY, '1');
+          try { localStorage.setItem('token', data.token); } catch (e) {}
+          try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (e) {}
+          try { sessionStorage.setItem('adminRole', data.role || 'admin'); } catch (e) {}
+          try { sessionStorage.setItem('adminName', data.username || 'Admin'); } catch (e) {}
           showAdmin();
         } else {
-          showLock(data?.message || data?.error || 'รหัสไม่ถูกต้อง');
+          showLock(data?.message || 'รหัสไม่ถูกต้อง');
         }
-      } catch (e) {
+      } catch (err) {
         showLock('เชื่อมต่อ Server ไม่ได้');
+      } finally {
+        btnLockLogin.disabled = false;
       }
     }
 
@@ -92,7 +879,325 @@
       showLock(isAuthed() ? 'หน้านี้อนุญาตเฉพาะ admin และ super_admin' : 'กรุณาเข้าสู่ระบบ Admin');
     }
 
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function normalizeRoleLabel(role) {
+      return String(role || DEFAULT_ROLE).trim().toLowerCase() || DEFAULT_ROLE;
+    }
+
+    function formatDate(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleString('th-TH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function permissionSummary(item) {
+      const map = item && item.permissions ? item.permissions : {};
+      const labels = [];
+      if (map.canRegisterFace) labels.push('Register');
+      if (map.canViewReport) labels.push('Report');
+      if (map.canManageStaff) labels.push('Staff');
+      if (map.canManageConfig) labels.push('Config');
+      return labels.length ? labels.join(', ') : 'ไม่มี';
+    }
+
+    function setTableStatus(text, tone) {
+      tableStatus.textContent = text;
+      tableStatus.style.color = tone || 'var(--muted)';
+    }
+
+    function setLoading(flag) {
+      state.loading = !!flag;
+      submitBtn.disabled = flag;
+      if (flag) submitBtn.textContent = 'กำลังบันทึก...';
+      else submitBtn.textContent = state.mode === 'create' ? 'บันทึกข้อมูล' : 'อัปเดตข้อมูล';
+    }
+
+    function setFormMode(mode, item) {
+      state.mode = mode;
+      state.currentUsername = item && item.username ? item.username : '';
+      formModeBadge.textContent = mode === 'create' ? 'โหมดเพิ่มข้อมูล' : 'โหมดแก้ไขข้อมูล';
+      formTitle.textContent = mode === 'create' ? 'เพิ่ม StaffOS' : 'แก้ไข StaffOS';
+      formSubtitle.textContent = mode === 'create'
+        ? 'กรอกข้อมูลผู้ใช้ใหม่แล้วกดบันทึก'
+        : 'กำลังแก้ไขบัญชี ' + (item?.username || '');
+      passwordHint.textContent = mode === 'create'
+        ? 'ตอนเพิ่มข้อมูลจำเป็นต้องใส่รหัส'
+        : 'ถ้าไม่ต้องการเปลี่ยนรหัส ให้เว้นว่างช่องนี้ได้';
+      codeInput.required = mode === 'create';
+      document.getElementById('username').readOnly = mode === 'edit';
+      deleteBtn.classList.toggle('hidden', !(mode === 'edit' && canDelete()));
+      setLoading(false);
+    }
+
+    function getDefaultPermissions(role) {
+      const key = normalizeRoleLabel(role);
+      return { ...(DEFAULT_PERMISSION_BY_ROLE[key] || DEFAULT_PERMISSION_BY_ROLE.staff) };
+    }
+
+    function applyPermissionCheckboxes(permissions) {
+      const resolved = permissions || DEFAULT_PERMISSION_BY_ROLE.staff;
+      document.getElementById('canRegisterFace').checked = !!resolved.canRegisterFace;
+      document.getElementById('canViewReport').checked = !!resolved.canViewReport;
+      document.getElementById('canManageStaff').checked = !!resolved.canManageStaff;
+      document.getElementById('canManageConfig').checked = !!resolved.canManageConfig;
+    }
+
+    function resetForm(useRoleDefaults = true) {
+      staffForm.reset();
+      document.getElementById('status').value = 'active';
+      document.getElementById('role').value = 'staff';
+      if (useRoleDefaults) applyPermissionCheckboxes(getDefaultPermissions('staff'));
+      setFormMode('create');
+    }
+
+    function fillForm(item) {
+      document.getElementById('username').value = item.username || '';
+      document.getElementById('email').value = item.email || '';
+      document.getElementById('role').value = normalizeRoleLabel(item.role);
+      document.getElementById('status').value = item.status || 'active';
+      document.getElementById('unit').value = item.unit || '';
+      document.getElementById('scope').value = item.scope || '';
+      document.getElementById('note').value = item.note || '';
+      document.getElementById('code').value = '';
+      applyPermissionCheckboxes(item.permissions || getDefaultPermissions(item.role));
+      setFormMode('edit', item);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function collectFormData() {
+      return {
+        username: document.getElementById('username').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        role: document.getElementById('role').value,
+        status: document.getElementById('status').value,
+        unit: document.getElementById('unit').value.trim(),
+        scope: document.getElementById('scope').value.trim(),
+        note: document.getElementById('note').value.trim(),
+        code: document.getElementById('code').value,
+        canRegisterFace: document.getElementById('canRegisterFace').checked,
+        canViewReport: document.getElementById('canViewReport').checked,
+        canManageStaff: document.getElementById('canManageStaff').checked,
+        canManageConfig: document.getElementById('canManageConfig').checked
+      };
+    }
+
+    function validateForm(payload) {
+      if (!payload.username) throw new Error('กรุณากรอก username');
+      if (!payload.role) throw new Error('กรุณาเลือก role');
+      if (state.mode === 'create' && !String(payload.code || '').trim()) throw new Error('กรุณากรอกรหัสสำหรับผู้ใช้ใหม่');
+    }
+
+    function sortItems(items) {
+      return items.slice().sort((a, b) => {
+        const roleGap = ROLE_ORDER.indexOf(normalizeRoleLabel(a.role)) - ROLE_ORDER.indexOf(normalizeRoleLabel(b.role));
+        if (roleGap !== 0) return roleGap;
+        return String(a.username || '').localeCompare(String(b.username || ''), 'th');
+      });
+    }
+
+    function updateStats() {
+      const items = state.items;
+      const active = items.filter(item => item.status === 'active').length;
+      const admin = items.filter(item => ['admin', 'super_admin'].includes(normalizeRoleLabel(item.role))).length;
+      document.getElementById('statTotal').textContent = items.length;
+      document.getElementById('statActive').textContent = active;
+      document.getElementById('statAdmin').textContent = admin;
+      document.getElementById('statFiltered').textContent = state.filtered.length;
+    }
+
+    function renderTable(items) {
+      if (!items.length) {
+        staffTableBody.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่พบข้อมูลที่ตรงกับคำค้น</td></tr>';
+        updateStats();
+        return;
+      }
+
+      staffTableBody.innerHTML = items.map(item => {
+        const username = escapeHtml(item.username || '-');
+        const email = escapeHtml(item.email || '-');
+        const note = escapeHtml(item.note || '-');
+        const role = normalizeRoleLabel(item.role);
+        const status = String(item.status || 'active').trim().toLowerCase();
+        const unit = escapeHtml(item.unit || '-');
+        const scope = escapeHtml(item.scope || '-');
+        const perms = escapeHtml(permissionSummary(item));
+        const updated = escapeHtml(formatDate(item.updatedAt || item.createdAt));
+        const canDeleteBtn = canDelete()
+          ? '<button class="btn btn-danger small-btn" data-action="delete" data-username="' + escapeHtml(item.username) + '">ลบ</button>'
+          : '';
+
+        return '<tr>' +
+          '<td><div class="stack"><strong>' + username + '</strong><span class="muted">' + email + '</span><span class="muted">' + note + '</span></div></td>' +
+          '<td><span class="chip role-' + role + '">' + escapeHtml(role) + '</span></td>' +
+          '<td><span class="chip status-' + status + '">' + escapeHtml(status) + '</span></td>' +
+          '<td><div class="stack"><span>' + unit + '</span><span class="muted">' + scope + '</span></div></td>' +
+          '<td><span class="muted">' + perms + '</span></td>' +
+          '<td>' + updated + '</td>' +
+          '<td><div class="row-actions"><button class="btn btn-secondary small-btn" data-action="edit" data-username="' + escapeHtml(item.username) + '">แก้ไข</button>' + canDeleteBtn + '</div></td>' +
+        '</tr>';
+      }).join('');
+
+      updateStats();
+    }
+
+    function filterItems() {
+      const q = String(searchInput.value || '').trim().toLowerCase();
+      state.filtered = !q ? state.items.slice() : state.items.filter(item => {
+        const bag = [
+          item.username,
+          item.email,
+          item.role,
+          item.status,
+          item.unit,
+          item.scope,
+          item.note,
+          permissionSummary(item)
+        ].join(' ').toLowerCase();
+        return bag.includes(q);
+      });
+      renderTable(state.filtered);
+      setTableStatus('แสดง ' + state.filtered.length + ' จาก ' + state.items.length + ' รายการ', '#bfdbfe');
+    }
+
+    async function loadStaffList() {
+      setTableStatus('กำลังโหลดรายการ staffOS...', '#fef08a');
+      staffTableBody.innerHTML = '<tr><td colspan="7" class="empty-state">กำลังโหลดข้อมูล...</td></tr>';
+      try {
+        const result = await apiGet('getStaffList');
+        state.items = sortItems(Array.isArray(result.data) ? result.data : []);
+        filterItems();
+      } catch (err) {
+        staffTableBody.innerHTML = '<tr><td colspan="7" class="empty-state">' + escapeHtml(err.message || 'โหลดข้อมูลไม่สำเร็จ') + '</td></tr>';
+        setTableStatus(err.message || 'โหลดข้อมูลไม่สำเร็จ', '#fca5a5');
+      }
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+      const payload = collectFormData();
+      try {
+        validateForm(payload);
+        setLoading(true);
+        if (state.mode === 'create') {
+          await apiPost('createStaffMember', payload);
+          await Swal.fire({ icon: 'success', title: 'เพิ่มข้อมูลสำเร็จ', text: 'สร้างผู้ใช้ใหม่ใน staffOS แล้ว', confirmButtonColor: '#16a34a' });
+        } else {
+          payload.username = state.currentUsername;
+          await apiPost('updateStaffMember', payload);
+          await Swal.fire({ icon: 'success', title: 'อัปเดตสำเร็จ', text: 'แก้ไขข้อมูลผู้ใช้เรียบร้อยแล้ว', confirmButtonColor: '#16a34a' });
+        }
+        resetForm();
+        await loadStaffList();
+      } catch (err) {
+        await Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: err.message || 'เกิดข้อผิดพลาด', confirmButtonColor: '#dc2626' });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function handleDelete(username) {
+      if (!canDelete()) {
+        return Swal.fire({ icon: 'warning', title: 'ไม่มีสิทธิ์ลบ', text: 'เฉพาะ super_admin เท่านั้นที่ลบผู้ใช้ได้', confirmButtonColor: '#f59e0b' });
+      }
+
+      const target = username || state.currentUsername;
+      if (!target) return;
+
+      const result = await Swal.fire({
+        icon: 'warning',
+        title: 'ยืนยันการลบ',
+        text: 'ต้องการลบผู้ใช้ ' + target + ' ใช่หรือไม่',
+        showCancelButton: true,
+        confirmButtonText: 'ลบข้อมูล',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#dc2626'
+      });
+      if (!result.isConfirmed) return;
+
+      try {
+        await apiPost('deleteStaffMember', { username: target });
+        await Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', text: 'ลบผู้ใช้ออกจาก staffOS แล้ว', confirmButtonColor: '#16a34a' });
+        resetForm();
+        await loadStaffList();
+      } catch (err) {
+        await Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: err.message || 'เกิดข้อผิดพลาด', confirmButtonColor: '#dc2626' });
+      }
+    }
+
+    async function handleSeedDemo() {
+      const result = await Swal.fire({
+        icon: 'question',
+        title: 'Seed ข้อมูลตัวอย่าง',
+        text: 'ต้องการเพิ่มข้อมูลตัวอย่างในตาราง staffOS หรือไม่',
+        showCancelButton: true,
+        confirmButtonText: 'Seed ข้อมูล',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#0f766e'
+      });
+      if (!result.isConfirmed) return;
+
+      try {
+        await apiPost('seedStaffOsDemoData');
+        await Swal.fire({ icon: 'success', title: 'Seed สำเร็จ', text: 'เติมข้อมูลตัวอย่างเรียบร้อยแล้ว', confirmButtonColor: '#16a34a' });
+        await loadStaffList();
+      } catch (err) {
+        await Swal.fire({ icon: 'error', title: 'Seed ไม่สำเร็จ', text: err.message || 'เกิดข้อผิดพลาด', confirmButtonColor: '#dc2626' });
+      }
+    }
+
+    function findItem(username) {
+      return state.items.find(item => String(item.username || '') === String(username || ''));
+    }
+
+    roleInput.addEventListener('change', function () {
+      if (state.mode === 'create') {
+        applyPermissionCheckboxes(getDefaultPermissions(roleInput.value));
+      }
+    });
+
+    searchInput.addEventListener('input', filterItems);
+    staffForm.addEventListener('submit', handleSubmit);
+
+    document.getElementById('resetBtn').addEventListener('click', () => resetForm());
+    document.getElementById('btnResetFormTop').addEventListener('click', () => resetForm());
+    document.getElementById('btnNewTop').addEventListener('click', () => resetForm());
+    document.getElementById('btnRefreshTop').addEventListener('click', () => loadStaffList());
+    document.getElementById('btnRefreshTable').addEventListener('click', () => loadStaffList());
+    document.getElementById('btnSeedDemo').addEventListener('click', handleSeedDemo);
+    deleteBtn.addEventListener('click', () => handleDelete());
+
+    staffTableBody.addEventListener('click', function (event) {
+      const actionBtn = event.target.closest('[data-action]');
+      if (!actionBtn) return;
+      const action = actionBtn.getAttribute('data-action');
+      const username = actionBtn.getAttribute('data-username');
+      if (!username) return;
+      if (action === 'edit') {
+        const item = findItem(username);
+        if (item) fillForm(item);
+      }
+      if (action === 'delete') {
+        handleDelete(username);
+      }
+    });
+
     window.addEventListener('pageshow', requireAuth);
+    resetForm();
     requireAuth();
   </script>
 </body>

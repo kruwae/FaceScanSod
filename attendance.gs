@@ -1,7 +1,7 @@
 // ============================================================
 
 var STAFFOS_SHEET   = 'staffOS';
-var STAFFOS_HEADERS = ['Username', 'Code', 'Role', 'Status', 'Note', 'Created At', 'Updated At', 'Email', 'Hash Version', 'Hash Salt'];
+var STAFFOS_HEADERS = ['Username', 'Code', 'Role', 'Status', 'Note', 'Created At', 'Updated At', 'Email', 'Hash Version', 'Hash Salt', 'Scope', 'Unit', 'Permissions'];
 var DEFAULT_ADMIN_CODE = '2569';
 var ADMIN_PASSWORD_SALT = 'staffOS-v1';
 var HASH_PREFIX = 'sha256:';
@@ -38,6 +38,7 @@ var DEFAULT_ROLE = ROLE_STAFF;
 var DEFAULT_STAFF_STATUS = 'active';
 var STAFFOS_SCOPE_HEADER = 'Scope';
 var STAFFOS_UNIT_HEADER = 'Unit';
+var STAFFOS_PERMISSIONS_HEADER = 'Permissions';
 var STAFFOS_PERMISSION_HEADERS = ['Can Register Face', 'Can View Report', 'Can Manage Staff', 'Can Manage Config'];
 
 function normalizePasswordInput(password) {
@@ -398,7 +399,7 @@ function ensureStaffSheetWithContract(ss) {
   if (existing.length > 0) {
     var headerRow = existing[0].map(function(h) { return String(h || '').trim(); });
     var extendedHeaders = headerRow.slice();
-    var required = [STAFFOS_SCOPE_HEADER, STAFFOS_UNIT_HEADER]
+    var required = [STAFFOS_SCOPE_HEADER, STAFFOS_UNIT_HEADER, STAFFOS_PERMISSIONS_HEADER]
       .concat(STAFFOS_PERMISSION_HEADERS);
     var changed = false;
     required.forEach(function(header) {
@@ -414,6 +415,131 @@ function ensureStaffSheetWithContract(ss) {
   }
 
   return { sheet: sheet, headerMap: headerMap };
+}
+
+function toStaffPermissionFlags(role) {
+  return {
+    canRegisterFace: false,
+    canViewReport: false,
+    canManageStaff: false,
+    canManageConfig: false
+  };
+}
+
+function buildStaffSeedRecord(username, plainCode, role, email, note, scope, unit, permissions) {
+  var salt = createUserSalt(username + '|' + plainCode);
+  var record = buildPasswordRecord(plainCode, salt, HASH_VERSION_V2);
+  return {
+    'Username': username,
+    'Code': record.hash,
+    'Role': normalizeRole(role),
+    'Status': 'active',
+    'Note': note || '',
+    'Created At': new Date(),
+    'Updated At': new Date(),
+    'Email': normalizeEmail(email || ''),
+    'Hash Version': record.version,
+    'Hash Salt': record.salt,
+    'Scope': normalizeScopeValue(scope || ''),
+    'Unit': normalizeScopeValue(unit || ''),
+    'Permissions': JSON.stringify(permissions || derivePermissionSetFromRole(role)),
+    'Can Register Face': permissions && permissions.canRegisterFace ? 'TRUE' : 'FALSE',
+    'Can View Report': permissions && permissions.canViewReport ? 'TRUE' : 'FALSE',
+    'Can Manage Staff': permissions && permissions.canManageStaff ? 'TRUE' : 'FALSE',
+    'Can Manage Config': permissions && permissions.canManageConfig ? 'TRUE' : 'FALSE'
+  };
+}
+
+function upsertStaffByUsername(sheet, headerMap, staffData) {
+  var rowNumber = findStaffRowByUsername(sheet, headerMap, staffData.Username);
+  if (!rowNumber) rowNumber = sheet.getLastRow() + 1;
+  setRowByHeaders(sheet, rowNumber, headerMap, staffData);
+  return rowNumber;
+}
+
+function seedStaffOsDemoData() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureStaffSheetWithContract(ss);
+  var sheet = result.sheet;
+  var headerMap = upsertStaffPermissionColumns(sheet, result.headerMap);
+
+  var data = sheet.getDataRange().getValues();
+  var existingAdminRow = 0;
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var role = normalizeRole(row[(headerMap['Role'] || headerMap['role']) - 1]);
+    var username = String(row[(headerMap['Username'] || headerMap['username']) - 1] || '').trim().toLowerCase();
+    if ((role === ROLE_ADMIN || role === ROLE_SUPER_ADMIN) && username === 'admin') {
+      existingAdminRow = i + 1;
+      break;
+    }
+  }
+
+  var now = new Date();
+
+  if (existingAdminRow) {
+    var adminExisting = data[existingAdminRow - 1];
+    var adminPermissions = derivePermissionSetFromRole(ROLE_SUPER_ADMIN);
+    setRowByHeaders(sheet, existingAdminRow, headerMap, {
+      'Role': ROLE_SUPER_ADMIN,
+      'Status': 'active',
+      'Note': 'Default super admin — upgraded from existing admin',
+      'Updated At': now,
+      'Scope': '',
+      'Unit': '',
+      'Permissions': JSON.stringify(adminPermissions),
+      'Can Register Face': 'TRUE',
+      'Can View Report': 'TRUE',
+      'Can Manage Staff': 'TRUE',
+      'Can Manage Config': 'TRUE'
+    });
+    if (headerMap['Hash Version']) sheet.getRange(existingAdminRow, headerMap['Hash Version']).setValue(HASH_VERSION_V2);
+    if (headerMap['Hash Salt']) {
+      var existingSalt = String(adminExisting[(headerMap['Hash Salt'] || headerMap['hash salt']) - 1] || '').trim();
+      if (!existingSalt) sheet.getRange(existingAdminRow, headerMap['Hash Salt']).setValue(createUserSalt('admin|super_admin'));
+    }
+  } else {
+    var adminRecord = buildStaffSeedRecord('admin', 'Admin@1234', ROLE_SUPER_ADMIN, '', 'Default super admin', '', '', derivePermissionSetFromRole(ROLE_SUPER_ADMIN));
+    upsertStaffByUsername(sheet, headerMap, adminRecord);
+  }
+
+  var demos = [
+    buildStaffSeedRecord('admin1', 'Admin@1234', ROLE_ADMIN, 'admin1@example.com', 'Demo admin 1', 'school-wide', 'hq', derivePermissionSetFromRole(ROLE_ADMIN)),
+    buildStaffSeedRecord('admin2', 'Admin@1234', ROLE_ADMIN, 'admin2@example.com', 'Demo admin 2', 'school-wide', 'hq', derivePermissionSetFromRole(ROLE_ADMIN)),
+    buildStaffSeedRecord('admin3', 'Admin@1234', ROLE_ADMIN, 'admin3@example.com', 'Demo admin 3', 'school-wide', 'hq', derivePermissionSetFromRole(ROLE_ADMIN)),
+    buildStaffSeedRecord('head_unit1', 'Head@1234', ROLE_HEAD_UNIT, 'head1@example.com', 'Demo head unit 1', 'unit-a', 'unit-a', derivePermissionSetFromRole(ROLE_HEAD_UNIT)),
+    buildStaffSeedRecord('head_unit2', 'Head@1234', ROLE_HEAD_UNIT, 'head2@example.com', 'Demo head unit 2', 'unit-b', 'unit-b', derivePermissionSetFromRole(ROLE_HEAD_UNIT)),
+    buildStaffSeedRecord('head_unit3', 'Head@1234', ROLE_HEAD_UNIT, 'head3@example.com', 'Demo head unit 3', 'unit-c', 'unit-c', derivePermissionSetFromRole(ROLE_HEAD_UNIT)),
+    buildStaffSeedRecord('staff1', 'Staff@1234', ROLE_STAFF, 'staff1@example.com', 'Demo staff 1', 'unit-a', 'unit-a', derivePermissionSetFromRole(ROLE_STAFF)),
+    buildStaffSeedRecord('staff2', 'Staff@1234', ROLE_STAFF, 'staff2@example.com', 'Demo staff 2', 'unit-a', 'unit-a', derivePermissionSetFromRole(ROLE_STAFF)),
+    buildStaffSeedRecord('staff3', 'Staff@1234', ROLE_STAFF, 'staff3@example.com', 'Demo staff 3', 'unit-b', 'unit-b', derivePermissionSetFromRole(ROLE_STAFF)),
+    buildStaffSeedRecord('staff4', 'Staff@1234', ROLE_STAFF, 'staff4@example.com', 'Demo staff 4', 'unit-c', 'unit-c', derivePermissionSetFromRole(ROLE_STAFF)),
+    buildStaffSeedRecord('staff5', 'Staff@1234', ROLE_STAFF, 'staff5@example.com', 'Demo staff 5', 'unit-c', 'unit-c', derivePermissionSetFromRole(ROLE_STAFF))
+  ];
+
+  var created = 0;
+  for (var j = 0; j < demos.length; j++) {
+    var demo = demos[j];
+    var rowNumber = findStaffRowByUsername(sheet, headerMap, demo['Username']);
+    if (!rowNumber) {
+      rowNumber = sheet.getLastRow() + 1;
+      created++;
+    }
+    setRowByHeaders(sheet, rowNumber, headerMap, demo);
+  }
+
+  return {
+    success: true,
+    message: 'Seed staffOS completed',
+    created: created,
+    superAdmin: existingAdminRow ? 'upgraded-existing-admin' : 'created-new-admin',
+    defaults: {
+      superAdmin: 'admin / Admin@1234',
+      admin: 'admin1..admin3 / Admin@1234',
+      headUnit: 'head_unit1..head_unit3 / Head@1234',
+      staff: 'staff1..staff5 / Staff@1234'
+    }
+  };
 }
 
 function normalizeStaffRow(row, headerMap) {
@@ -528,6 +654,7 @@ function applyStaffPermissionRow(sheet, rowNumber, headerMap, input, existingRow
     'Email': input.email,
     'Scope': input.scope,
     'Unit': input.unit,
+    'Permissions': JSON.stringify(permissions),
     'Can Register Face': permissions.canRegisterFace ? 'TRUE' : 'FALSE',
     'Can View Report': permissions.canViewReport ? 'TRUE' : 'FALSE',
     'Can Manage Staff': permissions.canManageStaff ? 'TRUE' : 'FALSE',

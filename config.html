@@ -668,6 +668,13 @@
       display: none !important;
     }
 
+    .auth-badge-wrap {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 9999;
+    }
+
     @keyframes fadeIn {
       from {
         opacity: 0;
@@ -711,7 +718,6 @@
       }
     }
 
-    /* Map Modal Styles */
     .map-modal {
       display: none;
       position: fixed;
@@ -781,6 +787,8 @@
 </head>
 
 <body>
+  <div class="auth-badge-wrap" id="authBadgeHost"></div>
+
   <div class="container">
     <div class="page-header">
       <a href="index.html" class="back-btn">← กลับเมนูหลัก</a>
@@ -903,7 +911,6 @@
     </div>
   </div>
 
-  <!-- Map Picker Modal -->
   <div id="mapModal" class="map-modal">
     <div class="map-header">
       <h3>📍 เลือกตำแหน่งบนแผนที่</h3>
@@ -926,7 +933,6 @@
     const locationsBox = document.getElementById('locations');
     const fallbackEnabledEl = document.getElementById('fallbackEnabled');
 
-    // Map Picker Variables
     let map = null;
     let mapMarker = null;
     let activeLatInput = null;
@@ -955,7 +961,6 @@
       btnLogoutTop.addEventListener('click', doLogout);
     }
 
-    // Map Picker Logic
     function openMap(latInput, lngInput) {
       activeLatInput = latInput;
       activeLngInput = lngInput;
@@ -983,7 +988,6 @@
 
       updateMarker(initialLat, initialLng);
 
-      // Auto-pin current GPS if inputs are empty
       if (!hasValue && navigator.geolocation) {
         if (hintEl) hintEl.innerText = '🛰️ กำลังค้นหาตำแหน่งของคุณ...';
         navigator.geolocation.getCurrentPosition(
@@ -1040,10 +1044,9 @@
         .replace(/</g, '<')
         .replace(/>/g, '>')
         .replace(/"/g, '"')
-        .replace(/'/g, ''');
+        .replace(/'/g, '');
     }
 
-    // ── API URL helpers (ไม่พึ่ง ES module เพื่อหลีกเลี่ยง infinite recursion / CORS บน file://) ──
     function getApiUrl() {
       try {
         const fromStorage = (
@@ -1158,23 +1161,20 @@
         setTimeout(() => wrap.querySelector('.btn-parse-maps').click(), 80);
       });
 
-      // Bind Map Picker
       const latIn = wrap.querySelector('.loc-lat');
       const lngIn = wrap.querySelector('.loc-lng');
       [latIn, lngIn].forEach(el => {
         el.addEventListener('click', () => openMap(latIn, lngIn));
       });
 
-      // Bind Individual Save
       wrap.querySelector('.location-item__save').addEventListener('click', function() {
         saveSingleLocation(wrap);
       });
 
-      // Bind Individual Delete
       wrap.querySelector('.location-item__remove').addEventListener('click', function () {
         const id = wrap.dataset.id;
         if (!id) {
-          wrap.remove(); // Not saved yet, just remove from DOM
+          wrap.remove();
           return;
         }
         if (confirm('ยืนยันหน้าการลบพิกัดนี้ออกจากฐานข้อมูล?')) {
@@ -1200,7 +1200,7 @@
         lat: rowEl.querySelector('.loc-lat').value,
         lng: rowEl.querySelector('.loc-lng').value,
         radius: rowEl.querySelector('.loc-radius').value,
-        token: '', // Legacy mode handles this
+        token: '',
         updatedBy: 'admin'
       };
 
@@ -1431,7 +1431,6 @@
         });
     }
 
-    // ── บันทึกเฉพาะส่วนแผนสำรอง (แสดงผลภายในกรอบแผนสำรอง) ──
     function saveFallback() {
       const fbMsg = document.getElementById('fallbackMsg');
       const apiUrl = (document.getElementById('apiUrl').value || '').trim() || getApiUrl();
@@ -1544,6 +1543,19 @@
       }
     }
 
+    function renderAuthBadge() {
+      const host = document.getElementById('authBadgeHost');
+      if (!host) return;
+      const isAuthedNow = sessionStorage.getItem('adminAuth') === '1';
+      if (!isAuthedNow) {
+        host.innerHTML = '';
+        return;
+      }
+      const role = (sessionStorage.getItem('adminRole') || 'admin').trim() || 'admin';
+      const name = (sessionStorage.getItem('adminName') || '').trim() || 'Admin';
+      host.innerHTML = '<div class="auth-badge" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.28);color:#c7d2fe;font-size:0.82em;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.18)">' + '<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block"></span>' + '<span>' + name + '</span>' + '<span style="opacity:0.7">•</span>' + '<span>' + role + '</span>' + '</div>';
+    }
+
     requireAuth();
     if (getApiUrl()) {
       loadFromServer();
@@ -1554,6 +1566,8 @@
       setFallbackEnabled(false);
       document.getElementById('fallbackContactText').value = 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง';
     }
+
+    document.addEventListener('DOMContentLoaded', renderAuthBadge);
   </script>
 </body>
 

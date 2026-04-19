@@ -254,6 +254,13 @@
       padding: 10px 12px;
     }
 
+    .auth-badge-wrap {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 9999;
+    }
+
     @keyframes fadeInUp {
       from { opacity: 0; transform: translateY(24px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -262,6 +269,8 @@
 </head>
 
 <body>
+  <div class="auth-badge-wrap" id="authBadgeHost"></div>
+
   <div class="login-card" id="loginCard">
     <div class="lock-badge">🔒</div>
     <h1>Admin Only</h1>

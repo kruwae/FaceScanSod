@@ -21,17 +21,24 @@
       --border:   rgba(99,102,241,0.18);
       --accent:   #6366f1;
       --green:    #10b981;
-      --red:      #ef4444;
+      --red:     #ef4444;
       --yellow:   #f59e0b;
-      --blue:     #3b82f6;
-      --text:     #e2e8f0;
-      --muted:    #64748b;
+      --blue:    #3b82f6;
+      --text:    #e2e8f0;
+      --muted:   #64748b;
     }
     body {
       background: var(--bg);
       color: var(--text);
       font-family: 'Sarabun', sans-serif;
       min-height: 100vh;
+    }
+
+    .auth-badge-wrap {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 9999;
     }
 
     /* ===== Top bar ===== */
@@ -154,6 +161,8 @@
       white-space: nowrap; align-self: flex-end;
     }
 
+    .auth-badge-wrap .auth-badge { pointer-events: auto; }
+
     /* ===== Table ===== */
     .table-wrap {
       background: var(--card); border: 1px solid var(--border);
@@ -237,6 +246,7 @@
   </style>
 </head>
 <body>
+<div class="auth-badge-wrap" id="authBadgeHost"></div>
 
 <!-- ===== LOCK SCREEN ===== -->
 <div id="adminLock">
@@ -253,7 +263,6 @@
 
 <!-- ===== ADMIN CONTENT ===== -->
 <div id="adminContent">
-  <!-- Top Bar -->
   <div class="topbar">
     <a href="index.html">← กลับ</a>
     <h1>📊 รายงานการลงชื่อเข้าออก</h1>
@@ -261,15 +270,12 @@
   </div>
 
   <div class="page-wrap">
-    <!-- Time Info Bar -->
     <div class="time-info-bar" id="timeInfoBar">
       <span>⏰ ใช้ค่าเริ่มต้น: เริ่มงาน <strong>08:30</strong> | ถือว่ามาสาย หลัง <strong>08:30</strong> | เลิกงาน <strong>16:30</strong></span>
     </div>
 
-    <!-- Error Box (hidden by default) -->
     <div class="error-box" id="errorBox" style="display:none"></div>
 
-    <!-- Summary Cards -->
     <div class="summary-grid">
       <div class="sum-card green">
         <div class="sum-icon">✅</div>
@@ -293,7 +299,6 @@
       </div>
     </div>
 
-    <!-- Filter Bar -->
     <div class="filter-bar">
       <div class="filter-bar-title">🔍 กรองข้อมูล</div>
       <div class="filter-row">
@@ -330,7 +335,6 @@
       </div>
     </div>
 
-    <!-- Table -->
     <div class="table-wrap">
       <div class="table-header">
         <span class="table-title">📋 บันทึกการลงชื่อ</span>
@@ -365,7 +369,6 @@
 </div>
 
 <script>
-  // แสดงเวลา HH:MM:SS
   function formatTimeHms(timeStr) {
     if (!timeStr || timeStr === '-') return '';
     const parts = String(timeStr).split(':');
@@ -375,12 +378,10 @@
     return `${hh}:${mm}:${ss}`;
   }
 
-  // ===== Config =====
   const SESSION_KEY   = 'adminAuth';
   const API_URL = (localStorage.getItem('gasApiUrl') ||
     (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
 
-  // ===== Auth =====
   function isAuthed() { return sessionStorage.getItem(SESSION_KEY) === '1'; }
 
   function doLogout() {
@@ -444,7 +445,6 @@
     if (e.key === 'Enter') doLogin();
   });
 
-  // ===== Work Time Settings (loaded from config) =====
   let workTimes = {
     startTime:      '08:30',
     lateThreshold:  '08:30',
@@ -452,7 +452,6 @@
     specialDates:   []
   };
 
-  // ===== Init Page =====
   async function initPage() {
     setDefaultDates();
     await loadWorkTimes();
@@ -465,7 +464,6 @@
   }
 
   function setDefaultDates() {
-    // ใช้วันที่ตาม timezone ไทย (Asia/Bangkok +7)
     const todayTh = fmtBangkok(new Date());
     const [y, m] = todayTh.split('-').map(Number);
     const monthStart = `${y}-${String(m).padStart(2, '0')}-01`;
@@ -473,7 +471,6 @@
     document.getElementById('filterEnd').value   = todayTh;
   }
 
-  // แปลง Date เป็น YYYY-MM-DD ตามเวลาไทย (UTC+7)
   function fmtBangkok(d) {
     return new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Asia/Bangkok',
@@ -481,7 +478,6 @@
     }).format(d);
   }
 
-  // compat alias
   function fmt(d) { return fmtBangkok(d); }
 
   async function loadWorkTimes() {
@@ -496,7 +492,7 @@
 
   function updateTimeInfoBar() {
     const bar = document.getElementById('timeInfoBar');
-    const today = fmtBangkok(new Date()); // วันนี้ตาม timezone ไทย
+    const today = fmtBangkok(new Date());
     const special = workTimes.specialDates?.find(s => s.date === today);
     if (special) {
       bar.innerHTML = `⭐ คำสั่งพิเศษวันนี้ (${today}): เริ่มงาน <strong>${special.startTime || workTimes.startTime}</strong> | สาย <strong>${special.lateThreshold || workTimes.lateThreshold}</strong> | เลิกงาน <strong>${special.endTime || workTimes.endTime}</strong> <em style="color:#64748b">— ${special.note || ''}</em>`;
@@ -505,7 +501,6 @@
     }
   }
 
-  // ===== Load Report =====
   let allRecords = [];
 
   async function loadReport() {
@@ -533,12 +528,8 @@
     }
   }
 
-  // ===== Process Logs =====
-  // เช็คอิน = บันทึกแรกสุดของวัน
-  // เช็คออต์ = บันทึกล่าสุดที่ ≥ 13:30 เมื่อมีมากกว่า 1 บันทึก
-  // สถานะ: ตรงเวลา(≤08:30) / สาย(08:31-09:00) / สายมาก(>09:00) / ไม่ลงชื่อ
-  const CHECKOUT_MIN = 13 * 60 + 30; // 13:30
-  const VERY_LATE_MIN = 9 * 60;      // 09:00
+  const CHECKOUT_MIN = 13 * 60 + 30;
+  const VERY_LATE_MIN = 9 * 60;
 
   function timeToMinutes(timeStr) {
     if (!timeStr) return Infinity;
@@ -591,7 +582,6 @@
     const startObj = parseSheetDate(startDate);
     const endObj   = parseSheetDate(endDate);
 
-    // รวบรวมทุก entries ของแต่ละคน/วัน
     logs.forEach(log => {
       const rawName = (log['Name'] || log.name || 'ไม่ระบุ').toString().trim();
       const rawDate = normalizeDateKey(log['Date'] || log.date || '');
@@ -629,10 +619,8 @@
       const dateSpecial = (workTimes.specialDates || []).find(s => s.date === specialIso);
       const lateThresh  = (dateSpecial && dateSpecial.lateThreshold) || workTimes.lateThreshold;
 
-      // เรียง entries ตามเวลา ascending
       const entries = rec.entries.sort((a, b) => a.minutes - b.minutes);
 
-      // ① เช็คอิน = บันทึกแรกสุดที่ type เป็น logAttendance หรือไม่มี type
       const inEntries = entries.filter(e => !e.log['Action Type'] || e.log['Action Type'] === 'logAttendance');
       if (inEntries.length > 0) {
         const first = inEntries[0];
@@ -641,7 +629,6 @@
         rec.gpsStatus     = first.log['GPS Status']      || first.log.gpsStatus     || rec.gpsStatus;
         rec.gpsSkipReason = first.log['GPS Skip Reason'] || first.log.gpsSkipReason || rec.gpsSkipReason;
       } else if (entries.length > 0 && !rec.checkIn) {
-        // Fallback: ถ้ามีบันทึกแต่เป็นประเภทอื่นหมด ให้เอาอันแรกสุด
         const first = entries[0];
         rec.checkIn       = { timeStr: first.timeStr, minutes: first.minutes };
         rec.locationName  = first.log['Location']        || first.log.locationName  || rec.locationName;
@@ -649,7 +636,6 @@
         rec.gpsSkipReason = first.log['GPS Skip Reason'] || first.log.gpsSkipReason || rec.gpsSkipReason;
       }
 
-      // ② เช็คออต์ = บันทึกล่าสุดที่มี type เป็น logCheckout หรือบันทึกที่มีเวลา >= 13:30 (Legacy fallback)
       const explicitOuts = entries.filter(e => e.log['Action Type'] === 'logCheckout');
       if (explicitOuts.length > 0) {
         const latest = explicitOuts[explicitOuts.length - 1];
@@ -664,7 +650,6 @@
         }
       }
 
-      // ③ สถานะ
       let statusType  = 'absent';
       let lateMinutes = 0;
 
@@ -673,12 +658,12 @@
         const lateMin    = timeToMinutes(lateThresh);
 
         if (checkInMin <= lateMin) {
-          statusType = 'ontime';    // ✅ ตรงเวลา: ≤ 08:30
+          statusType = 'ontime';
         } else if (checkInMin <= VERY_LATE_MIN) {
-          statusType   = 'late';    // ⚠️ สาย: 08:31 – 09:00
+          statusType   = 'late';
           lateMinutes  = checkInMin - lateMin;
         } else {
-          statusType   = 'verylate'; // 🔴 สายมาก: > 09:00
+          statusType   = 'verylate';
           lateMinutes  = checkInMin - lateMin;
         }
       }
@@ -700,7 +685,6 @@
     return m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
   }
 
-  // ===== Render Table =====
   function renderTable(records) {
     const nameFilter   = document.getElementById('filterName').value.trim().toLowerCase();
     const statusFilter = document.getElementById('filterStatus').value;
@@ -778,7 +762,6 @@
     return `<span style="color:#34d399;font-size:0.85em">📍 GPS</span>`;
   }
 
-  // ===== Summary =====
   function updateSummary(records) {
     const ontime   = records.filter(r => r.statusType === 'ontime').length;
     const late     = records.filter(r => r.statusType === 'late').length;
@@ -790,9 +773,7 @@
     document.getElementById('cntAbsent').innerText   = absent;
   }
 
-  // ===== Export CSV =====
   function getFilteredRecords() {
-    // เอาที่แสดงในหน้าจอตอนนี้
     const nameFilter   = document.getElementById('filterName').value.trim().toLowerCase();
     const statusFilter = document.getElementById('filterStatus').value;
     return allRecords.filter(r => {
@@ -829,7 +810,6 @@
     a.click();
   }
 
-  // ===== Export HTML Generator (for PDF / DOCX) =====
   function buildExportHTMLTable() {
     const records = getFilteredRecords();
     let html = `
@@ -872,7 +852,6 @@
     return html;
   }
 
-  // ===== Export PDF =====
   function exportPDF() {
     if (getFilteredRecords().length === 0) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
     const element = document.createElement('div');
@@ -887,7 +866,6 @@
     html2pdf().set(opt).from(element).save();
   }
 
-  // ===== Export DOCX (Word) =====
   function exportDOCX() {
     if (getFilteredRecords().length === 0) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
     const tableHtml = buildExportHTMLTable();
@@ -904,7 +882,6 @@
     a.click();
   }
 
-  // ===== Helpers =====
   function esc(s) { return String(s || '').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>'); }
   function showError(html) {
     const b = document.getElementById('errorBox');
@@ -912,10 +889,23 @@
   }
   function hideError() { document.getElementById('errorBox').style.display = 'none'; }
 
-  // Live filter on typing
+  function renderAuthBadge() {
+    const host = document.getElementById('authBadgeHost');
+    if (!host) return;
+    const isAuthedNow = sessionStorage.getItem('adminAuth') === '1';
+    if (!isAuthedNow) {
+      host.innerHTML = '';
+      return;
+    }
+    const role = (sessionStorage.getItem('adminRole') || 'admin').trim() || 'admin';
+    const name = (sessionStorage.getItem('adminName') || '').trim() || 'Admin';
+    host.innerHTML = '<div class="auth-badge" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.28);color:#c7d2fe;font-size:0.82em;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.18)">' + '<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block"></span>' + '<span>' + name + '</span>' + '<span style="opacity:0.7">•</span>' + '<span>' + role + '</span>' + '</div>';
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('filterName').addEventListener('input', () => { if (allRecords.length) renderTable(allRecords); });
     document.getElementById('filterStatus').addEventListener('change', () => { if (allRecords.length) renderTable(allRecords); });
+    renderAuthBadge();
   });
 </script>
 </body>

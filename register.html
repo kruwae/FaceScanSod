@@ -367,10 +367,19 @@
         transform: rotate(360deg);
       }
     }
+
+    .auth-badge-wrap {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 9999;
+    }
   </style>
 </head>
 
 <body>
+
+  <div class="auth-badge-wrap" id="authBadgeHost"></div>
 
   <!-- ===== หน้าล็อก ===== -->
   <div class="admin-lock" id="adminLock">
@@ -475,21 +484,12 @@
       }
     });
 
-    // [REMOVED] LOCAL_FALLBACK_CODE — ไม่มี hardcoded bypass อีกต่อไป
-    // register.html ไม่มี inline login — ใช้ session จาก login.html เท่านั้น
-
-    // [REMOVED] btnAdminLogin inline handler — register.html ไม่มี inline login อีกต่อไป
-    // ถ้าไม่มี session → redirect ไป login.html?to=register.html
-
-
-    // --------- Logout ---------
     function doLogout() {
       sessionStorage.removeItem(SESSION_KEY);
       try {
         localStorage.removeItem('token');
         localStorage.removeItem('readToken');
       } catch (e) {}
-      // หยุดกล้องก่อน
       if (video.srcObject) {
         video.srcObject.getTracks().forEach(t => t.stop());
         video.srcObject = null;
@@ -499,17 +499,14 @@
 
     btnLogout.addEventListener('click', doLogout);
 
-    // --------- ตรวจ session เมื่อโหลดหน้า — ถ้าไม่มี session → redirect ไป login.html ---------
     if (!isAuthed()) {
       window.location.replace('login.html?to=register.html');
     } else {
-      // มี session → แสดงหน้าตั้งค่าทันที
       adminLock.style.display    = 'none';
       adminContent.style.display = 'block';
       if (!API_URL) {
         statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
       } else {
-        // DOMContentLoaded ผ่านแล้ว (script ท้าย body) — เริ่ม AI ได้ทันที
         setTimeout(initModels, 0);
       }
     }
@@ -520,8 +517,6 @@
       }
     });
 
-
-    // --------- Step Dots ---------
     function updateDots() {
       [1, 2, 3].forEach(i => {
         const dot = document.getElementById('dot' + i);
@@ -535,7 +530,6 @@
         : saveLabel + ' <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
     }
 
-    // --------- Load AI ---------
     async function initModels() {
       try {
         statusDiv.innerHTML = '<span class="spinner"></span> กำลังโหลด AI Model...';
@@ -563,7 +557,6 @@
         });
     }
 
-    // --------- Save Face ---------
     async function saveFace() {
       const name = usernameInput.value.trim();
       const position = positionInput.value.trim();
@@ -574,21 +567,18 @@
         return;
       }
 
-      // *** ตรวจสอบเวลาขั้นต่ำระหว่าง capture ***
       const now = Date.now();
       if (now - lastCaptureTime < MIN_CAPTURE_INTERVAL_MS) {
         msgDiv.innerHTML = '<span class="msg-error">⏳ กรุณารอสักครู่แล้วลองใหม่ (ห่างกันอย่างน้อย 1 วินาที)</span>';
         return;
       }
 
-      // ตรวจสอบ session ยังอยู่ไหม
       if (!isAuthed()) {
         alert('หมดสิทธิ์การเข้าถึง กรุณาเข้าสู่ระบบใหม่');
         doLogout();
         return;
       }
 
-      // อ่าน API URL ใหม่ทุกครั้ง (กัน case ที่ตั้งค่าหลัง page load)
       const currentApiUrl = (localStorage.getItem('gasApiUrl') ||
         (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
 
@@ -616,7 +606,6 @@
       const descriptorArray = Array.from(detection.descriptor);
       const quantizedDescriptor = descriptorArray.map(v => Math.floor(v * 127));
 
-      // *** ตรวจสอบว่าหน้าแตกต่างจากมุมที่บันทึกไปแล้ว ***
       if (capturedDescriptors.length > 0) {
         let tooSimilar = false;
         let minDist = 999;
@@ -685,6 +674,21 @@
         btnSave.innerHTML = '📸 บันทึกใบหน้า <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
       }
     }
+
+    function renderAuthBadge() {
+      const host = document.getElementById('authBadgeHost');
+      if (!host) return;
+      const isAuthedNow = sessionStorage.getItem('adminAuth') === '1';
+      if (!isAuthedNow) {
+        host.innerHTML = '';
+        return;
+      }
+      const role = (sessionStorage.getItem('adminRole') || 'admin').trim() || 'admin';
+      const name = (sessionStorage.getItem('adminName') || '').trim() || 'Admin';
+      host.innerHTML = '<div class="auth-badge" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.28);color:#c7d2fe;font-size:0.82em;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.18)">' + '<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block"></span>' + '<span>' + name + '</span>' + '<span style="opacity:0.7">•</span>' + '<span>' + role + '</span>' + '</div>';
+    }
+
+    document.addEventListener('DOMContentLoaded', renderAuthBadge);
   </script>
 </body>
 

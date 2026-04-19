@@ -450,6 +450,10 @@ function buildStaffSeedRecord(username, plainCode, role, email, note, scope, uni
   };
 }
 
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 function upsertStaffByUsername(sheet, headerMap, staffData) {
   var rowNumber = findStaffRowByUsername(sheet, headerMap, staffData.Username);
   if (!rowNumber) rowNumber = sheet.getLastRow() + 1;

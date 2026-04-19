@@ -1621,26 +1621,32 @@ function logAttendance(payload, actionParam) {
 }
 
 function getAttendanceLogs(params) {
-  const auth = authorize('getAttendanceLogs', params);
+  var auth = authorize('getAttendanceLogs', params);
   if (!auth.ok) {
     return { status: 'error', message: auth.error || 'Unauthorized', code: auth.code || 401 };
   }
 
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Attendance');
-  if (!sheet) return [];
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Attendance');
+  if (!sheet) {
+    return { status: 'ok', data: [], count: 0 };
+  }
 
-  const data = sheet.getDataRange().getDisplayValues();
-  if (data.length <= 1) return [];
+  var data = sheet.getDataRange().getDisplayValues();
+  if (data.length <= 1) {
+    return { status: 'ok', data: [], count: 0 };
+  }
 
-  const headers = data[0].map(function(h) { return String(h).trim(); });
-  const filterDate = (params && params.date) ? params.date.trim() : '';
-  const filterName = (params && params.name) ? params.name.trim().toLowerCase() : '';
+  var headers = data[0].map(function(h) { return String(h || '').trim(); });
+  var filterDate = String((params && params.date) || '').trim();
+  var filterName = String((params && params.name) || '').trim().toLowerCase();
 
-  const rows = [];
+  var rows = [];
   for (var i = 1; i < data.length; i++) {
     var row = {};
-    headers.forEach(function(h, idx) { row[h] = data[i][idx]; });
+    for (var j = 0; j < headers.length; j++) {
+      row[headers[j]] = data[i][j];
+    }
 
     if (filterDate) {
       var rowDate = String(row['Date'] || '').replace(/^'/, '').trim();
@@ -1648,9 +1654,14 @@ function getAttendanceLogs(params) {
     }
     if (filterName) {
       var rowName = String(row['Name'] || '').toLowerCase();
-      if (!rowName.includes(filterName)) continue;
+      if (rowName.indexOf(filterName) === -1) continue;
     }
     rows.push(row);
   }
-  return rows;
+
+  return {
+    status: 'ok',
+    data: rows,
+    count: rows.length
+  };
 }

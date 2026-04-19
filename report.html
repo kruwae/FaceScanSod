@@ -6,32 +6,50 @@
   <title>📊 รายงานการลงชื่อเข้าออก</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-  <!-- html2pdf for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script>
-    // ===== Inline GAS API URL (replaced by GAS doGet) =====
     const GAS_API_URL = '';
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:       #07071a;
-      --surface:  #0f0f2d;
-      --card:     #131330;
-      --border:   rgba(99,102,241,0.18);
-      --accent:   #6366f1;
-      --green:    #10b981;
-      --red:     #ef4444;
-      --yellow:   #f59e0b;
-      --blue:    #3b82f6;
-      --text:    #e2e8f0;
-      --muted:   #64748b;
+      --bg: #07071a;
+      --surface: #0f0f2d;
+      --card: #131330;
+      --border: rgba(99,102,241,0.18);
+      --accent: #6366f1;
+      --green: #10b981;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --blue: #3b82f6;
+      --text: #e2e8f0;
+      --muted: #64748b;
     }
     body {
       background: var(--bg);
       color: var(--text);
       font-family: 'Sarabun', sans-serif;
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 40px;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      width: 420px;
+      height: 420px;
+      background: #6366f1;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.09;
+      top: -120px;
+      left: -100px;
+      pointer-events: none;
+      z-index: 0;
     }
 
     .auth-badge-wrap {
@@ -41,235 +59,376 @@
       z-index: 9999;
     }
 
-    /* ===== Top bar ===== */
-    .topbar {
-      display: flex; align-items: center;
-      gap: 12px; padding: 14px 18px;
-      background: rgba(15,15,45,0.95);
-      border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; z-index: 50;
+    .page-wrap {
+      width: 100%;
+      max-width: 1100px;
+      position: relative;
+      z-index: 1;
     }
-    .topbar a { color: #a5b4fc; text-decoration: none; font-size: 1.1em; }
-    .topbar h1 { flex: 1; font-size: 1em; font-weight: 700; color: #c7d2fe; }
-    .btn-logout {
-      padding: 7px 14px; border: none;
-      background: rgba(239,68,68,0.12);
-      color: #fca5a5; border-radius: 10px;
-      font-family: 'Sarabun', sans-serif;
-      font-size: 13px; font-weight: 600; cursor: pointer;
-    }
-    .btn-logout:hover { background: rgba(239,68,68,0.22); }
 
-    /* ===== Lock screen ===== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 12px 0 18px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .topbar a, .topbar button {
+      color: #a5b4fc;
+      text-decoration: none;
+      font-size: 0.9em;
+    }
+
+    .topbar-title {
+      font-size: 1em;
+      font-weight: 700;
+      color: #c7d2fe;
+      text-align: center;
+    }
+
+    .topbar-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #cbd5e1;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 0.88em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .topbar-btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: #e2e8f0;
+    }
+
+    .topbar-btn.logout {
+      background: rgba(239,68,68,0.12);
+      border-color: rgba(239,68,68,0.3);
+      color: #fca5a5;
+    }
+
+    .topbar-btn.logout:hover {
+      background: rgba(239,68,68,0.22);
+    }
+
     #adminLock {
-      display: flex; flex-direction: column; align-items: center;
-      justify-content: center; min-height: 100vh; padding: 24px;
+      width: 100%;
+      min-height: calc(100vh - 48px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
       background: radial-gradient(ellipse at top, #141433 0%, #07071a 70%);
+      position: relative;
+      z-index: 1;
     }
+
     .lock-box {
-      width: 100%; max-width: 380px;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 20px; padding: 32px 24px; text-align: center;
+      width: 100%;
+      max-width: 380px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px 24px;
+      text-align: center;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
+
     .lock-icon { font-size: 3em; margin-bottom: 10px; }
     .lock-title { font-size: 1.2em; font-weight: 700; color: #c7d2fe; margin-bottom: 6px; }
     .lock-sub { font-size: 0.85em; color: var(--muted); margin-bottom: 24px; }
+
     .lock-input {
-      width: 100%; padding: 14px; background: rgba(99,102,241,0.08);
-      border: 1px solid var(--border); border-radius: 12px;
-      color: var(--text); font-family: 'Sarabun', sans-serif;
-      font-size: 1em; text-align: center; letter-spacing: 4px; outline: none;
+      width: 100%;
+      padding: 14px;
+      background: rgba(99,102,241,0.08);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: 'Sarabun', sans-serif;
+      font-size: 1em;
+      text-align: center;
+      letter-spacing: 4px;
+      outline: none;
       margin-bottom: 14px;
     }
+
     .lock-input:focus { border-color: var(--accent); }
+
     .lock-btn {
-      width: 100%; padding: 14px; border: none;
+      width: 100%;
+      padding: 14px;
+      border: none;
       background: linear-gradient(135deg, var(--accent), #818cf8);
-      color: white; border-radius: 12px; font-family: 'Sarabun', sans-serif;
-      font-size: 1em; font-weight: 700; cursor: pointer;
+      color: white;
+      border-radius: 12px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 1em;
+      font-weight: 700;
+      cursor: pointer;
     }
-    .lock-msg { margin-top: 10px; font-size: 0.85em; min-height: 20px; }
 
-    /* ===== Main Content ===== */
+    .lock-msg {
+      margin-top: 10px;
+      font-size: 0.85em;
+      min-height: 20px;
+    }
+
     #adminContent { display: none; }
-    .page-wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
 
-    /* ===== Summary Cards ===== */
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 12px; margin-bottom: 20px;
+      gap: 12px;
+      margin-bottom: 20px;
     }
+
     @media (max-width: 700px) {
       .summary-grid { grid-template-columns: repeat(2, 1fr); }
     }
+
     .sum-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 16px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 14px;
       text-align: center;
     }
+
     .sum-icon { font-size: 2em; }
     .sum-num { font-size: 2em; font-weight: 800; margin: 4px 0; }
     .sum-label { font-size: 0.78em; color: var(--muted); font-weight: 600; }
-    .sum-card.green  { border-color: rgba(16,185,129,0.25); }
-    .sum-card.green  .sum-num { color: #34d399; }
+    .sum-card.green { border-color: rgba(16,185,129,0.25); }
+    .sum-card.green .sum-num { color: #34d399; }
     .sum-card.yellow { border-color: rgba(245,158,11,0.25); }
     .sum-card.yellow .sum-num { color: #fcd34d; }
-    .sum-card.red    { border-color: rgba(239,68,68,0.25); }
-    .sum-card.red    .sum-num { color: #fca5a5; }
-    .sum-card.blue   { border-color: rgba(59,130,246,0.25); }
-    .sum-card.blue   .sum-num { color: #93c5fd; }
+    .sum-card.red { border-color: rgba(239,68,68,0.25); }
+    .sum-card.red .sum-num { color: #fca5a5; }
 
-    /* ===== Filter bar ===== */
     .filter-bar {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 14px 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
       margin-bottom: 16px;
     }
+
     .filter-bar-title {
-      font-size: 0.78em; font-weight: 700; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.05em;
+      font-size: 0.78em;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
       margin-bottom: 10px;
     }
+
     .filter-row {
-      display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: flex-end;
     }
-    .filter-group { display: flex; flex-direction: column; gap: 4px; }
-    .filter-group label { font-size: 0.78em; color: var(--muted); font-weight: 600; }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-group label {
+      font-size: 0.78em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
     .filter-input {
       padding: 9px 12px;
       background: rgba(99,102,241,0.07);
       border: 1px solid var(--border);
-      border-radius: 10px; color: var(--text);
-      font-family: 'Sarabun', sans-serif; font-size: 13.5px;
-      outline: none; min-width: 140px;
-    }
-    .filter-input:focus { border-color: var(--accent); }
-    .btn-filter {
-      padding: 9px 20px; border: none;
-      background: linear-gradient(135deg, var(--accent), #818cf8);
-      color: white; border-radius: 10px;
+      border-radius: 10px;
+      color: var(--text);
       font-family: 'Sarabun', sans-serif;
-      font-size: 13.5px; font-weight: 700; cursor: pointer;
-      white-space: nowrap; align-self: flex-end;
+      font-size: 13.5px;
+      outline: none;
+      min-width: 140px;
     }
+
+    .filter-input:focus { border-color: var(--accent); }
+
+    .btn-filter, .btn-export {
+      padding: 9px 16px;
+      border-radius: 10px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      align-self: flex-end;
+      transition: all 0.25s ease;
+    }
+
+    .btn-filter {
+      border: none;
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      color: white;
+      padding: 9px 20px;
+    }
+
     .btn-export {
-      padding: 9px 16px; border: 1px solid rgba(16,185,129,0.3);
-      background: rgba(16,185,129,0.1); color: #34d399;
-      border-radius: 10px; font-family: 'Sarabun', sans-serif;
-      font-size: 13px; font-weight: 700; cursor: pointer;
-      white-space: nowrap; align-self: flex-end;
+      border: 1px solid rgba(16,185,129,0.3);
+      background: rgba(16,185,129,0.1);
+      color: #34d399;
     }
 
-    .auth-badge-wrap .auth-badge { pointer-events: auto; }
-
-    /* ===== Table ===== */
     .table-wrap {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; overflow: hidden;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
     }
+
     .table-header {
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       padding: 14px 16px;
       border-bottom: 1px solid var(--border);
     }
+
     .table-title { font-size: 0.88em; font-weight: 700; color: #a5b4fc; }
     .table-count { font-size: 0.78em; color: var(--muted); }
+
     .report-table {
-      width: 100%; border-collapse: collapse; font-size: 0.84em;
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84em;
     }
+
     .report-table thead th {
-      padding: 10px 14px; text-align: left;
+      padding: 10px 14px;
+      text-align: left;
       background: rgba(99,102,241,0.06);
-      color: var(--muted); font-weight: 700; font-size: 0.75em;
-      text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 0.75em;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
       border-bottom: 1px solid var(--border);
       white-space: nowrap;
     }
+
     .report-table tbody tr:hover { background: rgba(99,102,241,0.04); }
     .report-table tbody tr + tr { border-top: 1px solid rgba(255,255,255,0.04); }
+
     .report-table tbody td {
-      padding: 10px 14px; vertical-align: middle;
+      padding: 10px 14px;
+      vertical-align: middle;
     }
+
     .td-name { font-weight: 700; color: #c7d2fe; }
     .td-time { font-family: monospace; color: var(--text); font-size: 0.95em; }
     .td-time.late { color: #fcd34d; }
     .td-time.missing { color: #fca5a5; }
 
-    /* Status badges */
     .badge {
-      display: inline-block; padding: 3px 10px; border-radius: 20px;
-      font-size: 0.8em; font-weight: 700; white-space: nowrap;
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: 700;
+      white-space: nowrap;
     }
+
     .badge-announce { background: rgba(59,130,246,0.15); color: #93c5fd; border: 1px solid rgba(59,130,246,0.25); }
     .badge-ontime { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
-    .badge-late   { background: rgba(245,158,11,0.15);  color: #fcd34d; border: 1px solid rgba(245,158,11,0.25); }
+    .badge-late { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.25); }
     .badge-verylate { background: rgba(220,38,38,0.2); color: #ff8080; border: 1px solid rgba(220,38,38,0.45); }
-    .badge-absent { background: rgba(239,68,68,0.15);   color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
+    .badge-absent { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
     .badge-nocheckout { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25); }
     .badge-gps-skip { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px dashed rgba(239,68,68,0.3); font-size: 0.7em; margin-left: 4px; }
-    .badge-wifi   { background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.25); }
+    .badge-wifi { background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.25); }
 
-    /* Loading / Empty */
     .loading-row, .empty-row {
-      text-align: center; padding: 40px 20px;
-      color: var(--muted); font-size: 0.9em;
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 0.9em;
     }
+
     .spinner {
-      display: inline-block; width: 28px; height: 28px;
+      display: inline-block;
+      width: 28px;
+      height: 28px;
       border: 3px solid rgba(99,102,241,0.2);
       border-top-color: var(--accent);
-      border-radius: 50%; animation: spin 0.8s linear infinite;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
       margin-bottom: 8px;
     }
+
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Responsive table scroll */
     .table-scroll { overflow-x: auto; }
 
-    /* Work time info bar */
     .time-info-bar {
       background: rgba(99,102,241,0.07);
-      border: 1px solid var(--border); border-radius: 12px;
-      padding: 10px 16px; margin-bottom: 16px;
-      display: flex; gap: 20px; flex-wrap: wrap;
-      font-size: 0.82em; color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 0.82em;
+      color: var(--muted);
     }
+
     .time-info-item strong { color: #c7d2fe; }
 
-    /* Error */
     .error-box {
-      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
-      border-radius: 12px; padding: 16px; color: #fca5a5;
-      margin-bottom: 16px; font-size: 0.88em;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 12px;
+      padding: 16px;
+      color: #fca5a5;
+      margin-bottom: 16px;
+      font-size: 0.88em;
     }
   </style>
 </head>
 <body>
 <div class="auth-badge-wrap" id="authBadgeHost"></div>
 
-<!-- ===== LOCK SCREEN ===== -->
 <div id="adminLock">
   <div class="lock-box">
     <div class="lock-icon">📊</div>
     <div class="lock-title">รายงานการลงชื่อเข้าออก</div>
     <div class="lock-sub">กรุณาเข้าสู่ระบบ Admin ก่อนดูรายงาน</div>
-    <input type="password" id="lockCode" class="lock-input" placeholder="••••" maxlength="20"
-           onkeydown="if(event.key==='Enter') doLogin()">
+    <input type="password" id="lockCode" class="lock-input" placeholder="••••" maxlength="20" onkeydown="if(event.key==='Enter') doLogin()">
     <button class="lock-btn" onclick="doLogin()">🔓 เข้าสู่ระบบ</button>
     <div class="lock-msg" id="lockMsg"></div>
   </div>
 </div>
 
-<!-- ===== ADMIN CONTENT ===== -->
 <div id="adminContent">
-  <div class="topbar">
-    <a href="index.html">← กลับ</a>
-    <h1>📊 รายงานการลงชื่อเข้าออก</h1>
-    <button class="btn-logout" onclick="doLogout()">ออกจากระบบ</button>
-  </div>
-
   <div class="page-wrap">
+    <div class="topbar">
+      <a href="index.html" class="topbar-btn">← กลับ</a>
+      <div class="topbar-title">📊 รายงานการลงชื่อเข้าออก</div>
+      <button class="topbar-btn logout" onclick="doLogout()">ออกจากระบบ</button>
+    </div>
+
     <div class="time-info-bar" id="timeInfoBar">
       <span>⏰ ใช้ค่าเริ่มต้น: เริ่มงาน <strong>08:30</strong> | ถือว่ามาสาย หลัง <strong>08:30</strong> | เลิกงาน <strong>16:30</strong></span>
     </div>
@@ -368,26 +527,19 @@
   </div>
 </div>
 
-  <script src="auth-badge.js"></script>
-  <script>
-    function formatTimeHms(timeStr) {
-    if (!timeStr || timeStr === '-') return '';
-    const parts = String(timeStr).split(':');
-    const hh = String(parseInt(parts[0] || 0, 10)).padStart(2, '0');
-    const mm = String(parseInt(parts[1] || 0, 10)).padStart(2, '0');
-    const ss = String(parseInt(parts[2] || 0, 10)).padStart(2, '0');
-    return `${hh}:${mm}:${ss}`;
+<script src="auth-badge.js"></script>
+<script>
+  const SESSION_KEY = 'adminAuth';
+  const API_URL = (localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
+
+  function isAuthed() {
+    try { return sessionStorage.getItem(SESSION_KEY) === '1'; }
+    catch (e) { return false; }
   }
 
-    const SESSION_KEY   = 'adminAuth';
-    const API_URL = (localStorage.getItem('gasApiUrl') ||
-      (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
-
-    function isAuthed() { return sessionStorage.getItem(SESSION_KEY) === '1'; }
-
   function doLogout() {
-    sessionStorage.removeItem(SESSION_KEY);
-    window.location.replace('index.html');
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+    window.location.replace('login.html?to=report.html');
   }
 
   function normalizeCodeInput(value) {
@@ -412,22 +564,30 @@
       });
       const d = await r.json();
       return d.success === true;
-    } catch (_) { return false; }
+    } catch (_) {
+      return false;
+    }
   }
 
   async function doLogin() {
     const code = normalizeCodeInput(document.getElementById('lockCode').value);
-    const msg  = document.getElementById('lockMsg');
-    if (!code.trim()) { msg.style.color = '#fca5a5'; msg.innerText = 'กรุณากรอกรหัส'; return; }
-    msg.style.color = '#94a3b8'; msg.innerText = '⏳ กำลังตรวจสอบ...';
+    const msg = document.getElementById('lockMsg');
+    if (!code.trim()) {
+      msg.style.color = '#fca5a5';
+      msg.innerText = 'กรุณากรอกรหัส';
+      return;
+    }
+    msg.style.color = '#94a3b8';
+    msg.innerText = '⏳ กำลังตรวจสอบ...';
     const ok = await verifyCode(code);
     if (ok) {
-      sessionStorage.setItem(SESSION_KEY, '1');
+      try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (e) {}
       document.getElementById('adminLock').style.display = 'none';
       document.getElementById('adminContent').style.display = 'block';
       initPage();
     } else {
-      msg.style.color = '#fca5a5'; msg.innerText = '❌ รหัสไม่ถูกต้อง';
+      msg.style.color = '#fca5a5';
+      msg.innerText = '❌ รหัสไม่ถูกต้อง';
     }
   }
 
@@ -442,15 +602,11 @@
     }
   });
 
-  document.getElementById('lockCode').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
-  });
-
   let workTimes = {
-    startTime:      '08:30',
-    lateThreshold:  '08:30',
-    endTime:        '16:30',
-    specialDates:   []
+    startTime: '08:30',
+    lateThreshold: '08:30',
+    endTime: '16:30',
+    specialDates: []
   };
 
   async function initPage() {
@@ -469,7 +625,7 @@
     const [y, m] = todayTh.split('-').map(Number);
     const monthStart = `${y}-${String(m).padStart(2, '0')}-01`;
     document.getElementById('filterStart').value = monthStart;
-    document.getElementById('filterEnd').value   = todayTh;
+    document.getElementById('filterEnd').value = todayTh;
   }
 
   function fmtBangkok(d) {
@@ -478,8 +634,6 @@
       year: 'numeric', month: '2-digit', day: '2-digit'
     }).format(d);
   }
-
-  function fmt(d) { return fmtBangkok(d); }
 
   async function loadWorkTimes() {
     try {
@@ -507,7 +661,7 @@
   async function loadReport() {
     if (!API_URL) { showError('❌ ยังไม่ได้ตั้งค่า API URL'); return; }
     const start = document.getElementById('filterStart').value;
-    const end   = document.getElementById('filterEnd').value;
+    const end = document.getElementById('filterEnd').value;
     if (!start || !end) { showError('⚠️ กรุณาเลือกช่วงวันที่'); return; }
 
     const body = document.getElementById('reportBody');
@@ -581,7 +735,7 @@
   function processLogs(logs, startDate, endDate) {
     const map = {};
     const startObj = parseSheetDate(startDate);
-    const endObj   = parseSheetDate(endDate);
+    const endObj = parseSheetDate(endDate);
 
     logs.forEach(log => {
       const rawName = (log['Name'] || log.name || 'ไม่ระบุ').toString().trim();
@@ -591,49 +745,49 @@
 
       if (!rawDate || !parsedDate) return;
       if (startObj && parsedDate < startObj) return;
-      if (endObj   && parsedDate > endObj)   return;
+      if (endObj && parsedDate > endObj) return;
 
-      const key     = rawName + '|' + rawDate;
+      const key = rawName + '|' + rawDate;
       const minutes = timeToMinutes(rawTime);
 
       if (!map[key]) {
         map[key] = {
-          name:          rawName,
-          date:          rawDate,
-          displayDate:   parsedDate.toLocaleDateString('th-TH', {
+          name: rawName,
+          date: rawDate,
+          displayDate: parsedDate.toLocaleDateString('th-TH', {
             year: 'numeric', month: 'short', day: 'numeric',
             timeZone: 'Asia/Bangkok'
           }),
-          checkIn:       null,
-          checkOut:      null,
-          locationName:  log['Location']        || log.locationName  || '',
-          gpsStatus:     log['GPS Status']      || log.gpsStatus     || 'ok',
+          checkIn: null,
+          checkOut: null,
+          locationName: log['Location'] || log.locationName || '',
+          gpsStatus: log['GPS Status'] || log.gpsStatus || 'ok',
           gpsSkipReason: log['GPS Skip Reason'] || log.gpsSkipReason || '',
-          entries:       []
+          entries: []
         };
       }
       map[key].entries.push({ timeStr: rawTime, minutes, log });
     });
 
     return Object.values(map).map(rec => {
-      const specialIso  = isoFromDmy(rec.date);
+      const specialIso = isoFromDmy(rec.date);
       const dateSpecial = (workTimes.specialDates || []).find(s => s.date === specialIso);
-      const lateThresh  = (dateSpecial && dateSpecial.lateThreshold) || workTimes.lateThreshold;
+      const lateThresh = (dateSpecial && dateSpecial.lateThreshold) || workTimes.lateThreshold;
 
       const entries = rec.entries.sort((a, b) => a.minutes - b.minutes);
 
       const inEntries = entries.filter(e => !e.log['Action Type'] || e.log['Action Type'] === 'logAttendance');
       if (inEntries.length > 0) {
         const first = inEntries[0];
-        rec.checkIn       = { timeStr: first.timeStr, minutes: first.minutes };
-        rec.locationName  = first.log['Location']        || first.log.locationName  || rec.locationName;
-        rec.gpsStatus     = first.log['GPS Status']      || first.log.gpsStatus     || rec.gpsStatus;
+        rec.checkIn = { timeStr: first.timeStr, minutes: first.minutes };
+        rec.locationName = first.log['Location'] || first.log.locationName || rec.locationName;
+        rec.gpsStatus = first.log['GPS Status'] || first.log.gpsStatus || rec.gpsStatus;
         rec.gpsSkipReason = first.log['GPS Skip Reason'] || first.log.gpsSkipReason || rec.gpsSkipReason;
       } else if (entries.length > 0 && !rec.checkIn) {
         const first = entries[0];
-        rec.checkIn       = { timeStr: first.timeStr, minutes: first.minutes };
-        rec.locationName  = first.log['Location']        || first.log.locationName  || rec.locationName;
-        rec.gpsStatus     = first.log['GPS Status']      || first.log.gpsStatus     || rec.gpsStatus;
+        rec.checkIn = { timeStr: first.timeStr, minutes: first.minutes };
+        rec.locationName = first.log['Location'] || first.log.locationName || rec.locationName;
+        rec.gpsStatus = first.log['GPS Status'] || first.log.gpsStatus || rec.gpsStatus;
         rec.gpsSkipReason = first.log['GPS Skip Reason'] || first.log.gpsSkipReason || rec.gpsSkipReason;
       }
 
@@ -651,21 +805,21 @@
         }
       }
 
-      let statusType  = 'absent';
+      let statusType = 'absent';
       let lateMinutes = 0;
 
       if (rec.checkIn && Number.isFinite(rec.checkIn.minutes)) {
         const checkInMin = rec.checkIn.minutes;
-        const lateMin    = timeToMinutes(lateThresh);
+        const lateMin = timeToMinutes(lateThresh);
 
         if (checkInMin <= lateMin) {
           statusType = 'ontime';
         } else if (checkInMin <= VERY_LATE_MIN) {
-          statusType   = 'late';
-          lateMinutes  = checkInMin - lateMin;
+          statusType = 'late';
+          lateMinutes = checkInMin - lateMin;
         } else {
-          statusType   = 'verylate';
-          lateMinutes  = checkInMin - lateMin;
+          statusType = 'verylate';
+          lateMinutes = checkInMin - lateMin;
         }
       }
 
@@ -687,17 +841,17 @@
   }
 
   function renderTable(records) {
-    const nameFilter   = document.getElementById('filterName').value.trim().toLowerCase();
+    const nameFilter = document.getElementById('filterName').value.trim().toLowerCase();
     const statusFilter = document.getElementById('filterStatus').value;
 
     const filtered = records.filter(r => {
       if (nameFilter && !r.name.toLowerCase().includes(nameFilter)) return false;
-      if (statusFilter === 'ontime'     && r.statusType !== 'ontime')   return false;
-      if (statusFilter === 'late'       && r.statusType !== 'late')     return false;
-      if (statusFilter === 'verylate'   && r.statusType !== 'verylate') return false;
-      if (statusFilter === 'absent'     && r.statusType !== 'absent')   return false;
+      if (statusFilter === 'ontime' && r.statusType !== 'ontime') return false;
+      if (statusFilter === 'late' && r.statusType !== 'late') return false;
+      if (statusFilter === 'verylate' && r.statusType !== 'verylate') return false;
+      if (statusFilter === 'absent' && r.statusType !== 'absent') return false;
       if (statusFilter === 'nocheckout' && (r.statusType === 'absent' || r.checkOut)) return false;
-      if (statusFilter === 'skipgps'    && r.gpsStatus === 'ok')        return false;
+      if (statusFilter === 'skipgps' && r.gpsStatus === 'ok') return false;
       return true;
     });
 
@@ -711,11 +865,11 @@
 
     body.innerHTML = filtered.map((r, i) => {
       const statusBadge = getStatusBadge(r);
-      const gpsBadge    = getGpsBadge(r);
-      const checkInClass  = (r.statusType === 'late' || r.statusType === 'verylate') ? 'td-time late' : 'td-time';
+      const gpsBadge = getGpsBadge(r);
+      const checkInClass = (r.statusType === 'late' || r.statusType === 'verylate') ? 'td-time late' : 'td-time';
       const checkOutClass = !r.checkOut ? 'td-time missing' : 'td-time';
-      const checkInText   = r.checkIn  ? formatTimeHms(r.checkIn.timeStr)  || '<span style="color:#f87171">—</span>' : '<span style="color:#f87171">—</span>';
-      const checkOutText  = r.checkOut ? formatTimeHms(r.checkOut.timeStr) || '<span style="color:#64748b">—</span>' : '<span style="color:#64748b">—</span>';
+      const checkInText = r.checkIn ? formatTimeHms(r.checkIn.timeStr) || '<span style="color:#f87171">—</span>' : '<span style="color:#f87171">—</span>';
+      const checkOutText = r.checkOut ? formatTimeHms(r.checkOut.timeStr) || '<span style="color:#64748b">—</span>' : '<span style="color:#64748b">—</span>';
       return `<tr>
         <td style="color:var(--muted);font-size:0.8em">${i+1}</td>
         <td class="td-name">${esc(r.name)}</td>
@@ -764,27 +918,23 @@
   }
 
   function updateSummary(records) {
-    const ontime   = records.filter(r => r.statusType === 'ontime').length;
-    const late     = records.filter(r => r.statusType === 'late').length;
-    const verylate = records.filter(r => r.statusType === 'verylate').length;
-    const absent   = records.filter(r => r.statusType === 'absent').length;
-    document.getElementById('cntOntime').innerText   = ontime;
-    document.getElementById('cntLate').innerText     = late;
-    document.getElementById('cntVeryLate').innerText = verylate;
-    document.getElementById('cntAbsent').innerText   = absent;
+    document.getElementById('cntOntime').innerText = records.filter(r => r.statusType === 'ontime').length;
+    document.getElementById('cntLate').innerText = records.filter(r => r.statusType === 'late').length;
+    document.getElementById('cntVeryLate').innerText = records.filter(r => r.statusType === 'verylate').length;
+    document.getElementById('cntAbsent').innerText = records.filter(r => r.statusType === 'absent').length;
   }
 
   function getFilteredRecords() {
-    const nameFilter   = document.getElementById('filterName').value.trim().toLowerCase();
+    const nameFilter = document.getElementById('filterName').value.trim().toLowerCase();
     const statusFilter = document.getElementById('filterStatus').value;
     return allRecords.filter(r => {
       if (nameFilter && !r.name.toLowerCase().includes(nameFilter)) return false;
-      if (statusFilter === 'ontime'     && r.statusType !== 'ontime')   return false;
-      if (statusFilter === 'late'       && r.statusType !== 'late')     return false;
-      if (statusFilter === 'verylate'   && r.statusType !== 'verylate') return false;
-      if (statusFilter === 'absent'     && r.statusType !== 'absent')   return false;
+      if (statusFilter === 'ontime' && r.statusType !== 'ontime') return false;
+      if (statusFilter === 'late' && r.statusType !== 'late') return false;
+      if (statusFilter === 'verylate' && r.statusType !== 'verylate') return false;
+      if (statusFilter === 'absent' && r.statusType !== 'absent') return false;
       if (statusFilter === 'nocheckout' && (r.statusType === 'absent' || r.checkOut)) return false;
-      if (statusFilter === 'skipgps'    && r.gpsStatus === 'ok')        return false;
+      if (statusFilter === 'skipgps' && r.gpsStatus === 'ok') return false;
       return true;
     });
   }
@@ -795,18 +945,16 @@
     const header = ['ลำดับ', 'ชื่อ', 'วันที่', 'เช็คอิน', 'เช็คเอ้าท์', 'สถานที่', 'GPS', 'สถานะ', 'สายกี่นาที'];
     const rows = records.map((r, i) => [
       i + 1, r.name, r.displayDate,
-      r.checkIn  ? formatTimeHms(r.checkIn.timeStr)  : '',
+      r.checkIn ? formatTimeHms(r.checkIn.timeStr) : '',
       r.checkOut ? formatTimeHms(r.checkOut.timeStr) : '',
       r.locationName, r.gpsStatus,
       r.statusType === 'ontime' ? 'ตรงเวลา' : r.statusType === 'late' ? 'สาย' : r.statusType === 'verylate' ? 'สายมาก' : 'ไม่ลงชื่อ',
       r.lateMinutes || 0
     ]);
-    const csv = [header, ...rows].map(row =>
-      row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')
-    ).join('\n');
+    const csv = [header, ...rows].map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const a    = document.createElement('a');
-    a.href     = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
     a.download = 'attendance_' + document.getElementById('filterStart').value + '.csv';
     a.click();
   }
@@ -833,7 +981,7 @@
           <tbody>
     `;
     records.forEach((r, i) => {
-      const inTime  = r.checkIn ? formatTimeHms(r.checkIn.timeStr) : '-';
+      const inTime = r.checkIn ? formatTimeHms(r.checkIn.timeStr) : '-';
       const outTime = r.checkOut ? formatTimeHms(r.checkOut.timeStr) : '-';
       const statusStr = r.statusType === 'ontime' ? 'ตรงเวลา' : r.statusType === 'late' ? 'สาย' : r.statusType === 'verylate' ? 'สายมาก' : 'ไม่ลงชื่อ';
       html += `
@@ -858,11 +1006,11 @@
     const element = document.createElement('div');
     element.innerHTML = buildExportHTMLTable();
     const opt = {
-      margin:       0.5,
-      filename:     'attendance_' + document.getElementById('filterStart').value + '.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2 },
-      jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+      margin: 0.5,
+      filename: 'attendance_' + document.getElementById('filterStart').value + '.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
     };
     html2pdf().set(opt).from(element).save();
   }
@@ -883,21 +1031,40 @@
     a.click();
   }
 
-    function esc(s) { return String(s || '').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>'); }
+  function esc(s) { return String(s || '').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>'); }
   function showError(html) {
     const b = document.getElementById('errorBox');
-    b.innerHTML = html; b.style.display = 'block';
+    b.innerHTML = html;
+    b.style.display = 'block';
   }
   function hideError() { document.getElementById('errorBox').style.display = 'none'; }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('filterName').addEventListener('input', () => { if (allRecords.length) renderTable(allRecords); });
-      document.getElementById('filterStatus').addEventListener('change', () => { if (allRecords.length) renderTable(allRecords); });
-      renderAuthBadge('authBadgeHost');
-      if (!isAuthed()) {
-        window.location.replace('login.html?to=report.html');
-      }
-    });
+  function renderAuthBadge() {
+    const host = document.getElementById('authBadgeHost');
+    if (!host) return;
+    const isAuthedNow = sessionStorage.getItem('adminAuth') === '1';
+    if (!isAuthedNow) {
+      host.innerHTML = '';
+      return;
+    }
+    const role = (sessionStorage.getItem('adminRole') || 'admin').trim() || 'admin';
+    const name = (sessionStorage.getItem('adminName') || '').trim() || 'Admin';
+    host.innerHTML = '<div class="auth-badge" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.28);color:#c7d2fe;font-size:0.82em;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.18)">' + '<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block"></span>' + '<span>' + name + '</span>' + '<span style="opacity:0.7">•</span>' + '<span>' + role + '</span>' + '</div>';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('filterName').addEventListener('input', () => { if (allRecords.length) renderTable(allRecords); });
+    document.getElementById('filterStatus').addEventListener('change', () => { if (allRecords.length) renderTable(allRecords); });
+    renderAuthBadge();
+    if (isAuthed()) {
+      document.getElementById('adminLock').style.display = 'none';
+      document.getElementById('adminContent').style.display = 'block';
+      initPage();
+    } else {
+      document.getElementById('adminLock').style.display = 'flex';
+      document.getElementById('adminContent').style.display = 'none';
+    }
+  });
 </script>
 </body>
 </html>

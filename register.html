@@ -29,7 +29,6 @@
       position: relative;
     }
 
-    /* Ambient orb */
     body::before {
       content: '';
       position: fixed;
@@ -54,7 +53,6 @@
       display: none;
     }
 
-    /* ===== Admin Lock Screen ===== */
     .admin-lock {
       width: 100%;
       max-width: 460px;
@@ -119,7 +117,6 @@
       box-shadow: 0 10px 28px rgba(99, 102, 241, 0.4);
     }
 
-    /* ===== Header & Navigation ===== */
     .page-header {
       text-align: center;
       margin-bottom: 24px;
@@ -127,9 +124,11 @@
 
     .header-top {
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
+      gap: 10px;
       margin-bottom: 16px;
+      flex-wrap: wrap;
     }
 
     .back-btn {
@@ -188,7 +187,6 @@
       line-height: 1.6;
     }
 
-    /* Step dots */
     .step-dots {
       display: flex;
       justify-content: center;
@@ -210,7 +208,6 @@
       box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
     }
 
-    /* Status */
     #status {
       font-size: 0.88em;
       color: #64748b;
@@ -232,7 +229,6 @@
       animation: spin 0.8s linear infinite;
     }
 
-    /* Video */
     .video-wrapper {
       position: relative;
       border-radius: 20px;
@@ -252,7 +248,6 @@
       border-radius: 18px;
     }
 
-    /* Form Section */
     .form-section {
       margin-top: 22px;
       background: rgba(255, 255, 255, 0.05);
@@ -349,17 +344,9 @@
       color: #f87171;
     }
 
-    /* Animations */
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     @keyframes spin {
@@ -374,6 +361,19 @@
       right: 14px;
       z-index: 9999;
     }
+
+    @media (max-width: 640px) {
+      .header-top {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .back-btn,
+      .logout-btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
   </style>
 </head>
 
@@ -381,7 +381,6 @@
 
   <div class="auth-badge-wrap" id="authBadgeHost"></div>
 
-  <!-- ===== หน้าล็อก ===== -->
   <div class="admin-lock" id="adminLock">
     <a href="index.html" class="back-btn">← กลับเมนูหลัก</a>
     <div class="admin-lock__badge">🔒</div>
@@ -390,7 +389,6 @@
     <button class="btn-admin btn-admin-login" id="btnAdminLogin">🔓 ยืนยันรหัสแอดมิน</button>
   </div>
 
-  <!-- ===== เนื้อหาหลัก (แสดงหลังยืนยัน) ===== -->
   <div class="container" id="adminContent">
     <div class="page-header">
       <div class="header-top">
@@ -433,10 +431,6 @@
 
   <script src="auth-badge.js"></script>
   <script>
-    // ============================================================
-    //  Admin Auth — SECURITY HARDENED
-    //  ไม่มี hardcoded fallback — ถ้าไม่มี session → redirect ไป login.html
-    // ============================================================
     const SESSION_KEY = 'adminAuth';
     const API_URL     = (localStorage.getItem('gasApiUrl') || (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') || '').trim();
 
@@ -458,11 +452,10 @@
     let selectedLocationData = null;
     let selectedLocationEditable = false;
 
-    // ---- เก็บ descriptors ที่บันทึกมาแล้ว เพื่อตรวจสอบความแตกต่าง ----
     let capturedDescriptors = [];
-    const MIN_FACE_DISTANCE = 0.25; // ต้องต่างกันอย่างน้อยนี้ (Euclidean distance)
+    const MIN_FACE_DISTANCE = 0.25;
     let lastCaptureTime = 0;
-    const MIN_CAPTURE_INTERVAL_MS = 1000; // รอขั้นต่ำ 1 วินาทีระหว่างแต่ละ capture
+    const MIN_CAPTURE_INTERVAL_MS = 1000;
 
     function euclideanDistance(d1, d2) {
       let sum = 0;
@@ -473,12 +466,10 @@
       return Math.sqrt(sum);
     }
 
-    // --------- ตรวจสอบ session ---------
     function isAuthed() {
       return sessionStorage.getItem(SESSION_KEY) === '1';
     }
 
-    // --------- ป้องกัน back button (bfcache) ---------
     window.addEventListener('pageshow', function (e) {
       if (e.persisted && !isAuthed()) {
         window.location.replace('login.html?to=register.html');
@@ -503,7 +494,7 @@
     if (!isAuthed()) {
       window.location.replace('login.html?to=register.html');
     } else {
-      adminLock.style.display    = 'none';
+      adminLock.style.display = 'none';
       adminContent.style.display = 'block';
       if (!API_URL) {
         statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
@@ -619,7 +610,6 @@
           }
         }
         if (tooSimilar) {
-          const captureNum = saveCounter + 1;
           const hints = ['หันซ้ายเล็กน้อย', 'หันขวาเล็กน้อย', 'เงยหน้าหรือก้มเล็กน้อย'];
           const hint = hints[saveCounter - 1] || 'ขยับหน้าให้ต่างจากเดิม';
           msgDiv.innerHTML = `<span class="msg-error">⚠️ ใบหน้ามุมนี้คล้ายกับที่บันทึกไปแล้วมาก (ระยะห่าง ${minDist.toFixed(3)})<br>กรุณา${hint} แล้วลองอีกครั้ง</span>`;

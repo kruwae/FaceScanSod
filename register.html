@@ -583,33 +583,51 @@
       btnSave.innerHTML = '⏳ กำลังประมวลผล... <span class="count-badge">' + saveCounter + '</span>';
       msgDiv.innerText = '';
 
-      const detection = await faceapi
-        .detectSingleFace(video)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+      const SAMPLE_COUNT = 5;
+      const capturedSampleDescriptors = [];
+      let bestDetection = null;
+      let bestFaceScore = -1;
 
-      if (!detection) {
+      for (let i = 0; i < SAMPLE_COUNT; i++) {
+        const detection = await faceapi
+          .detectSingleFace(video)
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+
+        if (!detection) continue;
+
+        const faceScore = typeof detection.detection.score === 'number' ? detection.detection.score : 0;
+        if (faceScore > bestFaceScore) {
+          bestFaceScore = faceScore;
+          bestDetection = detection;
+        }
+
+        capturedSampleDescriptors.push(Array.from(detection.descriptor));
+        await new Promise(resolve => setTimeout(resolve, 120));
+      }
+
+      if (!capturedSampleDescriptors.length || !bestDetection) {
         msgDiv.innerHTML = '<span class="msg-error">❌ ไม่พบใบหน้า! กรุณามองกล้องให้ชัดเจน แล้วลองใหม่</span>';
         btnSave.disabled = false;
         btnSave.innerHTML = '📸 บันทึกใบหน้า <span class="count-badge" id="saveCount">' + saveCounter + '</span>';
         return;
       }
 
-      const descriptorArray = Array.from(detection.descriptor);
-      const quantizedDescriptor = descriptorArray.map(v => Math.floor(v * 127));
+      const descriptorArray = capturedSampleDescriptors.reduce((acc, arr) => {
+        for (let i = 0; i < acc.length; i++) acc[i] += Number(arr[i] || 0);
+        return acc;
+      }, new Array(bestDetection.descriptor.length).fill(0)).map(v => v / capturedSampleDescriptors.length);
+
+      const quantizedDescriptor = descriptorArray.map(v => Math.round(Number(v) * 1000) / 1000);
 
       if (capturedDescriptors.length > 0) {
-        let tooSimilar = false;
         let minDist = 999;
         for (const prev of capturedDescriptors) {
           const dist = euclideanDistance(descriptorArray, prev);
           if (dist < minDist) minDist = dist;
-          if (dist < MIN_FACE_DISTANCE) {
-            tooSimilar = true;
-            break;
-          }
         }
-        if (tooSimilar) {
+
+        if (minDist < MIN_FACE_DISTANCE) {
           const hints = ['หันซ้ายเล็กน้อย', 'หันขวาเล็กน้อย', 'เงยหน้าหรือก้มเล็กน้อย'];
           const hint = hints[saveCounter - 1] || 'ขยับหน้าให้ต่างจากเดิม';
           msgDiv.innerHTML = `<span class="msg-error">⚠️ ใบหน้ามุมนี้คล้ายกับที่บันทึกไปแล้วมาก (ระยะห่าง ${minDist.toFixed(3)})<br>กรุณา${hint} แล้วลองอีกครั้ง</span>`;

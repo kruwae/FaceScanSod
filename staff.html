@@ -586,6 +586,132 @@
         min-width: 820px;
       }
     }
+
+      @media (max-width: 768px) {
+        .page-wrap {
+          padding: 12px;
+        }
+
+        .page-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+        }
+
+        .admin-header-actions {
+          width: 100%;
+          justify-content: flex-end;
+        }
+
+        .hero {
+          padding: 18px;
+        }
+
+        .hero-top {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 16px;
+        }
+
+        .hero-actions {
+          width: 100%;
+          justify-content: stretch;
+        }
+
+        .hero-actions .btn {
+          flex: 1 1 100%;
+          min-width: 0;
+        }
+
+        .stats,
+        .toolbar,
+        .search-row,
+        .form-actions {
+          grid-template-columns: 1fr;
+        }
+
+        .dashboard {
+          padding: 0;
+        }
+
+        .card,
+        .glass,
+        .lock-card {
+          border-radius: 18px;
+        }
+
+        .table-wrap {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+          min-width: 760px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .page-wrap {
+          padding: 8px;
+        }
+
+        .page-header {
+          gap: 8px;
+        }
+
+        .back-btn,
+        .admin-badge,
+        .logout-btn {
+          width: 100%;
+          justify-content: center;
+          text-align: center;
+        }
+
+        .hero {
+          padding: 14px;
+        }
+
+        .hero-kicker {
+          font-size: 12px;
+        }
+
+        .hero h1 {
+          font-size: 26px;
+          line-height: 1.15;
+        }
+
+        .hero-note {
+          font-size: 14px;
+        }
+
+        .hero-actions {
+          gap: 8px;
+        }
+
+        .hero-actions .btn,
+        .toolbar-actions .btn,
+        .form-actions .btn,
+        .row-actions .btn {
+          width: 100%;
+          flex: 1 1 100%;
+        }
+
+        .stats {
+          gap: 10px;
+        }
+
+        .stat-card {
+          padding: 14px;
+        }
+
+        .stat-value {
+          font-size: 24px;
+        }
+
+        .card {
+          padding: 14px;
+        }
+      }
   </style>
 </head>
 <body>

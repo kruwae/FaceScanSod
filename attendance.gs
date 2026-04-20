@@ -1305,21 +1305,41 @@ function ensureUsersSheetWithContract(ss) {
   return ensureSheetWithHeaders(ss, 'Users', schema);
 }
 
+function getNextEmployeeId(sheet, headerMap) {
+  var data = sheet.getDataRange().getValues();
+  var employeeIdCol = headerMap['Employee ID'] || headerMap['employee id'];
+  var maxNumber = 0;
+
+  for (var i = 1; i < data.length; i++) {
+    var raw = employeeIdCol ? String(data[i][employeeIdCol - 1] || '').trim() : '';
+    var match = raw.match(/^EMP-(\d+)$/i);
+    if (match) {
+      var num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxNumber) maxNumber = num;
+    }
+  }
+
+  return 'EMP-' + String(maxNumber + 1);
+}
+
 function normalizeEmployeeId(value, name, rowIndex) {
-  const raw = String(value || '').trim();
+  var raw = String(value || '').trim();
   if (raw) return raw;
-  const baseName = String(name || '').trim().replace(/\s+/g, '_') || 'EMP';
+  var baseName = String(name || '').trim().replace(/\s+/g, '_') || 'EMP';
   return 'EMP-' + baseName + '-' + String(rowIndex || 0);
 }
 
 function registerUser(name, faceDescriptor, registeredBy, status, position, roles, role, employeeId) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const result = ensureUsersSheetWithContract(ss);
-  const sheet = result.sheet;
-  const headerMap = result.headerMap;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = ensureUsersSheetWithContract(ss);
+  var sheet = result.sheet;
+  var headerMap = result.headerMap;
 
-  const rowNumber = sheet.getLastRow() + 1;
-  const resolvedEmployeeId = normalizeEmployeeId(employeeId, name, rowNumber);
+  var rowNumber = sheet.getLastRow() + 1;
+  var resolvedEmployeeId = normalizeEmployeeId(employeeId, name, rowNumber);
+  if (!String(employeeId || '').trim()) {
+    resolvedEmployeeId = getNextEmployeeId(sheet, headerMap);
+  }
 
   sheet.getRange(rowNumber, 1, 1, Math.max(sheet.getLastColumn(), 7)).setValues([
     new Array(Math.max(sheet.getLastColumn(), 7)).fill('')

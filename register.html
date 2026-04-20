@@ -622,6 +622,7 @@
       lastCaptureTime = Date.now();
 
       try {
+        const resolvedEmployeeId = currentEmployeeId || ('EMP-' + String(Date.now()).slice(-6));
         const res = await fetch(currentApiUrl, {
           method: 'POST',
           body: JSON.stringify({
@@ -632,12 +633,14 @@
             registeredBy: 'admin',
             status: 'active',
             roles: ['admin', 'employee'],
-            role: 'admin'
+            role: 'admin',
+            employeeId: resolvedEmployeeId
           })
         });
         const data = await res.json();
 
         if (data.error) throw new Error(data.error);
+        if (data.employeeId) currentEmployeeId = data.employeeId;
 
         capturedDescriptors.push(descriptorArray);
         saveCounter = Math.min(saveCounter + 1, MAX_CAPTURES);

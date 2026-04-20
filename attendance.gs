@@ -1413,16 +1413,20 @@ function getKnownFaces(params) {
   var token = String((params && params.token) || '').trim();
   var config = getConfig(params) || {};
   var requiredToken = String(config.readToken || '').trim();
+
   if (requiredToken && token !== requiredToken) {
-    logAction({
-      username: auth.user && auth.user.username ? auth.user.username : '',
-      role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
-      action: 'access_denied',
-      endpoint: 'getKnownFaces',
-      status: 'fail',
-      details: { reason: 'invalid_read_token' }
-    });
-    return { status: 'error', message: 'Unauthorized', code: 401 };
+    var fallbackToken = String(PropertiesService.getScriptProperties().getProperty('READ_TOKEN') || '').trim();
+    if (!fallbackToken || token !== fallbackToken) {
+      logAction({
+        username: auth.user && auth.user.username ? auth.user.username : '',
+        role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
+        action: 'access_denied',
+        endpoint: 'getKnownFaces',
+        status: 'fail',
+        details: { reason: 'invalid_read_token', requiredTokenPresent: true }
+      });
+      return { status: 'error', message: 'Unauthorized', code: 401 };
+    }
   }
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1430,7 +1434,17 @@ function getKnownFaces(params) {
   var sheet = result.sheet;
   var hm = result.headerMap;
   var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return [];
+  if (data.length <= 1) {
+    logAction({
+      username: auth.user && auth.user.username ? auth.user.username : '',
+      role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
+      action: 'getKnownFaces',
+      endpoint: 'getKnownFaces',
+      status: 'success',
+      details: { count: 0, reason: 'no_data_rows' }
+    });
+    return [];
+  }
 
   var employeeIdCol = hm['Employee ID'];
   var nameCol = hm['Name'];
@@ -1438,24 +1452,42 @@ function getKnownFaces(params) {
   var descriptorCol = hm['Face Descriptor'];
   var statusCol = hm['Status'];
 
+  if (!employeeIdCol || !nameCol || !descriptorCol) {
+    logAction({
+      username: auth.user && auth.user.username ? auth.user.username : '',
+      role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
+      action: 'getKnownFaces',
+      endpoint: 'getKnownFaces',
+      status: 'fail',
+      details: {
+        reason: 'missing_required_columns',
+        hasEmployeeId: !!employeeIdCol,
+        hasName: !!nameCol,
+        hasDescriptor: !!descriptorCol
+      }
+    });
+    return [];
+  }
+
   var users = [];
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-    var employeeId = employeeIdCol ? String(row[employeeIdCol - 1] || '').trim() : '';
-    var name = nameCol ? String(row[nameCol - 1] || '').trim() : '';
+    var employeeId = String(row[employeeIdCol - 1] || '').trim();
+    var name = String(row[nameCol - 1] || '').trim();
     var position = positionCol ? String(row[positionCol - 1] || '').trim() : '';
-    var jsonStr = descriptorCol ? String(row[descriptorCol - 1] || '').trim() : '';
+    var jsonStr = String(row[descriptorCol - 1] || '').trim();
     var status = statusCol ? String(row[statusCol - 1] || 'active').toLowerCase() : 'active';
 
-    if (!jsonStr || status === 'inactive') continue;
+    if (!employeeId || !name || !jsonStr) continue;
+    if (status === 'inactive' || status === 'disabled') continue;
 
     var descriptor = normalizeFaceDescriptor(jsonStr);
     if (!descriptor) continue;
 
     users.push({
-      employeeId: employeeId || ('EMP-' + String(i + 1)),
-      label: name || employeeId || ('User ' + (i + 1)),
-      name: name || '',
+      employeeId: employeeId,
+      label: name || employeeId,
+      name: name,
       position: position || '',
       descriptor: descriptor,
       status: status || 'active'

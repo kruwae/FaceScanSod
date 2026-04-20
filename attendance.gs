@@ -1364,6 +1364,33 @@ function registerUser(name, faceDescriptor, registeredBy, status, position, role
   };
 }
 
+function normalizeFaceDescriptor(value) {
+  var parsed;
+  if (Array.isArray(value)) {
+    parsed = value;
+  } else if (typeof value === 'string') {
+    try {
+      parsed = JSON.parse(value);
+    } catch (e) {
+      return null;
+    }
+  } else {
+    return null;
+  }
+
+  if (!Array.isArray(parsed)) return null;
+
+  var cleaned = [];
+  for (var i = 0; i < parsed.length; i++) {
+    var n = Number(parsed[i]);
+    if (!isFinite(n)) return null;
+    cleaned.push(n);
+  }
+
+  if (cleaned.length !== 128) return null;
+  return cleaned;
+}
+
 function getKnownFaces(params) {
   var auth = authorize('getKnownFaces', params);
   if (!auth.ok) {
@@ -1417,17 +1444,17 @@ function getKnownFaces(params) {
 
     if (!jsonStr || status === 'inactive') continue;
 
-    try {
-      var descriptor = JSON.parse(jsonStr);
-      users.push({
-        employeeId: employeeId || normalizeEmployeeId('', name, i + 1),
-        label: name || employeeId || ('User ' + (i + 1)),
-        name: name || '',
-        position: position || '',
-        descriptor: descriptor,
-        status: status || 'active'
-      });
-    } catch (e) {}
+    var descriptor = normalizeFaceDescriptor(jsonStr);
+    if (!descriptor) continue;
+
+    users.push({
+      employeeId: employeeId || ('EMP-' + String(i + 1)),
+      label: name || employeeId || ('User ' + (i + 1)),
+      name: name || '',
+      position: position || '',
+      descriptor: descriptor,
+      status: status || 'active'
+    });
   }
 
   logAction({
@@ -1441,6 +1468,7 @@ function getKnownFaces(params) {
 
   return users;
 }
+
 
 // ============================================================
 

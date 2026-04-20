@@ -1335,6 +1335,11 @@ function registerUser(name, faceDescriptor, registeredBy, status, position, role
   var sheet = result.sheet;
   var headerMap = result.headerMap;
 
+  var normalizedDescriptor = normalizeFaceDescriptor(faceDescriptor);
+  if (!normalizedDescriptor) {
+    return { success: false, message: 'Invalid face descriptor', code: 400 };
+  }
+
   var rowNumber = sheet.getLastRow() + 1;
   var resolvedEmployeeId = normalizeEmployeeId(employeeId, name, rowNumber);
   if (!String(employeeId || '').trim()) {
@@ -1349,7 +1354,7 @@ function registerUser(name, faceDescriptor, registeredBy, status, position, role
     'Employee ID': resolvedEmployeeId,
     'Name': String(name || '').trim(),
     'Position': String(position || '').trim(),
-    'Face Descriptor': JSON.stringify(faceDescriptor || []),
+    'Face Descriptor': JSON.stringify(normalizedDescriptor),
     'Registered At': new Date(),
     'Registered By': String(registeredBy || '').trim(),
     'Status': String(status || 'active').trim() || 'active'

@@ -3,56 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>สแกนเข้างาน</title>
+  <title>สแกนเข้างาน (Fixed)</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <script src="js/api-config.js"></script>
-  <script src="meshService.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js" defer></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Sarabun', sans-serif; min-height: 100vh; background: linear-gradient(160deg, #0f0f23 0%, #0d1b2a 60%, #0a0f1e 100%); color: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding: 24px 16px 50px; position: relative; overflow-x: hidden; }
-    body::before { content: ''; position: fixed; width: 500px; height: 500px; background: #10b981; border-radius: 50%; filter: blur(120px); opacity: 0.08; bottom: -150px; right: -150px; pointer-events: none; z-index: 0; }
     .page-wrap { width: 100%; max-width: 560px; position: relative; z-index: 1; animation: fadeIn 0.5s ease; display: flex; flex-direction: column; align-items: center; }
     .top-bar { display: flex; align-items: center; justify-content: center; width: 100%; margin-bottom: 16px; gap: 10px; flex-wrap: wrap; }
     .back-btn { display: inline-flex; align-items: center; gap: 6px; color: #64748b; text-decoration: none; font-size: 0.85em; padding: 6px 12px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); transition: all 0.25s ease; }
-    .back-btn:hover { color: #e2e8f0; background: rgba(255,255,255,0.1); }
     .logout-btn { display: inline-flex; align-items: center; gap: 6px; color: #fca5a5; text-decoration: none; font-size: 0.85em; padding: 6px 12px; border-radius: 20px; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); transition: all 0.25s ease; font-family: 'Sarabun', sans-serif; font-weight: 600; cursor: pointer; }
-    .logout-btn:hover { background: rgba(239,68,68,0.2); }
     h2 { font-size: 1.1em; font-weight: 600; color: #c7d2fe; text-align: center; }
     .status-area { width: 100%; text-align: center; margin-bottom: 14px; }
     #main-status { font-size: 0.9em; color: #94a3b8; min-height: 22px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    #gps-status { font-size: 0.8em; color: #475569; margin-top: 6px; min-height: 18px; }
-    .gps-alert { display: none; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35); color: #fca5a5; border-radius: 12px; padding: 12px 16px; width: 100%; margin-bottom: 8px; font-size: 0.88em; font-weight: 600; text-align: center; }
-    .gps-guide { display: none; width: 100%; background: rgba(10,10,28,0.95); border: 1px solid rgba(99,102,241,0.3); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
-    .gps-guide-title { font-size: 0.88em; font-weight: 700; color: #c7d2fe; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-    .gps-guide-platform { font-size: 0.78em; color: #64748b; margin-bottom: 8px; }
-    .gps-guide-step { font-size: 0.8em; color: #94a3b8; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; align-items: flex-start; gap: 8px; }
-    .gps-guide-step:last-child { border-bottom: none; }
-    .gps-step-num { color: #6366f1; font-weight: 700; min-width: 18px; flex-shrink: 0; }
-    .gps-fallback-title { font-size: 0.78em; font-weight: 700; color: #64748b; margin: 12px 0 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-    .gps-fallback-row { display: flex; gap: 8px; flex-wrap: wrap; }
-    .btn-gps-fallback { flex: 1; min-width: 120px; padding: 10px 12px; border-radius: 10px; font-family: 'Sarabun', sans-serif; font-size: 12.5px; font-weight: 600; cursor: pointer; border: none; text-align: center; transition: all 0.2s; }
-    .btn-ip { background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; }
-    .btn-ip:hover { background: rgba(99,102,241,0.25); }
-    .btn-wifi { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
-    .btn-wifi:hover { background: rgba(59,130,246,0.25); }
-    .btn-skip-mild { background: rgba(239,68,68,0.1); border: 1px dashed rgba(239,68,68,0.4); color: #fca5a5; }
-    .btn-skip-mild:hover { background: rgba(239,68,68,0.18); }
-    .btn-offline { background: rgba(245,158,11,0.14); border: 1px solid rgba(245,158,11,0.35); color: #fcd34d; }
-    .btn-offline:hover { background: rgba(245,158,11,0.24); }
-    .gps-permission-banner { display: none; width: 100%; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; font-size: 0.82em; color: #fcd34d; text-align: center; }
-    .location-selector { display: none; width: 100%; margin-bottom: 10px; }
-    .location-selector label { display: block; font-size: 0.8em; color: #94a3b8; margin-bottom: 6px; font-weight: 600; letter-spacing: 0.03em; }
-    .location-selector select { width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; color: #e2e8f0; font-size: 14px; font-family: 'Sarabun', sans-serif; outline: none; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer; transition: border-color 0.25s ease; margin-bottom: 10px; }
-    .location-selector select:focus { border-color: rgba(99,102,241,0.55); }
-    #btnConfirmLocation { width: 100%; padding: 12px; border-radius: 12px; border: none; background: linear-gradient(135deg,#6366f1,#4f46e5); color: #fff; font-family: 'Sarabun', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; display: none; }
-    .gps-info-card { display: none; width: 100%; margin-bottom: 12px; background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.2); border-radius: 12px; padding: 10px 14px; font-size: 0.8em; line-height: 1.8; }
-    .gps-info-card.out-range { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.3); }
-    .gps-info-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .gps-info-label { color: #64748b; min-width: 60px; }
-    .gps-info-value { color: #e2e8f0; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .gps-dist-ok { color: #34d399; font-weight: 700; }
-    .gps-dist-bad { color: #f87171; font-weight: 700; }
     .video-container { position: relative; width: 100%; border-radius: 20px; overflow: hidden; background: #060612; min-height: 280px; }
     video { width: 100%; height: auto; display: block; transform: scaleX(-1); opacity: 0; transition: opacity 0.5s ease; border-radius: 20px; }
     video.active { opacity: 1; }
@@ -65,98 +28,230 @@
     .scan-line { display: none; position: absolute; left: 8%; right: 8%; height: 2px; background: linear-gradient(90deg, transparent, #10b981, transparent); box-shadow: 0 0 8px rgba(16,185,129,0.8); z-index: 6; animation: scanMove 2s ease-in-out infinite; }
     .scan-line.active { display: block; }
     #overlay-status { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); color: #e2e8f0; padding: 6px 18px; border-radius: 30px; z-index: 10; white-space: nowrap; font-size: 0.84em; border: 1px solid rgba(255,255,255,0.1); }
-    #btnStart, #btnCheckOut { display: none; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; border-radius: 50px; padding: 16px 44px; font-size: 18px; font-weight: 600; cursor: pointer; font-family: 'Sarabun', sans-serif; box-shadow: 0 4px 25px rgba(99,102,241,0.45); margin: 20px auto 0; transition: all 0.3s ease; animation: btnPulse 2s ease-in-out infinite; }
-    #btnReload { display: none; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; border-radius: 50px; padding: 14px 28px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: 'Sarabun', sans-serif; box-shadow: 0 4px 20px rgba(239,68,68,0.35); margin: 20px auto 0; transition: all 0.3s ease; }
-    #btnReload:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(239,68,68,0.5); }
-    #btnStart:hover, #btnCheckOut:hover { transform: translateY(-3px); box-shadow: 0 8px 35px rgba(99,102,241,0.6); animation: none; }
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100; align-items: center; justify-content: center; }
+    #btnStart { display: none; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; border-radius: 50px; padding: 16px 44px; font-size: 18px; font-weight: 600; cursor: pointer; font-family: 'Sarabun', sans-serif; box-shadow: 0 4px 25px rgba(99,102,241,0.45); margin: 20px auto 0; transition: all 0.3s ease; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 100; align-items: center; justify-content: center; }
     .modal-content { background: linear-gradient(160deg, #1e1e3f 0%, #16213e 100%); border: 1px solid rgba(255,255,255,0.15); padding: 32px 28px; border-radius: 24px; width: 88%; max-width: 360px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; animation: modalSlideUp 0.35s ease; }
-    .modal-avatar { font-size: 52px; background: rgba(99,102,241,0.15); border: 2px solid rgba(99,102,241,0.3); border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
-    .modal-title { font-size: 0.82em; color: #64748b; margin-bottom: 4px; }
     .user-name { font-size: 24px; color: #a5b4fc; font-weight: 700; margin-bottom: 12px; }
-    .time-badge { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #34d399; padding: 8px 22px; border-radius: 30px; font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-    .loc-badge { background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25); color: #a5b4fc; padding: 5px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
-    .score-text { color: #475569; font-size: 13px; margin-bottom: 20px; }
-    .btn { border: none; border-radius: 14px; cursor: pointer; width: 100%; margin: 5px 0; font-family: 'Sarabun', sans-serif; transition: all 0.25s ease; }
-    .btn-confirm { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 17px; font-size: 20px; font-weight: 700; box-shadow: 0 4px 20px rgba(16,185,129,0.35); margin-bottom: 10px; }
-    .btn-confirm:hover:not(:disabled) { box-shadow: 0 8px 30px rgba(16,185,129,0.5); transform: translateY(-1px); }
-    .btn-confirm:disabled { background: rgba(255,255,255,0.08); color: #475569; box-shadow: none; }
-    .btn-cancel { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; padding: 12px; font-size: 15px; font-weight: 600; }
-    .btn-cancel:hover { background: rgba(239,68,68,0.18); }
-    .retry-mode { background: linear-gradient(135deg, #ef4444, #dc2626) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(239,68,68,0.35) !important; }
-    .retry-mode:hover:not(:disabled) { box-shadow: 0 8px 30px rgba(239,68,68,0.5) !important; transform: translateY(-1px); }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes btnPulse { 0%,100% { box-shadow: 0 4px 25px rgba(99,102,241,0.45); } 50% { box-shadow: 0 4px 40px rgba(99,102,241,0.7); } }
+    .btn-confirm { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 17px; font-size: 20px; font-weight: 700; border: none; border-radius: 14px; width: 100%; cursor: pointer; margin-bottom: 10px; }
+    .btn-cancel { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; padding: 12px; font-size: 15px; font-weight: 600; border-radius: 14px; width: 100%; cursor: pointer; }
     @keyframes scanMove { 0% { top: 12%; } 50% { top: 82%; } 100% { top: 12%; } }
     @keyframes modalSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-    .auth-badge-wrap { position: fixed; top: 14px; right: 14px; z-index: 9999; }
   </style>
 </head>
 <body>
-<div class="auth-badge-wrap" id="authBadgeHost"></div>
 <div class="page-wrap">
-  <div class="top-bar"><a href="index.html" class="back-btn">← กลับ</a><h2>📷 สแกนเข้างาน</h2><button class="logout-btn" id="btnLogoutTop" type="button">ออกจากระบบ</button></div>
-  <div class="status-area" id="statusAreaRoot"><div id="main-status">⏳ กำลังเตรียมระบบ...</div><div id="gps-status"></div></div>
-  <div id="gps-alert-box" class="gps-alert"></div>
-  <div id="gpsPermBanner" class="gps-permission-banner">📱 บราวเซอร์กำลังขอสิทธิ์ GPS — กรุณากด <strong style="color:#fbbf24">Allow</strong></div>
-  <div id="gpsGuide" class="gps-guide"><div class="gps-guide-title" id="gpsGuideTitle">📱 วิธีแก้ GPS</div><div class="gps-guide-platform" id="gpsGuidePlatform"></div><div id="gpsGuideSteps"></div><div class="gps-fallback-title">🔄 แผนสำรอง / ฉุกเฉิน</div><div class="gps-fallback-row"><button class="btn-gps-fallback btn-wifi" id="btnWifiFallback">📦 แผนสำรอง</button><button class="btn-gps-fallback btn-offline" id="btnOfflineMode">📡 โหมดออฟไลน์</button></div></div>
-  <div class="location-selector" id="locationSelector"><label>🏥 เลือกหน่วยบริการที่ต้องการเช็คอิน</label><select id="locationSelect"></select><button id="btnConfirmLocation" type="button">✅ ยืนยันหน่วยบริการ → ตรวจสอบ GPS</button></div>
-  <div class="gps-info-card" id="gpsInfoCard"><div class="gps-info-row"><span class="gps-info-label">📍 สถานที่</span><span class="gps-info-value" id="infoLocName">—</span></div><div class="gps-info-row"><span class="gps-info-label">Latitude</span><span class="gps-info-value" id="infoLocLat">—</span></div><div class="gps-info-row"><span class="gps-info-label">Longitude</span><span class="gps-info-value" id="infoLocLng">—</span></div><div class="gps-info-row"><span class="gps-info-label">รัศมี</span><span class="gps-info-value" id="infoLocRadius">—</span></div><div class="gps-info-row" style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px"><span class="gps-info-label">ห่าง</span><span id="infoLocDist">—</span></div></div>
-  <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px;"><button id="btnStart" onclick="startCamera('logAttendance')">📷 สแกนเข้างาน</button><button id="btnCheckOut" onclick="startCamera('logCheckout')" style="display: none;">🚪 สแกนเลิกงาน</button><button id="btnReload" type="button" onclick="window.location.reload()">🔄 Reload</button></div>
-  <div class="video-container"><div class="scanner-frame"><div class="corner corner-tl"></div><div class="corner corner-tr"></div><div class="corner corner-bl"></div><div class="corner corner-br"></div><div class="scan-line" id="scanLine"></div></div><div id="overlay-status">รอโหลด...</div><video id="video" autoplay muted playsinline></video></div>
+  <div class="top-bar"><a href="index.html" class="back-btn">← กลับ</a><h2>📷 สแกนเข้างาน</h2><button class="logout-btn" id="btnLogoutTop">ออกจากระบบ</button></div>
+  <div class="status-area"><div id="main-status">⏳ กำลังเตรียมระบบ...</div></div>
+  <div class="video-container">
+    <div class="scanner-frame"><div class="corner corner-tl"></div><div class="corner corner-tr"></div><div class="corner corner-bl"></div><div class="corner corner-br"></div><div class="scan-line" id="scanLine"></div></div>
+    <div id="overlay-status">รอโหลด...</div>
+    <video id="video" autoplay muted playsinline></video>
+  </div>
+  <button id="btnStart">📷 เริ่มสแกนใบหน้า</button>
 </div>
-<div id="confirmModal" class="modal-overlay"><div class="modal-content"><div class="modal-avatar">🙋</div><p class="modal-title">ตรวจพบบุคคล</p><div class="user-name" id="modalName">...</div><div id="modalTime" class="time-badge">00:00</div><div id="modalLocation" class="loc-badge" style="display:none"></div><div id="modalScore" class="score-text"></div><button class="btn btn-confirm" id="btnConfirm" onclick="confirmAttendance()">✅ ยืนยันเข้างาน</button><button class="btn btn-cancel" onclick="cancelAttendance()">ไม่ใช่ฉัน</button></div></div>
+
+<div id="confirmModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="user-name" id="modalName">...</div>
+    <div id="modalScore" style="color: #94a3b8; font-size: 0.9em; margin-bottom: 20px;"></div>
+    <button class="btn-confirm" id="btnConfirm" onclick="confirmAttendance()">✅ ยืนยันเข้างาน</button>
+    <button class="btn-cancel" onclick="cancelAttendance()">ไม่ใช่ฉัน</button>
+  </div>
+</div>
+
 <script>
-function getApiUrl(){return (localStorage.getItem('gasApiUrl')||GAS_API_URL||'').trim();}
-function getReadToken(){try{return (localStorage.getItem('readToken')||'').trim();}catch(_){return ''}}
-const API_URL=getApiUrl();
-const video=document.getElementById('video'),mainStatus=document.getElementById('main-status'),overlayStatus=document.getElementById('overlay-status'),confirmModal=document.getElementById('confirmModal'),gpsStatus=document.getElementById('gps-status'),gpsAlertBox=document.getElementById('gps-alert-box'),btnStart=document.getElementById('btnStart'),btnCheckOut=document.getElementById('btnCheckOut'),btnReload=document.getElementById('btnReload'),locationSelector=document.getElementById('locationSelector'),locationSelect=document.getElementById('locationSelect'),btnConfirmLocation=document.getElementById('btnConfirmLocation'),gpsInfoCard=document.getElementById('gpsInfoCard'),gpsGuide=document.getElementById('gpsGuide'),gpsPermBanner=document.getElementById('gpsPermBanner'),SESSION_KEY='adminAuth',MATCH_THRESHOLD=0.55,btnLogoutTop=document.getElementById('btnLogoutTop');
-let knownFaces=[],scanInterval=null,currentMatch=null,currentMatchInfo=null,currentLat=null,currentLng=null,currentLocation=null,allLocations=[],gpsSkipped=false,gpsSkipReason='',faceSystemInitialized=false,currentAction='logAttendance',fallbackSettings={enabled:false,contactText:'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'},previousGpsReading=null,currentGpsReading=null,livenessSession=null,livenessLoopCount=0,livenessChallengeTimeout=null;
-function meshEnabled(){return typeof MeshService!=='undefined'&&MeshService.isEnabled()}
-function detectPlatform(){const ua=navigator.userAgent.toLowerCase();if(/iphone|ipad|ipod/.test(ua))return'ios';if(/android/.test(ua))return'android';if(/macintosh|mac os/.test(ua))return'mac';return'windows'}
-async function checkGeolocationPermission(){if(!navigator.geolocation)return'unsupported';if(!navigator.permissions)return'unknown';try{return (await navigator.permissions.query({name:'geolocation'})).state}catch(_){return'unknown'}}
-async function checkCamera(){return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)}
-function showError(msg){mainStatus.innerHTML='<span style="color:#f87171">❌ '+msg+'</span>'}
-function showGpsGuide(errorCode){const platform=detectPlatform(),guides={ios:{label:'iPhone / iPad (Safari)',steps:['เปิด Settings → Privacy & Security → Location Services','เปิดสิทธิ์ Location ให้ Safari เป็น While Using','กลับมาหน้านี้แล้วอนุญาต GPS อีกครั้ง']},android:{label:'Android (Chrome)',steps:['แตะไอคอนล็อกข้าง URL → Site settings','เปิดสิทธิ์ Location เป็น Allow','ตรวจว่า Location ของเครื่องเปิดอยู่ แล้วลองใหม่']},mac:{label:'Mac',steps:['เปิด Site Settings ของเบราว์เซอร์','อนุญาต Location ให้เว็บไซต์นี้','ตรวจสิทธิ์ Location Services ใน System Settings']},windows:{label:'Windows',steps:['เปิด Site Settings ของเบราว์เซอร์','อนุญาต Location ให้เว็บไซต์นี้','ตรวจว่า Windows Location Access เปิดใช้งานอยู่']}}[platform],titleMap={1:'❗ ถูกปฏิเสธสิทธิ์ GPS',2:'❗ ไม่สามารถรับสัญญาณ GPS',3:'❗ GPS หมดเวลารอ'};document.getElementById('gpsGuideTitle').innerText=titleMap[errorCode]||'📱 วิธีแก้ปัญหา GPS';document.getElementById('gpsGuidePlatform').innerText='ℹ️ อุปกรณ์ที่ตรวจพบ: '+guides.label;document.getElementById('gpsGuideSteps').innerHTML=guides.steps.map((s,i)=>'<div class="gps-guide-step"><span class="gps-step-num">'+(i+1)+'.</span><span>'+s+'</span></div>').join('');gpsGuide.style.display='block'}
-function hideGpsGuide(){gpsGuide.style.display='none'}
-function formatDistanceMeters(dist){return Math.round(dist).toString()}
-function computeGpsQualityFlags(reading,previousReading){const flags={suspiciousGps:false,accuracyWarning:false,speedWarning:false};if(!reading)return flags;const accuracy=typeof reading.accuracy==='number'?reading.accuracy:null;if(accuracy!==null&&accuracy>50){flags.suspiciousGps=true;flags.accuracyWarning=true}if(previousReading&&typeof previousReading.latitude==='number'&&typeof previousReading.longitude==='number'&&typeof previousReading.timestamp==='number'){const distanceKm=haversineKm(previousReading.latitude,previousReading.longitude,reading.latitude,reading.longitude);const elapsedSec=Math.max(1,(reading.timestamp-previousReading.timestamp)/1000);const speedMps=(distanceKm*1000)/elapsedSec;if(speedMps>10){flags.suspiciousGps=true;flags.speedWarning=true}}return flags}
-function updateGpsReadings(lat,lng,accuracy,altitude,timestamp){previousGpsReading=currentGpsReading?Object.assign({},currentGpsReading):null;currentGpsReading={latitude:lat,longitude:lng,accuracy:typeof accuracy==='number'?accuracy:null,altitude:typeof altitude==='number'?altitude:null,timestamp:typeof timestamp==='number'?timestamp:Date.now()}}
-function getGpsPayloadQuality(){const reading=currentGpsReading||{};const flags=computeGpsQualityFlags(reading,previousGpsReading);return{accuracy:typeof reading.accuracy==='number'?reading.accuracy:null,altitude:typeof reading.altitude==='number'?reading.altitude:null,timestamp:typeof reading.timestamp==='number'?reading.timestamp:null,suspiciousGps:flags.suspiciousGps}}
-function updateGpsInfoCard(loc,mode){if(!loc){gpsInfoCard.style.display='none';window._gpsRangeAllowed=false;btnStart.disabled=true;btnStart.innerText='⛔ กรุณาเลือกหน่วยบริการให้ถูกต้อง';btnReload.style.display='block';return}const radius=parseFloat(loc.radius)||100,hasGps=typeof currentLat==='number'&&typeof currentLng==='number',distKm=hasGps?haversineKm(currentLat,currentLng,parseFloat(loc.lat),parseFloat(loc.lng)):null,distM=distKm!==null?(distKm*1000).toFixed(0):'?',allowedMeters=100,inRange=distKm!==null?distKm*1000<=allowedMeters:mode!=='gps';document.getElementById('infoLocName').innerText=loc.name||'—';document.getElementById('infoLocLat').innerText=parseFloat(loc.lat||0).toFixed(6);document.getElementById('infoLocLng').innerText=parseFloat(loc.lng||0).toFixed(6);document.getElementById('infoLocRadius').innerText=radius+' ม.';const distEl=document.getElementById('infoLocDist');gpsInfoCard.classList.remove('out-range');btnReload.style.display='none';if(mode==='fallback'||mode==='offline'){distEl.innerHTML='<span style="color:#fbbf24">⚠️ ใช้งานแบบแผนสำรอง / ออฟไลน์</span>';gpsStatus.innerHTML='<span style="color:#fbbf24">⚠️ ไม่สามารถยืนยัน GPS ได้ ใช้โหมดสำรองแทน</span>';gpsAlertBox.style.display='none';currentLocation=loc;window._gpsRangeAllowed=true;btnStart.disabled=false;btnStart.innerText='📷 สแกนเข้างาน'}else if(inRange){distEl.innerHTML='<span class="gps-dist-ok">✅ '+distM+' ม. — อยู่ในระยะ 100 ม. หรือน้อยกว่า</span>';gpsStatus.innerHTML='<span style="color:#34d399">📍 GPS OK — '+loc.name+' ('+distM+' ม.)</span>';gpsAlertBox.style.display='none';currentLocation=loc;window._gpsRangeAllowed=true;btnStart.disabled=false;btnStart.innerText='📷 สแกนเข้างาน'}else{distEl.innerHTML='<span class="gps-dist-bad">⛔ '+distM+' ม. — เกินระยะที่อนุญาต (100 ม.)</span>';gpsStatus.innerHTML='<span style="color:#f87171">📍 นอกระยะ "'+loc.name+'" ('+distM+' ม.)</span>';gpsAlertBox.innerHTML='⛔ ไม่อนุญาตให้สแกน — กรุณาเลือกหน่วยบริการให้ถูกต้อง';gpsAlertBox.style.display='block';gpsInfoCard.classList.add('out-range');currentLocation=null;window._gpsRangeAllowed=false;btnStart.disabled=true;btnStart.innerText='⛔ กรุณาเลือกหน่วยบริการให้ถูกต้อง';btnReload.style.display='block'}gpsInfoCard.style.display='block';if(window._faceGatePassed)btnStart.innerText='📷 สแกนเข้างาน';btnStart.disabled=!(window._gpsRangeAllowed!==false)}
-function bindFallbackButtons(){document.getElementById('btnWifiFallback').addEventListener('click',function(){gpsSkipped=true;gpsSkipReason='fallback_button';window._locationMode='fallback';hideGpsGuide();gpsPermBanner.style.display='none';if(allLocations.length>0){const selected=getSelectedLocation();updateGpsInfoCard(selected||allLocations[0],'fallback')}mainStatus.innerText='⚠️ ใช้งานแผนสำรอง — ระบบพร้อมสแกน';mainStatus.style.color='#fbbf24';ensureFaceSystemReady()});document.getElementById('btnOfflineMode').addEventListener('click',function(){if(typeof MeshService==='undefined'){alert('ไม่พบโมดูลโหมดออฟไลน์');return}if(!MeshService.isEnabled())MeshService.toggle();window.location.reload()})}
-function getSelectedLocation(){const selected=locationSelect.options[locationSelect.selectedIndex];if(!selected||!selected.dataset.locJson)return null;return JSON.parse(selected.dataset.locJson)}
-function renderLocations(locations,includeDistance){locationSelect.innerHTML='';locations.forEach(function(loc){const opt=document.createElement('option');opt.value=loc.id||loc.name;opt.textContent=includeDistance&&typeof loc.distKm==='number'?(loc.distKm<=((parseFloat(loc.radius)||100)/1000)?'✅ ':'📌 ')+loc.name+' — '+(loc.distKm*1000).toFixed(0)+' ม.':'📌 '+loc.name;opt.dataset.locJson=JSON.stringify(loc);locationSelect.appendChild(opt)})}
-function waitForLocationConfirm(){return new Promise(function(resolve){btnConfirmLocation.style.display='block';btnConfirmLocation.onclick=function(){const loc=getSelectedLocation();if(!loc){alert('กรุณาเลือกหน่วยบริการ');return}currentLocation=loc;window._gpsRangeAllowed=true;window._faceGatePassed=true;btnConfirmLocation.style.display='none';btnStart.disabled=false;btnStart.style.display='inline-block';if(btnCheckOut)btnCheckOut.style.display='inline-block';btnStart.innerText='📷 สแกนเข้างาน';resolve(loc)}})}
-function checkGPSAndAutoMatch(){return new Promise(function(resolve,reject){if(!navigator.geolocation){reject(new Error('❌ อุปกรณ์นีไม่รองรับ GPS'));return}mainStatus.innerText='📍 กำลังค้นหาหน่วยบริการจากพิกัดของคุณ...';mainStatus.style.color='#fbbf24';navigator.geolocation.getCurrentPosition(function(pos){currentLat=pos.coords.latitude;currentLng=pos.coords.longitude;updateGpsReadings(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.altitude,pos.timestamp);const gpsFlags=computeGpsQualityFlags(currentGpsReading,previousGpsReading);gpsPermBanner.style.display='none';hideGpsGuide();if(gpsFlags.accuracyWarning){gpsAlertBox.innerHTML='⚠️ GPS มีความคลาดเคลื่อนสูง ('+formatDistanceMeters(currentGpsReading.accuracy)+' ม.) กรุณาอยู่ในพื้นที่เปิดโล่ง';gpsAlertBox.style.display='block'}else if(gpsFlags.speedWarning){gpsAlertBox.innerHTML='⚠️ ตรวจพบการเปลี่ยนตำแหน่งผิดปกติ ระบบจะทำเครื่องหมาย GPS ไว้';gpsAlertBox.style.display='block'}const selectedLoc=getSelectedLocation();const selectedKey=selectedLoc?(String(selectedLoc.id||selectedLoc.name||'').trim()):'';const mapped=allLocations.map(function(loc){const d=haversineKm(currentLat,currentLng,parseFloat(loc.lat),parseFloat(loc.lng));return Object.assign({},loc,{distKm:d})});renderLocations(mapped,true);locationSelector.style.display='block';let chosenLoc=null;if(selectedKey){chosenLoc=mapped.find(function(loc){return String(loc.id||loc.name||'').trim()===selectedKey})||null}if(!chosenLoc){chosenLoc=mapped.find(function(loc){return loc.enabled!==false&&String(loc.name||'').toLowerCase().indexOf('workfromhome')===-1})||null}if(!chosenLoc&&mapped.length>0){chosenLoc=mapped[0]}currentLocation=chosenLoc||null;if(currentLocation){for(let i=0;i<locationSelect.options.length;i++){const opt=locationSelect.options[i];const optKey=String(opt.value||'').trim();const optLoc=opt.dataset.locJson?JSON.parse(opt.dataset.locJson):null;if(optLoc&&String(optLoc.id||optLoc.name||'').trim()===String(currentLocation.id||currentLocation.name||'').trim()){locationSelect.selectedIndex=i;break}}updateGpsInfoCard(currentLocation,'gps');window._locationMode='gps';window._gpsRangeAllowed=true;btnStart.disabled=false;btnStart.style.display='inline-block';btnStart.innerText='📷 สแกนเข้างาน';if(btnCheckOut)btnCheckOut.style.display='inline-block'}if(currentLocation&&currentLocation.distKm*1000<=100){mainStatus.innerText='📍 ตรวจพบหน่วยบริการ: '+currentLocation.name;mainStatus.style.color='#34d399';window.dispatchEvent(new Event('gps-ready'));setTimeout(resolve,1000)}else{mainStatus.innerText='📍 ไม่อยู่ในระยะ 100 ม. จากหน่วยบริการที่เลือก กรุณาเลือกสาขาด้วยตนเอง';mainStatus.style.color='#f87171';window.dispatchEvent(new Event('gps-ready'));window._gpsRangeAllowed=false;waitForLocationConfirm().then(resolve)}},function(err){showGpsGuide(err.code);const errors={1:'❗ ถูกปฏิเสธสิทธิ์ GPS — สามารถใช้แผนสำรองหรือโหมดออฟไลน์ได้',2:'❗ ไม่สามารถรับสัญญาณ GPS — สามารถใช้แผนสำรองหรือโหมดออฟไลน์ได้',3:'❗ GPS หมดเวลารอ — สามารถใช้แผนสำรองหรือโหมดออฟไลน์ได้'};reject(new Error(errors[err.code]||('GPS Error: '+err.message)))},{enableHighAccuracy:true,timeout:15000,maximumAge:60000})})}
-async function ensureFaceSystemReady(){if(faceSystemInitialized){btnStart.style.display='inline-block';if(btnCheckOut)btnCheckOut.style.display='inline-block';return}await initFaceSystem()}
-async function initFaceSystem(){if(faceSystemInitialized){btnStart.style.display='inline-block';if(btnCheckOut)btnCheckOut.style.display='inline-block';return}mainStatus.innerText='4/4 โหลด AI Model...';let waited=0;while(typeof faceapi==='undefined'&&waited<30000){await new Promise(function(resolve){setTimeout(resolve,300)});waited+=300}if(typeof faceapi==='undefined'){showError('โหลด face-api.js ไม่สำเร็จ — ลองรีเฟรชหน้าจอ');return}const MODEL_URL='https://justadudewhohacks.github.io/face-api.js/models';try{await Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)]);const token=getReadToken();let facesUrl=API_URL+'?action=getKnownFaces'+(token?'&token='+encodeURIComponent(token):'');let data=null;try{if(navigator.onLine){const res=await fetch(facesUrl);data=await res.json()}else{throw new Error('offline')}}catch(err){showError('โหลดข้อมูลใบหน้าไม่สำเร็จ: '+err.message);return}if(!Array.isArray(data)||data.length===0){showError(data&&data.error?('ไม่สามารถโหลดข้อมูลใบหน้า: '+data.error):'ไม่พบข้อมูลพนักงาน กรุณาลงทะเบียนก่อน');console.error('getKnownFaces empty payload', data);return}knownFaces=data.map(function(u){const rawDesc=Array.isArray(u.descriptor)?u.descriptor:[];const finalDesc=rawDesc.map(function(v){const n=Number(v);return Number.isFinite(n)?n:0});return{employeeId:String(u.employeeId||u.id||u.code||u.label||u.name||''),name:String(u.name||u.label||u.employeeId||u.id||''),position:String(u.position||u.role||''),descriptor:new Float32Array(finalDesc)}});console.log('knownFaces loaded', knownFaces.length, knownFaces[0]&&knownFaces[0].employeeId, knownFaces[0]&&knownFaces[0].descriptor&&knownFaces[0].descriptor.length)faceSystemInitialized=true;mainStatus.innerText='✅ ระบบพร้อมใช้งาน';mainStatus.style.color='#34d399';btnStart.style.display='inline-block';if(btnCheckOut)btnCheckOut.style.display='inline-block'}catch(e){showError('โหลด AI / ฐานข้อมูลล้มเหลว: '+e.message)}}
-function findBestMatch(queryDesc){let best={name:'unknown',employeeId:'',distance:1.0};const q=queryDesc instanceof Float32Array?queryDesc:new Float32Array(queryDesc||[]);if(!q.length){console.warn('findBestMatch empty query descriptor');return best}knownFaces.forEach(function(u){const k=u.descriptor instanceof Float32Array?u.descriptor:new Float32Array(u.descriptor||[]);if(!k.length||k.length!==q.length)return;const d=faceapi.euclideanDistance(q,k);if(Number.isFinite(d)&&d<best.distance)best={name:u.name,employeeId:u.employeeId,distance:d}});if(best.employeeId==='')console.warn('findBestMatch no match', {queryLength:q.length, knownCount:knownFaces.length, threshold:MATCH_THRESHOLD});return best}
-function createLivenessSession(){const challengePool=['blink','turn_left','turn_right'];const challenge=challengePool[Math.floor(Math.random()*challengePool.length)];return{active:true,mode:'fast',challenge:challenge,frames:[],result:'pending',score:0,risk:0,flags:{},startedAt:Date.now(),lastFrameAt:0,challengeRequired:false,challengePassed:false,secureMode:false,frameTarget:8}}
-function resetLivenessSession(){if(livenessChallengeTimeout){clearTimeout(livenessChallengeTimeout);livenessChallengeTimeout=null}livenessSession=null;livenessLoopCount=0}
-function ensureLivenessSession(){if(!livenessSession||!livenessSession.active){livenessSession=createLivenessSession()}return livenessSession}
-function setLivenessMode(mode){const session=ensureLivenessSession();session.mode=mode;session.secureMode=mode==='secure';session.frameTarget=mode==='secure'?16:8;return session}
-function getBlinkMetric(detection){const landmarks=detection&&detection.landmarks&&detection.landmarks.getLeftEye&&detection.landmarks.getRightEye?{left:detection.landmarks.getLeftEye(),right:detection.landmarks.getRightEye()}:null;const score=landmarks?((landmarks.left.length+landmarks.right.length)/16):0;return Math.max(0,Math.min(1,score/2))}
-function estimateLivenessFromDetection(detection){const box=detection&&detection.detection&&detection.detection.box?detection.detection.box:null;const score=detection&&detection.detection&&typeof detection.detection.score==='number'?detection.detection.score:null;const width=box&&typeof box.width==='number'?box.width:0;const height=box&&typeof box.height==='number'?box.height:0;const area=width*height;const aspect=height>0?width/height:0;const blinkMetric=getBlinkMetric(detection);const session=ensureLivenessSession();const now=Date.now();const deltaMs=session.lastFrameAt?now-session.lastFrameAt:0;session.lastFrameAt=now;session.frames.push({ts:now,score:score,area:area,aspect:aspect,blinkMetric:blinkMetric});if(session.frames.length>20)session.frames.shift();let movementScore=0;if(session.frames.length>=2){const prev=session.frames[session.frames.length-2];movementScore=Math.min(1,Math.abs(prev.area-area)/Math.max(1,prev.area)+Math.abs(prev.aspect-aspect))}const timingPenalty=deltaMs>0&&deltaMs<90?0.4:0;const staticPenalty=session.frames.length>=5&&movementScore<0.03?0.25:0;const blinkBonus=blinkMetric>0.55?0.2:0;const base=Math.max(0,Math.min(1,(score||0.5)*0.5+Math.min(1,area/18000)*0.15+(aspect>0.6&&aspect<1.6?0.1:0)+movementScore*0.2+blinkBonus-timingPenalty-staticPenalty));const suspiciousFlags={staticFace:staticPenalty>0,fastTiming:timingPenalty>0,lowMovement:movementScore<0.03,blinkWeak:blinkMetric<=0.55};const risk=(suspiciousFlags.staticFace?0.35:0)+(suspiciousFlags.fastTiming?0.2:0)+(suspiciousFlags.lowMovement?0.2:0)+(suspiciousFlags.blinkWeak?0.1:0);const secureNeeded=session.frames.length>=session.frameTarget&&((risk>=0.35)||(base<0.55&&session.frames.length>=10));const status=secureNeeded?'warn':(base>=0.68?'pass':'pending');const result=status==='pass'?'pass':(secureNeeded?'warn':'pending');session.score=base;session.risk=risk;session.flags=suspiciousFlags;session.result=result;session.challengeRequired=secureNeeded&&risk>=0.35;return{status:result,statusScore:base,method:session.secureMode?'multi_frame_secure':'fast_path_multi_frame',faceScore:score,boxArea:area,aspectRatio:aspect,challenge:session.challenge,frameCount:session.frames.length,risk:risk,flags:suspiciousFlags,deltaMs:deltaMs,requiresChallenge:session.challengeRequired}}
-function renderLivenessPrompt(liveness){if(!liveness||!liveness.requiresChallenge){overlayStatus.innerText='กำลังตรวจจับใบหน้า...';overlayStatus.style.background='rgba(0,0,0,0.65)';return}const map={blink:'กระพริบตา 1 ครั้ง',turn_left:'หันหน้าไปทางซ้าย',turn_right:'หันหน้าไปทางขวา'};overlayStatus.innerText='ต้องการยืนยัน: '+(map[liveness.challenge]||'ขยับหน้าเล็กน้อย');overlayStatus.style.background='rgba(245,158,11,0.6)'}
-function startScanLoop(){if(scanInterval)clearInterval(scanInterval);if(!livenessSession||!livenessSession.active)resetLivenessSession();ensureLivenessSession();overlayStatus.innerText='กำลังตรวจจับใบหน้า...';overlayStatus.style.background='rgba(0,0,0,0.65)';scanInterval=setInterval(async function(){if(video.paused||video.ended)return;const detection=await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();if(!detection)return;const best=findBestMatch(detection.descriptor);const liveness=estimateLivenessFromDetection(detection);window._latestLivenessResult=liveness;renderLivenessPrompt(liveness);if(best.distance<MATCH_THRESHOLD){if(liveness.status==='pending'){return}if(liveness.status==='warn'&&liveness.requiresChallenge){if(!livenessChallengeTimeout){livenessChallengeTimeout=setTimeout(function(){overlayStatus.innerText='การยืนยันหมดเวลา กรุณาลองใหม่';overlayStatus.style.background='rgba(239,68,68,0.6)';resetLivenessSession()},5000)}return}if(liveness.status==='warn'&&!liveness.requiresChallenge){setLivenessMode('fast');setTimeout(function(){clearInterval(scanInterval);document.getElementById('scanLine').classList.remove('active');showModal(best,liveness)},900);return}if(liveness.status==='pass'){setLivenessMode(liveness.frameCount>=10?'secure':'fast');setTimeout(function(){clearInterval(scanInterval);document.getElementById('scanLine').classList.remove('active');showModal(best,liveness)},900)}}else{overlayStatus.innerText='ไม่รู้จัก ('+best.distance.toFixed(2)+')';overlayStatus.style.background='rgba(239,68,68,0.6)'}},250)}
-function startCamera(actionType='logAttendance'){if(window._gpsRangeAllowed===false){showError('⛔ หน่วยบริการที่เลือกอยู่นอกระยะที่กำหนด (100 ม.)');btnStart.style.display='inline-block';if(btnCheckOut)btnCheckOut.style.display='inline-block';btnReload.style.display='block';return}if(window._locationMode!=='fallback'&&window._locationMode!=='offline'&&!window._faceGatePassed){showError('⛔ กรุณายืนยันหน่วยบริการและตรวจสอบ GPS ก่อนสแกน');btnStart.style.display='inline-block';if(btnCheckOut)btnCheckOut.style.display='inline-block';btnReload.style.display='block';return}currentAction=actionType;window._faceGatePassed=true;btnStart.style.display='none';if(btnCheckOut)btnCheckOut.style.display='none';btnReload.style.display='none';mainStatus.innerText='กำลังเปิดกล้อง...';mainStatus.style.color='#94a3b8';overlayStatus.innerText='กำลังเปิดกล้อง...';const tryOpen=async function(constraints){const stream=await navigator.mediaDevices.getUserMedia(constraints);video.srcObject=stream;video.classList.add('active');await video.play();mainStatus.innerText='✅ กำลังสแกน...';mainStatus.style.color='#34d399';overlayStatus.innerText='มองกล้องเพื่อสแกน';document.getElementById('scanLine').classList.add('active');resetLivenessSession();startScanLoop()};tryOpen({video:{facingMode:{ideal:'user'}},audio:false}).catch(function(err1){console.error('CAM ERROR 1:',err1.name,err1.message);btnStart.style.display='inline-block';if(btnCheckOut)btnCheckOut.style.display='inline-block';btnReload.style.display='block';showError('เปิดกล้องไม่ได้: '+err1.name+' : '+err1.message);overlayStatus.innerText='รอโหลด...';});}
-function getLivenessAdvice(score){if(typeof score!=='number')return'กรุณามองกล้องให้ตรงและรอสักครู่';if(score<0.55)return'ให้ขยับหน้าเล็กน้อย หันซ้าย/ขวา หรือกระพริบตา 1 ครั้ง แล้วลองใหม่';if(score<0.7)return'ให้มองกล้องตรง ๆ อยู่เฉย ๆ 1–2 วินาที และขยับหน้าเล็กน้อยก่อนยืนยัน';if(score<0.83)return'สแกนผ่านบางส่วนแล้ว กรุณากระพริบตา 1 ครั้งหรือหันซ้าย/ขวาเล็กน้อยก่อนกดยืนยัน';return'ใบหน้าผ่านเกณฑ์แล้ว กดยืนยันได้'}
-function removeLivenessAdviceBox(){const oldAdvice=document.getElementById('livenessAdviceBox');if(oldAdvice&&oldAdvice.parentNode)oldAdvice.parentNode.removeChild(oldAdvice)}
-function renderLivenessAdvice(score){removeLivenessAdviceBox();if(typeof score!=='number'||score>=0.7)return;const advice=getLivenessAdvice(score);const adviceBox=document.createElement('div');adviceBox.id='livenessAdviceBox';adviceBox.style.margin='12px 0 0';adviceBox.style.padding='12px 14px';adviceBox.style.borderRadius='12px';adviceBox.style.background='rgba(239,68,68,0.08)';adviceBox.style.border='1px solid rgba(239,68,68,0.22)';adviceBox.style.color='#fecaca';adviceBox.style.fontSize='13px';adviceBox.style.lineHeight='1.6';adviceBox.innerHTML='<div style="font-weight:700;margin-bottom:4px">คำแนะนำให้ผ่านครั้งถัดไป</div><div>'+advice+'</div>';document.querySelector('.modal-content').insertBefore(adviceBox,document.getElementById('btnConfirm'))}
-function setRetryButton(button){button.disabled=false;button.innerText='ลองใหม่';button.classList.add('retry-mode');button.onclick=function(){button.disabled=true;button.innerText='กำลังเปิดกล้อง...';button.onclick=null;cancelAttendance();setTimeout(function(){startCamera(currentAction)},220)}}
-function bindConfirmButton(){const btn=document.getElementById('btnConfirm');btn.onclick=function(){confirmAttendance()};return btn}
-function showModal(match,liveness){currentMatchInfo=match;currentMatch=match.employeeId||match.name;window._latestLivenessResult=liveness||window._latestLivenessResult||null;document.getElementById('modalName').innerText=match.name;const now=new Date(),timeStr=now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});document.getElementById('modalTime').innerText='เวลาเข้างาน: '+timeStr+' น.';const matchScore=((1-match.distance)*100).toFixed(1);const liveScore=window._latestLivenessResult&&typeof window._latestLivenessResult.statusScore==='number'?window._latestLivenessResult.statusScore:null;const liveText=window._latestLivenessResult?' • Liveness: '+(liveScore!==null?liveScore.toFixed(2):'n/a')+' ('+window._latestLivenessResult.status+')':'';document.getElementById('modalScore').innerText='ความเหมือน: '+matchScore+'%'+liveText;const modalLoc=document.getElementById('modalLocation');if(meshEnabled()){modalLoc.innerHTML='📡 โหมดออฟไลน์ — บันทึกในเครื่อง';modalLoc.style.display='block';modalLoc.style.background='rgba(245,158,11,0.1)';modalLoc.style.borderColor='rgba(245,158,11,0.3)';modalLoc.style.color='#fcd34d'}else if(currentLocation){modalLoc.innerHTML='📍 '+currentLocation.name;modalLoc.style.display='block';modalLoc.style.background='rgba(99,102,241,0.12)';modalLoc.style.borderColor='rgba(99,102,241,0.25)';modalLoc.style.color='#a5b4fc'}else{modalLoc.style.display='none'}if(window._latestLivenessResult&&window._latestLivenessResult.challenge&&window._latestLivenessResult.requiresChallenge){document.getElementById('modalTime').innerText='เวลาเข้างาน: '+timeStr+' น. • ยืนยันด้วย '+window._latestLivenessResult.challenge}const btnConfirmEl=bindConfirmButton();const scoreValue=liveScore===null?-1:liveScore;removeLivenessAdviceBox();btnConfirmEl.classList.remove('retry-mode');if(scoreValue>=0&&scoreValue<0.7){document.getElementById('modalScore').innerHTML='❌ ไม่ผ่านการยืนยันใบหน้า ('+scoreValue.toFixed(3)+')';setRetryButton(btnConfirmEl);mainStatus.innerText='❌ ไม่ผ่านการยืนยันใบหน้า กรุณาลองใหม่';overlayStatus.innerText='❌ ไม่ผ่านการยืนยันใบหน้า';overlayStatus.style.background='rgba(239,68,68,0.6)';renderLivenessAdvice(scoreValue)}else{btnConfirmEl.disabled=false;btnConfirmEl.innerText='✅ ยืนยันเข้างาน';btnConfirmEl.onclick=function(){confirmAttendance()};mainStatus.innerText=window._latestLivenessResult&&window._latestLivenessResult.status==='warn'?'กรุณายืนยันและขยับหน้าเล็กน้อย':'กรุณายืนยัน...'}confirmModal.style.display='flex'}
-async function _sendToApi(btn,payload){try{const res=await fetch(API_URL,{method:'POST',body:JSON.stringify(payload)});const data=await res.json();alert('✅ '+(data.message||'บันทึกเวลาสำเร็จ'));window.location.replace('index.html')}catch(e){alert('❌ บันทึกล้มเหลว: '+e.message);btn.disabled=false;btn.innerText='✅ ยืนยันเข้างาน'}}
-async function confirmAttendance(){const btn=document.getElementById('btnConfirm');btn.disabled=true;btn.innerText='กำลังบันทึก...';const mode=meshEnabled()?'mesh':(window._locationMode||'gps'),gpsQuality=getGpsPayloadQuality(),liveness=window._latestLivenessResult||{status:'unknown',statusScore:null,method:'none',frameCount:0,challenge:'none',risk:0,flags:{}},requestId='req_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,10),clientTimestamp=Date.now(),idempotencyKey=requestId,gpsStatusValue=mode==='mesh'?'mesh_offline':mode,payload={action:currentAction,name:currentMatch,lat:currentLat,lng:currentLng,locationName:currentLocation?currentLocation.name:'',gpsStatus:gpsStatusValue,gpsSkipReason:gpsSkipped?gpsSkipReason:'',userAgent:navigator.userAgent,employeeId:currentMatch,position:(currentMatchInfo&&currentMatchInfo.position)||'',gpsAccuracy:gpsQuality.accuracy,gpsAltitude:gpsQuality.altitude,gpsTimestamp:gpsQuality.timestamp,suspiciousGps:gpsQuality.suspiciousGps,requestId:requestId,clientTimestamp:clientTimestamp,idempotencyKey:idempotencyKey,livenessStatus:liveness.status,livenessScore:liveness.statusScore,livenessMethod:liveness.method,livenessChallenge:liveness.challenge||'none',livenessFrameCount:liveness.frameCount||0,livenessRisk:liveness.risk||0,livenessFlags:liveness.flags||{},auditLog:{result:'pending',reason:'',matchScore:currentMatchInfo&&typeof currentMatchInfo.distance==='number'?(1-currentMatchInfo.distance):null,gps:{latitude:currentLat,longitude:currentLng,locationName:currentLocation?currentLocation.name:'',accuracy:gpsQuality.accuracy,altitude:gpsQuality.altitude,timestamp:gpsQuality.timestamp,suspiciousGps:gpsQuality.suspiciousGps},device:{userAgent:navigator.userAgent,platform:detectPlatform(),language:navigator.language||'',vendor:navigator.vendor||'',hardwareConcurrency:navigator.hardwareConcurrency||null,deviceMemory:navigator.deviceMemory||null,online:navigator.onLine},flags:{gpsSkipped:!!gpsSkipped,meshMode:meshEnabled(),suspiciousGps:!!gpsQuality.suspiciousGps,locationOutOfRange:!!(window._gpsRangeAllowed===false),speedAnomaly:!!(gpsQuality.suspiciousGps&&gpsQuality.accuracy!==null&&gpsQuality.accuracy>50),livenessStatus:liveness.status,livenessChallenge:liveness.challenge||'none',livenessFrameCount:liveness.frameCount||0,livenessRisk:liveness.risk||0}}};if(gpsQuality.suspiciousGps&&mode!=='mesh'){const proceed=confirm('⚠️ สัญญาณ GPS มีความน่าสงสัย ต้องการบันทึกต่อหรือไม่?');if(!proceed){btn.disabled=false;btn.innerText='✅ ยืนยันเข้างาน';return}}if(liveness.status!=='pass'&&liveness.status!=='warn'&&liveness.result!=='pass'){btn.disabled=false;btn.innerText='⛔ ไม่ผ่านการยืนยันใบหน้า';return}if(typeof liveness.statusScore==='number'&&liveness.statusScore<0.7){btn.disabled=false;btn.innerText='ลองใหม่';btn.classList.add('retry-mode');mainStatus.innerText='❌ ไม่ผ่านการยืนยันใบหน้า กรุณาลองใหม่';overlayStatus.innerText='❌ ไม่ผ่านการยืนยันใบหน้า';overlayStatus.style.background='rgba(239,68,68,0.6)';const advice=getLivenessAdvice(liveness.statusScore);const adviceBox=document.getElementById('livenessAdviceBox');if(adviceBox){adviceBox.innerHTML='<div style="font-weight:700;margin-bottom:4px">คำแนะนำให้ผ่านครั้งถัดไป</div><div>'+advice+'</div>';adviceBox.style.display='block'}return}if(liveness.status==='warn'&&liveness.requiresChallenge){const proceedLiveness=confirm('⚠️ ต้องยืนยันตามคำสั่งที่แสดง ต้องการดำเนินการต่อหรือไม่?');if(!proceedLiveness){btn.disabled=false;btn.innerText='✅ ยืนยันเข้างาน';return}}if(meshEnabled()){try{const result=MeshService.sendMeshData(payload);alert('📡 '+result.message);window.location.replace('index.html')}catch(meshErr){alert('⚠️ โหมดออฟไลน์ล้มเหลว กำลังส่งผ่าน API ปกติ');await _sendToApi(btn,payload)}return}await _sendToApi(btn,payload)}
-function cancelAttendance(){confirmModal.style.display='none';currentMatch=null;currentMatchInfo=null;if(scanInterval)clearInterval(scanInterval);if(video.srcObject){video.srcObject.getTracks().forEach(function(t){t.stop()});video.srcObject=null}video.classList.remove('active');document.getElementById('scanLine').classList.remove('active');mainStatus.innerText='✅ ระบบพร้อมใช้งาน';mainStatus.style.color='#34d399';overlayStatus.innerText='รอโหลด...';overlayStatus.style.background='rgba(0,0,0,0.65)';btnStart.style.display='inline-block';if(btnCheckOut)btnCheckOut.style.display='inline-block';resetLivenessSession()}
-function haversineKm(lat1,lon1,lat2,lon2){const R=6371,dLat=deg2rad(lat2-lat1),dLon=deg2rad(lon2-lon1),a=Math.sin(dLat/2)**2+Math.cos(deg2rad(lat1))*Math.cos(deg2rad(lat2))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))}
-function deg2rad(deg){return deg*Math.PI/180}
-async function init(){console.log('[scan] init() start');if(sessionStorage.getItem(SESSION_KEY)!=='1'){console.warn('[scan] blocked by SESSION_KEY');window.location.replace('login.html?to=scan.html');return}if(!API_URL){console.warn('[scan] blocked by missing API_URL');showError('ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่า</a>');return}window._locationMode='gps';window._wifiType='';window._faceGatePassed=false;window._gpsRangeAllowed=true;mainStatus.innerText='1/4 ตรวจสอบกล้อง...';mainStatus.style.color='#94a3b8';if(typeof MeshService!=='undefined'){try{MeshService.injectToggleButton(document.getElementById('statusAreaRoot'));window.addEventListener('online',async()=>{if(!MeshService.isEnabled()&&navigator.onLine){try{const res=await MeshService.sync(getApiUrl());if(res.synced>0){console.log(`[Mesh] Auto-synced ${res.synced} records on reconnect!`);alert(`📡 ซิงค์ข้อมูลออฟไลน์สำเร็จ ${res.synced} รายการ`)}}catch(e){console.error('[Mesh] Auto-sync failed',e)}}});const channel=new BroadcastChannel('mesh_sync');channel.onmessage=async(e)=>{if(e.data&&e.data.type==='NEW_RECORD'&&navigator.onLine&&!MeshService.isEnabled()){await MeshService.sync(getApiUrl())}}}catch(_){}}bindFallbackButtons();const cameraOk=await checkCamera().catch(function(err){console.error('[scan] checkCamera error',err);return false});console.log('[scan] checkCamera result=',cameraOk);if(!cameraOk){showError('❌ เข้าถึงกล้องไม่ได้ — กรุณาอนุญาตสิทธิ์กล้องแล้วรีเฟรช');return}mainStatus.innerText='2/4 โหลดหน่วยบริการ...';mainStatus.style.color='#34d399';let config=null;try{const res=await fetch(API_URL+'?action=getConfig');config=await res.json();fallbackSettings=config.fallbackSettings||fallbackSettings}catch(e){console.warn('[scan] getConfig failed, using fallback',e);config={locations:[],fallbackSettings:fallbackSettings}}allLocations=Array.isArray(config.locations)?config.locations.filter(function(l){return l&&l.enabled!==false}):[];if(typeof MeshService!=='undefined'){try{MeshService.cacheLocations(allLocations)}catch(_){}}if(allLocations.length===0){locationSelector.style.display='none';currentLocation=null;gpsStatus.innerHTML='<span style="color:#34d399">📍 ไม่จำกัดพื้นที่</span>';mainStatus.innerText='2/4 ไม่มีหน่วยบริการ — ใช้โหมดทั่วไป';mainStatus.style.color='#34d399';window._gpsRangeAllowed=true;window._faceGatePassed=true;await ensureFaceSystemReady();btnStart.style.display='inline-block';if(btnCheckOut)btnCheckOut.style.display='inline-block';return}renderLocations(allLocations,false);locationSelector.style.display='block';locationSelect.selectedIndex=0;mainStatus.innerText='2/4 เลือกหน่วยบริการ แล้วกดยืนยัน';mainStatus.style.color='#a5b4fc';const selected=getSelectedLocation()||allLocations[0];updateGpsInfoCard(selected,'fallback');btnConfirmLocation.style.display='block';btnConfirmLocation.disabled=false;btnStart.disabled=true;btnStart.style.display='inline-block';if(btnCheckOut)btnCheckOut.style.display='inline-block';await waitForLocationConfirm();mainStatus.innerText='3/4 ตรวจสอบ GPS...';mainStatus.style.color='#94a3b8';let permState='unknown';try{permState=await checkGeolocationPermission()}catch(_){permState='unknown'}if(permState==='unsupported'){showError('❌ อุปกรณ์นี้ไม่รองรับ GPS');showGpsGuide(2);window._locationMode='fallback';window._gpsRangeAllowed=true;await ensureFaceSystemReady();return}if(permState==='prompt'){gpsPermBanner.style.display='block';mainStatus.innerText='⏳ รอการอนุญาต GPS...';mainStatus.style.color='#fbbf24'}if(permState==='denied'){showError('❗ ถูกปฏิเสธสิทธิ์ GPS — ใช้แผนสำรองหรือโหมดออฟไลน์ได้');showGpsGuide(1);window._locationMode='fallback';window._gpsRangeAllowed=true;await ensureFaceSystemReady();return}try{await checkGPSAndAutoMatch()}catch(e){console.warn('[scan] GPS check failed, switching to fallback',e);gpsPermBanner.style.display='none';hideGpsGuide();window._locationMode='fallback';window._gpsRangeAllowed=true;updateGpsInfoCard(getSelectedLocation()||allLocations[0],'fallback')}await ensureFaceSystemReady();btnStart.style.display='inline-block';if(btnCheckOut)btnCheckOut.style.display='inline-block'}
-if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init)}else{setTimeout(init,0)}
-function renderAuthBadge(){const host=document.getElementById('authBadgeHost');if(!host)return;const isAuthedNow=sessionStorage.getItem('adminAuth')==='1';if(!isAuthedNow){host.innerHTML='';return}const role=(sessionStorage.getItem('adminRole')||'admin').trim()||'admin';const name=(sessionStorage.getItem('adminName')||'').trim()||'Admin';host.innerHTML='<div class="auth-badge" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.28);color:#c7d2fe;font-size:0.82em;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.18)">'+'<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block"></span>'+'<span>'+name+'</span>'+'<span style="opacity:0.7">•</span>'+'<span>'+role+'</span>'+'</div>'}
-if(btnLogoutTop){btnLogoutTop.addEventListener('click',function(){sessionStorage.removeItem(SESSION_KEY);window.location.replace('login.html?to=scan.html')})}
-document.addEventListener('DOMContentLoaded',renderAuthBadge);
+// --- CONFIG & UTILS ---
+const SESSION_KEY = 'adminAuth';
+const MATCH_THRESHOLD = 0.55;
+const video = document.getElementById('video');
+const mainStatus = document.getElementById('main-status');
+const overlayStatus = document.getElementById('overlay-status');
+const confirmModal = document.getElementById('confirmModal');
+const btnStart = document.getElementById('btnStart');
+
+function getApiUrl() { return (localStorage.getItem('gasApiUrl') || '').trim(); }
+function getAuthToken() { return (localStorage.getItem('token') || '').trim(); }
+function getReadToken() { return (localStorage.getItem('readToken') || '').trim(); }
+
+let knownFaces = [];
+let scanInterval = null;
+let currentMatch = null;
+const API_URL = getApiUrl();
+
+// --- FACE SYSTEM ---
+async function initFaceSystem() {
+  if (!API_URL) {
+    mainStatus.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL</span>';
+    return;
+  }
+
+  mainStatus.innerText = '⏳ กำลังโหลด AI Model...';
+  const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+  
+  try {
+    await Promise.all([
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+    ]);
+    
+    mainStatus.innerText = '⏳ กำลังโหลดข้อมูลพนักงาน...';
+    
+    let data = null;
+    const readToken = getReadToken();
+    const authToken = getAuthToken();
+    
+    try {
+      const res = await fetch(API_URL + '?action=getKnownFaces&readToken=' + encodeURIComponent(readToken));
+      data = await res.json();
+    } catch(e) {}
+
+    if (!Array.isArray(data) && authToken) {
+      try {
+        const res = await fetch(API_URL + '?action=getKnownFaces&token=' + encodeURIComponent(authToken));
+        data = await res.json();
+      } catch(e) {}
+    }
+
+    if (!Array.isArray(data)) {
+      try {
+        const res = await fetch(API_URL + '?action=getKnownFaces');
+        data = await res.json();
+      } catch(e) {}
+    }
+
+    if (!Array.isArray(data) || data.length === 0) {
+      mainStatus.innerHTML = '<span style="color:#f87171">❌ ไม่พบข้อมูลพนักงาน หรือ Token ไม่ถูกต้อง</span>';
+      return;
+    }
+
+    knownFaces = data.map(u => ({
+      employeeId: String(u.employeeId || '').trim(),
+      name: String(u.name || u.label || '').trim(),
+      descriptor: new Float32Array(Object.values(u.descriptor))
+    })).filter(u => u.descriptor.length === 128);
+
+    mainStatus.innerText = '✅ ระบบพร้อมใช้งาน';
+    mainStatus.style.color = '#34d399';
+    btnStart.style.display = 'block';
+    overlayStatus.innerText = 'กดปุ่มเพื่อเริ่มสแกน';
+
+  } catch (err) {
+    mainStatus.innerHTML = '<span style="color:#f87171">❌ เกิดข้อผิดพลาด: ' + err.message + '</span>';
+  }
+}
+
+async function startCamera() {
+  btnStart.style.display = 'none';
+  overlayStatus.innerText = 'กำลังเปิดกล้อง...';
+  
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    video.srcObject = stream;
+    video.classList.add('active');
+    document.getElementById('scanLine').classList.add('active');
+    
+    video.onloadedmetadata = () => {
+      overlayStatus.innerText = 'มองกล้องเพื่อสแกน';
+      startScanLoop();
+    };
+  } catch (err) {
+    mainStatus.innerHTML = '<span style="color:#f87171">❌ เปิดกล้องไม่ได้: ' + err.message + '</span>';
+    btnStart.style.display = 'block';
+  }
+}
+
+function startScanLoop() {
+  if (scanInterval) clearInterval(scanInterval);
+  scanInterval = setInterval(async () => {
+    if (video.paused || video.ended) return;
+    
+    const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+    if (!detection) {
+      overlayStatus.innerText = 'ไม่พบใบหน้า';
+      return;
+    }
+
+    const bestMatch = findBestMatch(detection.descriptor);
+    if (bestMatch.distance < MATCH_THRESHOLD) {
+      clearInterval(scanInterval);
+      showModal(bestMatch);
+    } else {
+      overlayStatus.innerText = 'ไม่รู้จัก (' + bestMatch.distance.toFixed(2) + ')';
+    }
+  }, 500);
+}
+
+function findBestMatch(descriptor) {
+  let best = { distance: 1.0, name: 'ไม่รู้จัก', employeeId: '' };
+  knownFaces.forEach(user => {
+    const dist = faceapi.euclideanDistance(descriptor, user.descriptor);
+    if (dist < best.distance) {
+      best = { distance: dist, name: user.name, employeeId: user.employeeId };
+    }
+  });
+  return best;
+}
+
+function showModal(match) {
+  currentMatch = match;
+  document.getElementById('modalName').innerText = match.name;
+  document.getElementById('modalScore').innerText = 'ความเหมือน: ' + ((1 - match.distance) * 100).toFixed(1) + '%';
+  confirmModal.style.display = 'flex';
+  overlayStatus.innerText = 'สแกนสำเร็จ';
+}
+
+async function confirmAttendance() {
+  const btn = document.getElementById('btnConfirm');
+  btn.disabled = true;
+  btn.innerText = 'กำลังบันทึก...';
+
+  const payload = {
+    action: 'logAttendance',
+    token: getAuthToken(),
+    employeeId: currentMatch.employeeId || '',
+    name: currentMatch.name || '',
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+    
+    if (result.status === 'ok' || result.status === 'success') {
+      alert('✅ บันทึกเวลาสำเร็จ: ' + (result.message || ''));
+      window.location.reload();
+    } else {
+      throw new Error(result.message || 'Backend ปฏิเสธการบันทึก');
+    }
+  } catch (e) {
+    alert('❌ บันทึกล้มเหลว: ' + e.message);
+    btn.disabled = false;
+    btn.innerText = '✅ ยืนยันเข้างาน';
+  }
+}
+
+function cancelAttendance() {
+  confirmModal.style.display = 'none';
+  currentMatch = null;
+  startScanLoop();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem(SESSION_KEY) !== '1') {
+    window.location.replace('login.html');
+    return;
+  }
+  initFaceSystem();
+  btnStart.onclick = startCamera;
+  document.getElementById('btnLogoutTop').onclick = () => {
+    sessionStorage.removeItem(SESSION_KEY);
+    window.location.replace('login.html');
+  };
+});
 </script>
 </body>
 </html>

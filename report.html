@@ -8,13 +8,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script>
-    // ดึง API URL จาก localStorage (สำหรับ Vercel) หรือใช้ค่าเริ่มต้น
     const GAS_API_URL = localStorage.getItem('gasApiUrl') || '';
     
-    // FIX: เพิ่มฟังก์ชัน formatTimeHms ที่ขาดหายไปเพื่อแก้ปัญหา ReferenceError
     function formatTimeHms(timeStr) {
       if (!timeStr || timeStr === '-') return '-';
-      // ถ้ามาเป็น HH:mm:ss หรือ HH:mm อยู่แล้ว ให้ส่งกลับเลย
       return timeStr;
     }
 
@@ -227,8 +224,39 @@
               ? result.result
               : [];
 
-      renderTable(logs);
-      updateSummary(logs);
+      // --- LOGIC แก้ไขการแสดงผลเวลาเข้า-ออก ---
+      const groupedLogs = [];
+      const map = new Map();
+
+      logs.forEach(log => {
+        const name = log.name || log.Name || '-';
+        const date = log.date || log.Date || '-';
+        const key = `${name}_${date}`;
+
+        if (!map.has(key)) {
+          // ถ้ายังไม่มีข้อมูลของคนนี้ในวันนี้ ให้สร้างแถวใหม่ (เป็นเวลาเข้างาน)
+          const newLog = { ...log };
+          // กำหนดเวลาเข้างาน
+          newLog.displayIn = log.time || log.Time || log.checkinTime || log.checkInTime || '-';
+          // กำหนดเวลาออกงาน (ถ้ามีข้อมูล checkout มาอยู่แล้วให้ใช้เลย ถ้าไม่มีให้เป็น -)
+          newLog.displayOut = log.checkoutTime || log.checkOutTime || log.checkout || log.outTime || '-';
+          
+          map.set(key, newLog);
+          groupedLogs.push(newLog);
+        } else {
+          // ถ้ามีข้อมูลอยู่แล้ว (ครั้งที่ 2 ของวัน) ให้เอาเวลาไปใส่ในช่อง "เวลาออกงาน"
+          const existingLog = map.get(key);
+          const secondTime = log.time || log.Time || log.checkinTime || log.checkInTime || '-';
+          
+          // ถ้าช่องเวลาออกงานยังว่างอยู่ ให้ใส่เวลาครั้งที่ 2 ลงไป
+          if (existingLog.displayOut === '-' || !existingLog.displayOut) {
+            existingLog.displayOut = secondTime;
+          }
+        }
+      });
+
+      renderTable(groupedLogs);
+      updateSummary(groupedLogs);
 
     } catch (e) {
       alert('❌ โหลดข้อมูลล้มเหลว: ' + e.message);
@@ -246,7 +274,7 @@
     }
 
     body.innerHTML = logs.map((log, i) => {
-      const status = log.status || log.Status || (log.time || log.Time || log.checkinTime || log.checkin || log.checkInTime ? 'ปกติ' : 'ไม่ระบุ');
+      const status = log.status || log.Status || (log.displayIn !== '-' ? 'ปกติ' : 'ไม่ระบุ');
       let badgeClass = 'badge-ontime';
       if (status.includes('สาย')) badgeClass = 'badge-late';
       if (status.includes('ขาด') || status.includes('ไม่ระบุ')) badgeClass = 'badge-absent';
@@ -256,8 +284,8 @@
           <td style="color:var(--muted)">${i + 1}</td>
           <td class="td-name">${log.name || log.Name || '-'}</td>
           <td>${log.date || log.Date || '-'}</td>
-          <td style="color:var(--accent); font-family:monospace">${formatTimeHms(log.time || log.Time || log.checkinTime || log.checkInTime || '-')}</td>
-          <td style="font-family:monospace">${formatTimeHms(log.checkoutTime || log.checkOutTime || log.checkout || log.outTime || '-')}</td>
+          <td style="color:var(--accent); font-family:monospace">${formatTimeHms(log.displayIn)}</td>
+          <td style="font-family:monospace">${formatTimeHms(log.displayOut)}</td>
           <td style="font-size:0.9em; color:var(--muted)">${log.locationName || log.Location || '-'}</td>
           <td><span class="badge ${badgeClass}">${status}</span></td>
         </tr>

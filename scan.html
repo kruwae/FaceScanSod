@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>สแกนเข้า-ออกงาน (V2)</title>
+  <title>สแกนเข้า-ออกงาน (V3)</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js" defer></script>
   <style>
@@ -28,7 +28,7 @@
     .status-error { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
 
     /* Video Area */
-    .video-wrap { position: relative; width: 100%; border-radius: 20px; overflow: hidden; background: #000; aspect-ratio: 4/3; margin-bottom: 20px; display: none; }
+    .video-wrap { position: relative; width: 100%; border-radius: 20px; overflow: hidden; background: #000; aspect-ratio: 4/3; margin-bottom: 20px; display: none; border: 2px solid #6366f1; }
     video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
     .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: #10b981; box-shadow: 0 0 10px #10b981; z-index: 10; animation: scan 2s infinite ease-in-out; }
     @keyframes scan { 0% { top: 10%; } 50% { top: 90%; } 100% { top: 10%; } }
@@ -45,13 +45,15 @@
     .modal-content { background: #1e293b; border: 1px solid #334155; border-radius: 24px; padding: 30px; width: 100%; max-width: 360px; text-align: center; }
     .modal-name { font-size: 1.5em; font-weight: 700; color: #a5b4fc; margin-bottom: 8px; }
     .modal-info { color: #94a3b8; font-size: 0.9em; margin-bottom: 24px; }
+    
+    #scanStatus { font-size: 0.9em; color: #a5b4fc; text-align: center; margin-top: 10px; font-weight: 600; }
   </style>
 </head>
 <body>
 
 <div class="container">
   <div class="card">
-    <h2>📷 บันทึกเวลาทำงาน</h2>
+    <h2>📷 บันทึกเวลาทำงาน (V3)</h2>
     
     <div class="form-group">
       <label>เลือกหน่วยบริการ / สถานที่</label>
@@ -76,6 +78,7 @@
       <div class="scan-line"></div>
       <video id="video" autoplay muted playsinline></video>
     </div>
+    <div id="scanStatus"></div>
 
     <button id="btnAction" class="btn btn-primary" disabled onclick="startScan()">
       ⌛ รอตรวจสอบระยะทาง...
@@ -106,7 +109,7 @@ let currentPos = null;
 let selectedLoc = null;
 let scanInterval = null;
 let currentMatch = null;
-let actionType = 'logAttendance'; // Default is Check-In
+let actionType = 'logAttendance';
 
 // --- 1. INITIALIZE ---
 async function init() {
@@ -116,7 +119,6 @@ async function init() {
   }
   
   try {
-    // โหลด Config และ Locations
     const res = await fetch(API_URL + '?action=getConfig');
     const config = await res.json();
     locations = config.locations || [];
@@ -128,7 +130,6 @@ async function init() {
       updateLocationUI();
     }
 
-    // โหลด AI Models
     const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
     await Promise.all([
       faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
@@ -136,13 +137,8 @@ async function init() {
       faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
     ]);
 
-    // โหลดข้อมูลใบหน้า
     await loadFaces();
-    
-    // เริ่มติดตาม GPS
     startGpsTracking();
-    
-    // เช็คประวัติวันนี้เพื่อเปลี่ยนปุ่ม In/Out
     await checkTodayStatus();
 
   } catch (e) {
@@ -155,11 +151,22 @@ async function loadFaces() {
     const res = await fetch(API_URL + '?action=getKnownFaces&readToken=' + encodeURIComponent(READ_TOKEN));
     const data = await res.json();
     if (Array.isArray(data)) {
-      knownFaces = data.map(u => ({
-        employeeId: String(u.employeeId || '').trim(),
-        name: String(u.name || u.label || '').trim(),
-        descriptor: new Float32Array(Object.values(u.descriptor))
-      })).filter(u => u.descriptor.length === 128);
+      knownFaces = data.map(u => {
+        let desc = null;
+        // รองรับทั้งแบบ Object {0:.., 1:..} และ Array [..]
+        if (u.descriptor) {
+          const values = Object.values(u.descriptor);
+          if (values.length === 128) {
+            desc = new Float32Array(values);
+          }
+        }
+        return {
+          employeeId: String(u.employeeId || '').trim(),
+          name: String(u.name || u.label || '').trim(),
+          descriptor: desc
+        };
+      }).filter(u => u.descriptor !== null);
+      console.log('Loaded faces:', knownFaces.length);
     }
   } catch (e) { console.error('Load faces failed', e); }
 }
@@ -210,7 +217,7 @@ function checkDistance() {
 }
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // metres
+  const R = 6371e3;
   const φ1 = lat1 * Math.PI/180;
   const φ2 = lat2 * Math.PI/180;
   const Δφ = (lat2-lat1) * Math.PI/180;
@@ -222,26 +229,17 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// --- 3. ATTENDANCE LOGIC (IN/OUT) ---
+// --- 3. ATTENDANCE LOGIC ---
 async function checkTodayStatus() {
-  // Logic: ดึง Log วันนี้มาดูว่ามี logAttendance หรือยัง
-  // ถ้า Backend ไม่มี API เฉพาะ เราจะใช้ getAttendanceLogs (ถ้ามีสิทธิ์) 
-  // หรือใช้ค่าที่บันทึกไว้ใน LocalStorage เป็นตัวช่วยเบื้องต้น
   const lastAction = localStorage.getItem('lastActionDate');
   const today = new Date().toDateString();
-  
-  if (lastAction === today) {
-    actionType = 'logCheckout';
-  } else {
-    actionType = 'logAttendance';
-  }
+  actionType = (lastAction === today) ? 'logCheckout' : 'logAttendance';
   updateActionButtonText();
 }
 
 function updateActionButtonText() {
   const btn = document.getElementById('btnAction');
   if (btn.disabled) return;
-  
   if (actionType === 'logAttendance') {
     btn.innerText = '📷 สแกนใบหน้า "เข้างาน"';
     btn.className = 'btn btn-primary';
@@ -251,10 +249,16 @@ function updateActionButtonText() {
   }
 }
 
-// --- 4. SCANNING ---
+// --- 4. SCANNING (FIXED FOR REGISTER.HTML COMPATIBILITY) ---
 async function startScan() {
+  if (knownFaces.length === 0) {
+    alert('ไม่พบข้อมูลใบหน้าพนักงานในระบบ กรุณาติดต่อ Admin');
+    return;
+  }
+  
   document.getElementById('videoWrap').style.display = 'block';
   document.getElementById('btnAction').style.display = 'none';
+  document.getElementById('scanStatus').innerText = 'กำลังมองหาใบหน้า...';
   
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
@@ -264,14 +268,21 @@ async function startScan() {
     scanInterval = setInterval(async () => {
       const detection = await faceapi.detectSingleFace(videoEl).withFaceLandmarks().withFaceDescriptor();
       if (detection) {
+        document.getElementById('scanStatus').innerText = 'ตรวจพบใบหน้า กำลังเปรียบเทียบ...';
         const best = findBestMatch(detection.descriptor);
-        if (best.distance < 0.55) {
+        
+        // ปรับ Threshold ให้แม่นยำขึ้น (0.45 - 0.55)
+        if (best.distance < 0.50) {
           clearInterval(scanInterval);
           stopCamera();
           showConfirm(best);
+        } else {
+          document.getElementById('scanStatus').innerText = 'ไม่พบพนักงานที่ตรงกัน (Dist: ' + best.distance.toFixed(2) + ')';
         }
+      } else {
+        document.getElementById('scanStatus').innerText = 'กรุณามองกล้องให้ชัดเจน';
       }
-    }, 500);
+    }, 600);
   } catch (e) {
     showError('เปิดกล้องไม่ได้: ' + e.message);
   }
@@ -279,7 +290,9 @@ async function startScan() {
 
 function findBestMatch(descriptor) {
   let best = { distance: 1.0, name: 'ไม่รู้จัก', employeeId: '' };
+  
   knownFaces.forEach(user => {
+    // เปรียบเทียบใบหน้าโดยใช้ Euclidean Distance
     const dist = faceapi.euclideanDistance(descriptor, user.descriptor);
     if (dist < best.distance) {
       best = { distance: dist, name: user.name, employeeId: user.employeeId };
@@ -295,6 +308,7 @@ function stopCamera() {
   }
   document.getElementById('videoWrap').style.display = 'none';
   document.getElementById('btnAction').style.display = 'flex';
+  document.getElementById('scanStatus').innerText = '';
 }
 
 // --- 5. SUBMISSION ---
@@ -318,7 +332,8 @@ async function submitAttendance() {
     lat: currentPos.lat,
     lng: currentPos.lng,
     locationName: selectedLoc.name,
-    gpsStatus: 'ok'
+    gpsStatus: 'ok',
+    clientTimestamp: new Date().toISOString()
   };
 
   try {
@@ -333,11 +348,11 @@ async function submitAttendance() {
       if (actionType === 'logAttendance') {
         localStorage.setItem('lastActionDate', new Date().toDateString());
       } else {
-        localStorage.removeItem('lastActionDate'); // Reset for next day
+        localStorage.removeItem('lastActionDate');
       }
       window.location.reload();
     } else {
-      alert('❌ บันทึกล้มเหลว: ' + result.message);
+      alert('❌ บันทึกล้มเหลว: ' + (result.message || 'Server Error'));
     }
   } catch (e) {
     alert('❌ เชื่อมต่อ Server ไม่ได้ (เน็ตอาจมีปัญหา)');
@@ -360,7 +375,6 @@ function showError(msg) {
 
 function updateLocationUI() {}
 
-// Start
 init();
 </script>
 </body>

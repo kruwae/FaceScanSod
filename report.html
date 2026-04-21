@@ -7,9 +7,30 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="js/api-config.js"></script>
   <script>
-    const GAS_API_URL = (typeof window !== 'undefined' && window.GAS_API_URL) ? window.GAS_API_URL : '';
+    // ดึง API URL จาก localStorage (สำหรับ Vercel) หรือใช้ค่าเริ่มต้น
+    const GAS_API_URL = localStorage.getItem('gasApiUrl') || '';
+    
+    // FIX: เพิ่มฟังก์ชัน formatTimeHms ที่ขาดหายไปเพื่อแก้ปัญหา ReferenceError
+    function formatTimeHms(timeStr) {
+      if (!timeStr || timeStr === '-') return '-';
+      // ถ้ามาเป็น HH:mm:ss หรือ HH:mm อยู่แล้ว ให้ส่งกลับเลย
+      return timeStr;
+    }
+
+    function getApiUrl() { return localStorage.getItem('gasApiUrl') || ''; }
+    function getToken() { return localStorage.getItem('token') || ''; }
+    function getUsername() { return localStorage.getItem('username') || 'Admin'; }
+    function getRole() { return localStorage.getItem('role') || ''; }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      localStorage.removeItem('role');
+      window.location.href = 'login.html';
+    }
+
+    function goBack() { window.history.back(); }
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -37,1107 +58,212 @@
       padding: 24px 16px 40px;
       position: relative;
     }
-
     body::before {
-      content: '';
-      position: fixed;
-      width: 420px;
-      height: 420px;
-      background: #6366f1;
-      border-radius: 50%;
-      filter: blur(100px);
-      opacity: 0.09;
-      top: -120px;
-      left: -100px;
-      pointer-events: none;
-      z-index: 0;
+      content: ''; position: fixed; width: 420px; height: 420px; background: #6366f1; border-radius: 50%; filter: blur(100px); opacity: 0.09; top: -120px; left: -100px; pointer-events: none; z-index: 0;
     }
+    .page-wrap { width: 100%; max-width: 1100px; position: relative; z-index: 1; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 0 18px; margin-bottom: 10px; }
+    .topbar-title { font-size: 1.2em; font-weight: 700; color: #c7d2fe; }
+    .topbar-btns { display: flex; gap: 10px; }
+    .topbar-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; font-family: inherit; font-size: 0.88em; font-weight: 600; cursor: pointer; transition: all 0.25s; }
+    .topbar-btn:hover { background: rgba(255,255,255,0.1); }
+    .topbar-btn.logout { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: #fca5a5; }
 
-    .auth-badge-wrap {
-      position: fixed;
-      top: 14px;
-      right: 14px;
-      z-index: 9999;
-    }
-
-    .page-wrap {
-      width: 100%;
-      max-width: 1100px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      width: 100%;
-      padding: 12px 0 18px;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-    }
-
-    .topbar a, .topbar button {
-      color: #a5b4fc;
-      text-decoration: none;
-      font-size: 0.9em;
-    }
-
-    .topbar-title {
-      font-size: 1em;
-      font-weight: 700;
-      color: #c7d2fe;
-      text-align: center;
-    }
-
-    .topbar-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 14px;
-      border-radius: 20px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #cbd5e1;
-      font-family: 'Sarabun', sans-serif;
-      font-size: 0.88em;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.25s ease;
-    }
-
-    .topbar-btn:hover {
-      background: rgba(255,255,255,0.1);
-      color: #e2e8f0;
-    }
-
-    .topbar-btn.logout {
-      background: rgba(239,68,68,0.12);
-      border-color: rgba(239,68,68,0.3);
-      color: #fca5a5;
-    }
-
-    .topbar-btn.logout:hover {
-      background: rgba(239,68,68,0.22);
-    }
-
-    #adminLock {
-      width: 100%;
-      min-height: calc(100vh - 48px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      background: radial-gradient(ellipse at top, #141433 0%, #07071a 70%);
-      position: relative;
-      z-index: 1;
-    }
-
-    .lock-box {
-      width: 100%;
-      max-width: 380px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 32px 24px;
-      text-align: center;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-    }
-
-    .lock-icon { font-size: 3em; margin-bottom: 10px; }
-    .lock-title { font-size: 1.2em; font-weight: 700; color: #c7d2fe; margin-bottom: 6px; }
-    .lock-sub { font-size: 0.85em; color: var(--muted); margin-bottom: 24px; }
-
-    .lock-input {
-      width: 100%;
-      padding: 14px;
-      background: rgba(99,102,241,0.08);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      color: var(--text);
-      font-family: 'Sarabun', sans-serif;
-      font-size: 1em;
-      text-align: center;
-      letter-spacing: 4px;
-      outline: none;
-      margin-bottom: 14px;
-    }
-
-    .lock-input:focus { border-color: var(--accent); }
-
-    .lock-btn {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      background: linear-gradient(135deg, var(--accent), #818cf8);
-      color: white;
-      border-radius: 12px;
-      font-family: 'Sarabun', sans-serif;
-      font-size: 1em;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .lock-msg {
-      margin-top: 10px;
-      font-size: 0.85em;
-      min-height: 20px;
-    }
-
-    #adminContent { display: none; }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    @media (max-width: 700px) {
-      .summary-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    .sum-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px 14px;
-      text-align: center;
-    }
-
-    .sum-icon { font-size: 2em; }
-    .sum-num { font-size: 2em; font-weight: 800; margin: 4px 0; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    @media (max-width: 700px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+    .sum-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 14px; text-align: center; }
+    .sum-num { font-size: 2em; font-weight: 800; margin: 4px 0; color: var(--accent); }
     .sum-label { font-size: 0.78em; color: var(--muted); font-weight: 600; }
-    .sum-card.green { border-color: rgba(16,185,129,0.25); }
     .sum-card.green .sum-num { color: #34d399; }
-    .sum-card.yellow { border-color: rgba(245,158,11,0.25); }
     .sum-card.yellow .sum-num { color: #fcd34d; }
-    .sum-card.red { border-color: rgba(239,68,68,0.25); }
     .sum-card.red .sum-num { color: #fca5a5; }
 
-    .filter-bar {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 14px 16px;
-      margin-bottom: 16px;
-    }
+    .filter-bar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+    .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .filter-group label { font-size: 0.78em; color: var(--muted); font-weight: 600; }
+    .filter-input { padding: 10px 14px; background: rgba(99,102,241,0.07); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; font-size: 0.9em; outline: none; }
+    .btn-filter { border: none; background: linear-gradient(135deg, var(--accent), #818cf8); color: white; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+    .btn-export { border: 1px solid rgba(16,185,129,0.3); background: rgba(16,185,129,0.1); color: #34d399; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; }
 
-    .filter-bar-title {
-      font-size: 0.78em;
-      font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 10px;
-    }
-
-    .filter-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: flex-end;
-    }
-
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .filter-group label {
-      font-size: 0.78em;
-      color: var(--muted);
-      font-weight: 600;
-    }
-
-    .filter-input {
-      padding: 9px 12px;
-      background: rgba(99,102,241,0.07);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      font-family: 'Sarabun', sans-serif;
-      font-size: 13.5px;
-      outline: none;
-      min-width: 140px;
-    }
-
-    .filter-input:focus { border-color: var(--accent); }
-
-    .btn-filter, .btn-export {
-      padding: 9px 16px;
-      border-radius: 10px;
-      font-family: 'Sarabun', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-      align-self: flex-end;
-      transition: all 0.25s ease;
-    }
-
-    .btn-filter {
-      border: none;
-      background: linear-gradient(135deg, var(--accent), #818cf8);
-      color: white;
-      padding: 9px 20px;
-    }
-
-    .btn-export {
-      border: 1px solid rgba(16,185,129,0.3);
-      background: rgba(16,185,129,0.1);
-      color: #34d399;
-    }
-
-    .table-wrap {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      overflow: hidden;
-    }
-
-    .table-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .table-title { font-size: 0.88em; font-weight: 700; color: #a5b4fc; }
-    .table-count { font-size: 0.78em; color: var(--muted); }
-
-    .report-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.84em;
-    }
-
-    .report-table thead th {
-      padding: 10px 14px;
-      text-align: left;
-      background: rgba(99,102,241,0.06);
-      color: var(--muted);
-      font-weight: 700;
-      font-size: 0.75em;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-    }
-
-    .report-table tbody tr:hover { background: rgba(99,102,241,0.04); }
-    .report-table tbody tr + tr { border-top: 1px solid rgba(255,255,255,0.04); }
-
-    .report-table tbody td {
-      padding: 10px 14px;
-      vertical-align: middle;
-    }
-
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85em; min-width: 800px; }
+    th { padding: 12px 14px; text-align: left; background: rgba(99,102,241,0.06); color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); }
+    td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
     .td-name { font-weight: 700; color: #c7d2fe; }
-    .td-time { font-family: monospace; color: var(--text); font-size: 0.95em; }
-    .td-time.late { color: #fcd34d; }
-    .td-time.missing { color: #fca5a5; }
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 700; }
+    .badge-ontime { background: rgba(16,185,129,0.15); color: #34d399; }
+    .badge-late { background: rgba(245,158,11,0.15); color: #fcd34d; }
+    .badge-absent { background: rgba(239,68,68,0.15); color: #fca5a5; }
 
-    .badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 0.8em;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .badge-announce { background: rgba(59,130,246,0.15); color: #93c5fd; border: 1px solid rgba(59,130,246,0.25); }
-    .badge-ontime { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
-    .badge-late { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.25); }
-    .badge-verylate { background: rgba(220,38,38,0.2); color: #ff8080; border: 1px solid rgba(220,38,38,0.45); }
-    .badge-absent { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
-    .badge-nocheckout { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25); }
-    .badge-gps-skip { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px dashed rgba(239,68,68,0.3); font-size: 0.7em; margin-left: 4px; }
-    .badge-wifi { background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.25); }
-
-    .loading-row, .empty-row {
-      text-align: center;
-      padding: 40px 20px;
-      color: var(--muted);
-      font-size: 0.9em;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 28px;
-      height: 28px;
-      border: 3px solid rgba(99,102,241,0.2);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-bottom: 8px;
-    }
-
+    #loadingOverlay { position: fixed; inset: 0; background: rgba(7,7,26,0.8); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+    .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    .table-scroll { overflow-x: auto; }
-
-    .time-info-bar {
-      background: rgba(99,102,241,0.07);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 16px;
-      margin-bottom: 16px;
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      font-size: 0.82em;
-      color: var(--muted);
-    }
-
-    .time-info-item strong { color: #c7d2fe; }
-
-    .error-box {
-      background: rgba(239,68,68,0.1);
-      border: 1px solid rgba(239,68,68,0.3);
-      border-radius: 12px;
-      padding: 16px;
-      color: #fca5a5;
-      margin-bottom: 16px;
-      font-size: 0.88em;
-    }
   </style>
 </head>
 <body>
-<div class="auth-badge-wrap" id="authBadgeHost"></div>
 
-<div id="adminLock">
-  <div class="lock-box">
-    <div class="lock-icon">📊</div>
-    <div class="lock-title">รายงานการลงชื่อเข้าออก</div>
-    <div class="lock-sub">กรุณาเข้าสู่ระบบ Admin ก่อนดูรายงาน</div>
-    <input type="password" id="lockCode" class="lock-input" placeholder="••••" maxlength="20" onkeydown="if(event.key==='Enter') doLogin()">
-    <button class="lock-btn" onclick="doLogin()">🔓 เข้าสู่ระบบ</button>
-    <div class="lock-msg" id="lockMsg"></div>
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <p style="margin-top:16px; color:var(--accent)">กำลังโหลดข้อมูล...</p>
+</div>
+
+<div class="page-wrap">
+  <div class="topbar">
+    <div class="topbar-title">📊 รายงานการลงชื่อเข้าออก</div>
+    <div class="topbar-btns">
+      <button class="topbar-btn" onclick="goBack()">⬅️ กลับ</button>
+      <button class="topbar-btn logout" onclick="logout()">🚪 ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <div class="summary-grid">
+    <div class="sum-card"><div class="sum-num" id="sumTotal">0</div><div class="sum-label">ทั้งหมด</div></div>
+    <div class="sum-card green"><div class="sum-num" id="sumOnTime">0</div><div class="sum-label">มาตรงเวลา</div></div>
+    <div class="sum-card yellow"><div class="sum-num" id="sumLate">0</div><div class="sum-label">มาสาย</div></div>
+    <div class="sum-card red"><div class="sum-num" id="sumAbsent">0</div><div class="sum-label">ขาด/ไม่ระบุ</div></div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>วันที่เริ่มต้น</label>
+        <input type="date" id="filterStart" class="filter-input">
+      </div>
+      <div class="filter-group">
+        <label>วันที่สิ้นสุด</label>
+        <input type="date" id="filterEnd" class="filter-input">
+      </div>
+      <div class="filter-group">
+        <label>ค้นหาชื่อ</label>
+        <input type="text" id="filterName" class="filter-input" placeholder="ระบุชื่อพนักงาน...">
+      </div>
+      <button class="btn-filter" onclick="loadReport()">🔍 ค้นหาข้อมูล</button>
+      <button class="btn-export" onclick="exportToPdf()">📄 ส่งออก PDF</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="reportTable">
+      <thead>
+        <tr>
+          <th>ลำดับ</th>
+          <th>ชื่อ-นามสกุล</th>
+          <th>วันที่</th>
+          <th>เวลาเข้า</th>
+          <th>เวลาออก</th>
+          <th>สถานที่</th>
+          <th>สถานะ</th>
+        </tr>
+      </thead>
+      <tbody id="reportBody">
+        <tr><td colspan="7" style="text-align:center; padding:40px; color:var(--muted)">กรุณาเลือกช่วงวันที่และกดค้นหา</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
-<div id="adminContent">
-  <div class="page-wrap">
-    <div class="topbar">
-      <a href="index.html" class="topbar-btn">← กลับ</a>
-      <div class="topbar-title">📊 รายงานการลงชื่อเข้าออก</div>
-      <button class="topbar-btn logout" onclick="doLogout()">ออกจากระบบ</button>
-    </div>
-
-    <div class="time-info-bar" id="timeInfoBar">
-      <span>⏰ ใช้ค่าเริ่มต้น: เริ่มงาน <strong>08:30</strong> | ถือว่ามาสาย หลัง <strong>08:30</strong> | เลิกงาน <strong>16:30</strong></span>
-    </div>
-
-    <div class="error-box" id="errorBox" style="display:none"></div>
-
-    <div class="summary-grid">
-      <div class="sum-card green">
-        <div class="sum-icon">✅</div>
-        <div class="sum-num" id="cntOntime">—</div>
-        <div class="sum-label">ตรงเวลา (≤08:30)</div>
-      </div>
-      <div class="sum-card yellow">
-        <div class="sum-icon">⚠️</div>
-        <div class="sum-num" id="cntLate">—</div>
-        <div class="sum-label">สาย (08:31–09:00)</div>
-      </div>
-      <div class="sum-card" style="border-color:rgba(220,38,38,0.35)">
-        <div class="sum-icon">🔴</div>
-        <div class="sum-num" id="cntVeryLate" style="color:#ff8080">—</div>
-        <div class="sum-label">สายมาก (>09:00)</div>
-      </div>
-      <div class="sum-card red">
-        <div class="sum-icon">❌</div>
-        <div class="sum-num" id="cntAbsent">—</div>
-        <div class="sum-label">ไม่ลงชื่อ</div>
-      </div>
-    </div>
-
-    <div class="filter-bar">
-      <div class="filter-bar-title">🔍 กรองข้อมูล</div>
-      <div class="filter-row">
-        <div class="filter-group">
-          <label>วันที่เริ่มต้น</label>
-          <input type="date" id="filterStart" class="filter-input">
-        </div>
-        <div class="filter-group">
-          <label>วันที่สิ้นสุด</label>
-          <input type="date" id="filterEnd" class="filter-input">
-        </div>
-        <div class="filter-group">
-          <label>ค้นหาชื่อ</label>
-          <input type="text" id="filterName" class="filter-input" placeholder="พิมพ์ชื่อ...">
-        </div>
-        <div class="filter-group">
-          <label>สถานะ</label>
-          <select id="filterStatus" class="filter-input">
-            <option value="all">ทั้งหมด</option>
-            <option value="ontime">✅ ตรงเวลา (≤08:30)</option>
-            <option value="late">⚠️ สาย (08:31–09:00)</option>
-            <option value="verylate">🔴 สายมาก (>09:00)</option>
-            <option value="absent">❌ ไม่ลงชื่อ</option>
-            <option value="nocheckout">🚪 ไม่เช็คเอาต์</option>
-            <option value="skipgps">⚠️ GPS ไม่ยืนยัน</option>
-          </select>
-        </div>
-        <button class="btn-filter" onclick="loadReport()">🔍 ดูรายงาน</button>
-        <div style="display:flex;gap:4px">
-          <button class="btn-export" onclick="exportCSV()" title="Export CSV">📥 CSV</button>
-          <button class="btn-export" style="color:#ef4444;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.1)" onclick="exportPDF()" title="Export PDF">📥 PDF</button>
-          <button class="btn-export" style="color:#3b82f6;border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.1)" onclick="exportDOCX()" title="Export Word">📥 DOCX</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="table-wrap">
-      <div class="table-header">
-        <span class="table-title">📋 บันทึกการลงชื่อ</span>
-        <span class="table-count" id="tableCount"></span>
-      </div>
-      <div class="table-scroll">
-        <table class="report-table" id="reportTable">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>ชื่อ</th>
-              <th>วันที่</th>
-              <th>เช็คอิน</th>
-              <th>เช็คเอ้าท์</th>
-              <th>สถานที่</th>
-              <th>GPS</th>
-              <th>สถานะ</th>
-            </tr>
-          </thead>
-          <tbody id="reportBody">
-            <tr>
-              <td colspan="8" class="loading-row">
-                <div class="spinner"></div><br>
-                เลือกช่วงวันที่แล้วกด "ดูรายงาน"
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script src="auth-badge.js"></script>
 <script>
-  const SESSION_KEY = 'adminAuth';
-
-  function getApiUrl() {
-    try {
-      const fromStorage = (
-        localStorage.getItem('GAS_API_URL') ||
-        localStorage.getItem('gasApiUrl') ||
-        ''
-      ).trim();
-      if (fromStorage) return fromStorage;
-    } catch (e) {}
-    return (typeof GAS_API_URL !== 'undefined' ? String(GAS_API_URL || '').trim() : '');
-  }
-
-  function getToken() {
-    try {
-      return String(localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim();
-    } catch (e) {
-      return '';
-    }
-  }
-
-  async function apiFetchJson(url, options) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 20000);
-    try {
-      const res = await fetch(url, { ...(options || {}), signal: ctrl.signal });
-      const text = await res.text();
-      let data;
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch (parseErr) {
-        const match = text.match(/(?:ReferenceError|TypeError|SyntaxError|Error):[^<\n]+/i);
-        const snippet = match ? match[0] : String(text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220);
-        throw new Error(snippet || 'API ส่งข้อมูลที่ไม่ใช่ JSON กลับมา');
-      }
-      if (!res.ok || (data && data.status === 'error')) {
-        throw new Error(data?.message || 'เรียก API ไม่สำเร็จ');
-      }
-      return data;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  function isAuthed() {
-    try { return sessionStorage.getItem(SESSION_KEY) === '1'; }
-    catch (e) { return false; }
-  }
-
-  function doLogout() {
-    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
-    window.location.replace('login.html?to=report.html');
-  }
-
-  function normalizeCodeInput(value) {
-    return String(value || '')
-      .replace(/\u00A0/g, ' ')
-      .replace(/\u200B/g, '')
-      .replace(/\u200C/g, '')
-      .replace(/\u200D/g, '')
-      .replace(/\uFEFF/g, '')
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .trim();
-  }
-
-  async function verifyCode(code) {
-    const trimmed = normalizeCodeInput(code);
-    const apiUrl = getApiUrl();
-    if (!apiUrl) return { ok: false, error: 'ยังไม่ได้ตั้งค่า API URL' };
-    try {
-      const d = await apiFetchJson(apiUrl + '?action=login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'login', authMethod: 'code', username: 'admin', code: trimmed })
-      });
-      if (d.status === 'ok' && d.token) {
-        try { localStorage.setItem('token', d.token); } catch (e) {}
-        try { localStorage.setItem('readToken', d.readToken || ''); } catch (e) {}
-        try { sessionStorage.setItem('adminRole', d.role || 'admin'); } catch (e) {}
-        try { sessionStorage.setItem('adminName', d.username || 'Admin'); } catch (e) {}
-        return { ok: true, token: d.token };
-      }
-      return { ok: false, error: d.message || 'เข้าสู่ระบบไม่สำเร็จ' };
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        return { ok: false, error: 'Server ตอบกลับช้าเกินไป กรุณาลองใหม่' };
-      }
-      return { ok: false, error: err.message || 'เชื่อมต่อ Server ไม่ได้' };
-    }
-  }
-
-  async function doLogin() {
-    const code = normalizeCodeInput(document.getElementById('lockCode').value);
-    const msg = document.getElementById('lockMsg');
-    if (!code.trim()) {
-      msg.style.color = '#fca5a5';
-      msg.innerText = 'กรุณากรอกรหัส';
-      return;
-    }
-    msg.style.color = '#94a3b8';
-    msg.innerText = '⏳ กำลังตรวจสอบ...';
-    const result = await verifyCode(code);
-    if (result.ok) {
-      try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (e) {}
-      document.getElementById('adminLock').style.display = 'none';
-      document.getElementById('adminContent').style.display = 'block';
-      initPage();
-    } else {
-      msg.style.color = '#fca5a5';
-      msg.innerText = '❌ ' + (result.error || 'รหัสไม่ถูกต้อง');
-    }
-  }
-
-  window.addEventListener('pageshow', e => {
-    if (!isAuthed()) {
-      document.getElementById('adminLock').style.display = 'flex';
-      document.getElementById('adminContent').style.display = 'none';
-    } else {
-      document.getElementById('adminLock').style.display = 'none';
-      document.getElementById('adminContent').style.display = 'block';
-      initPage();
-    }
-  });
-
-  let workTimes = {
-    startTime: '08:30',
-    lateThreshold: '08:30',
-    endTime: '16:30',
-    specialDates: []
-  };
-
-  async function initPage() {
-    setDefaultDates();
-    await loadWorkTimes();
-    updateTimeInfoBar();
-    if (!getApiUrl()) {
-      showError('❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a>');
-      return;
-    }
+  function init() {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    document.getElementById('filterStart').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('filterEnd').value = now.toISOString().split('T')[0];
+    
     if (!getToken()) {
-      showError('❌ ยังไม่มี token การเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
-      return;
-    }
-    await loadReport();
-  }
-
-  function setDefaultDates() {
-    const todayTh = fmtBangkok(new Date());
-    const [y, m] = todayTh.split('-').map(Number);
-    const monthStart = `${y}-${String(m).padStart(2, '0')}-01`;
-    document.getElementById('filterStart').value = monthStart;
-    document.getElementById('filterEnd').value = todayTh;
-  }
-
-  function fmtBangkok(d) {
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Bangkok',
-      year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(d);
-  }
-
-  async function loadWorkTimes() {
-    try {
-      const apiUrl = getApiUrl();
-      if (!apiUrl || !getToken()) return;
-      const params = new URLSearchParams({ action: 'getConfig', token: getToken() });
-      const config = await apiFetchJson(apiUrl + '?' + params.toString());
-      if (config.workTimes) {
-        workTimes = { ...workTimes, ...config.workTimes };
-      }
-    } catch (_) {}
-  }
-
-  function updateTimeInfoBar() {
-    const bar = document.getElementById('timeInfoBar');
-    const today = fmtBangkok(new Date());
-    const special = workTimes.specialDates?.find(s => s.date === today);
-    if (special) {
-      bar.innerHTML = `⭐ คำสั่งพิเศษวันนี้ (${today}): เริ่มงาน <strong>${special.startTime || workTimes.startTime}</strong> | สาย <strong>${special.lateThreshold || workTimes.lateThreshold}</strong> | เลิกงาน <strong>${special.endTime || workTimes.endTime}</strong> <em style="color:#64748b">— ${special.note || ''}</em>`;
-    } else {
-      bar.innerHTML = `⏰ เวลาทำงาน: เริ่มงาน <strong>${workTimes.startTime}</strong> | ถือว่ามาสายหลัง <strong>${workTimes.lateThreshold}</strong> | เลิกงาน <strong>${workTimes.endTime}</strong>`;
+      alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
+      window.location.href = 'login.html';
     }
   }
-
-  let allRecords = [];
 
   async function loadReport() {
     const apiUrl = getApiUrl();
-    if (!apiUrl) { showError('❌ ยังไม่ได้ตั้งค่า API URL'); return; }
-    if (!getToken()) { showError('❌ ไม่พบ token สำหรับเรียกรายงาน กรุณาเข้าสู่ระบบใหม่'); return; }
+    const token = getToken();
     const start = document.getElementById('filterStart').value;
     const end = document.getElementById('filterEnd').value;
-    if (!start || !end) { showError('⚠️ กรุณาเลือกช่วงวันที่'); return; }
-    if (start > end) { showError('⚠️ วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด'); return; }
+    const nameFilter = document.getElementById('filterName').value.trim();
 
-    const body = document.getElementById('reportBody');
-    body.innerHTML = '<tr><td colspan="8" class="loading-row"><div class="spinner"></div><br>กำลังโหลดข้อมูล...</td></tr>';
-    hideError();
+    if (!apiUrl) return alert('❌ ยังไม่ได้ตั้งค่า API URL');
+    if (!start || !end) return alert('⚠️ กรุณาเลือกช่วงวันที่');
 
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    
     try {
       const params = new URLSearchParams();
       params.set('action', 'getAttendanceLogs');
-      params.set('token', getToken());
+      params.set('token', token);
       params.set('startDate', start);
       params.set('endDate', end);
-      const nameFilter = document.getElementById('filterName').value.trim();
       if (nameFilter) params.set('name', nameFilter);
-      const payload = await apiFetchJson(apiUrl + '?' + params.toString(), {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      });
-      const logs = Array.isArray(payload.data) ? payload.data : [];
-      allRecords = processLogs(logs, toDmy(start), toDmy(end));
-      renderTable(allRecords);
-      updateSummary(allRecords);
+
+      const response = await fetch(`${apiUrl}?${params.toString()}`);
+      const result = await response.json();
+
+      if (result.status === 'error') throw new Error(result.message);
+
+      const logs = Array.isArray(result.data) ? result.data : [];
+      renderTable(logs);
+      updateSummary(logs);
+
     } catch (e) {
-      const hint = /unauthorized/i.test(String(e.message || ''))
-        ? 'สิทธิ์หมดอายุหรือไม่มี token กรุณาเข้าสู่ระบบใหม่'
-        : 'ฝั่ง GAS รองรับ action=getAttendanceLogs แล้ว แต่ต้องส่ง token และช่วงวันที่ให้ตรง';
-      showError('❌ โหลดข้อมูลล้มเหลว: ' + e.message + '<br><small>' + hint + '</small>');
-      body.innerHTML = '<tr><td colspan="8" class="empty-row">⚠️ ไม่สามารถโหลดข้อมูลได้</td></tr>';
+      alert('❌ โหลดข้อมูลล้มเหลว: ' + e.message);
+      document.getElementById('reportBody').innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--red)">⚠️ ไม่สามารถโหลดข้อมูลได้: ${e.message}</td></tr>`;
+    } finally {
+      document.getElementById('loadingOverlay').style.display = 'none';
     }
   }
 
-  const CHECKOUT_MIN = 13 * 60 + 30;
-  const VERY_LATE_MIN = 9 * 60;
-
-  function timeToMinutes(timeStr) {
-    if (!timeStr) return Infinity;
-    const [h, m] = String(timeStr).split(':').map(Number);
-    return h * 60 + m;
-  }
-
-  function toDmy(isoDate) {
-    if (!isoDate) return '';
-    const parts = String(isoDate).split('-');
-    if (parts.length !== 3) return isoDate;
-    return `${Number(parts[2])}/${Number(parts[1])}/${parts[0]}`;
-  }
-
-  function normalizeDateKey(value) {
-    const dt = parseSheetDate(value);
-    if (!dt) return String(value || '').trim();
-    return fmtBangkok(dt);
-  }
-
-  function parseSheetDate(value) {
-    const raw = String(value || '').replace(/^'/, '').trim();
-    if (!raw) return null;
-
-    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (iso) {
-      const dt = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-      if (!isNaN(dt.getTime())) return dt;
-    }
-
-    const dmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (dmy) {
-      const dt = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
-      if (!isNaN(dt.getTime())) return dt;
-    }
-
-    const dateOnly = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
-    if (dateOnly) {
-      const dt = new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
-      if (!isNaN(dt.getTime())) return dt;
-    }
-
-    const dt = new Date(raw);
-    if (!isNaN(dt.getTime())) return dt;
-    return null;
-  }
-
-  function processLogs(logs, startDate, endDate) {
-    const map = {};
-    const startObj = parseSheetDate(startDate);
-    const endObj = parseSheetDate(endDate);
-
-    logs.forEach(log => {
-      const rawName = (log['Name'] || log.name || 'ไม่ระบุ').toString().trim();
-      const rawDate = normalizeDateKey(log['Date'] || log.date || '');
-      const rawTime = (log['Time'] || log.time || '').toString().trim();
-      const parsedDate = parseSheetDate(rawDate);
-
-      if (!rawDate || !parsedDate) return;
-      if (startObj && parsedDate < startObj) return;
-      if (endObj && parsedDate > endObj) return;
-
-      const key = rawName + '|' + rawDate;
-      const minutes = timeToMinutes(rawTime);
-
-      if (!map[key]) {
-        map[key] = {
-          name: rawName,
-          date: rawDate,
-          displayDate: parsedDate.toLocaleDateString('th-TH', {
-            year: 'numeric', month: 'short', day: 'numeric',
-            timeZone: 'Asia/Bangkok'
-          }),
-          checkIn: null,
-          checkOut: null,
-          locationName: log['Location'] || log.locationName || '',
-          gpsStatus: log['GPS Status'] || log.gpsStatus || 'ok',
-          gpsSkipReason: log['GPS Skip Reason'] || log.gpsSkipReason || '',
-          entries: []
-        };
-      }
-      map[key].entries.push({ timeStr: rawTime, minutes, log });
-    });
-
-    return Object.values(map).map(rec => {
-      const specialIso = isoFromDmy(rec.date);
-      const dateSpecial = (workTimes.specialDates || []).find(s => s.date === specialIso);
-      const lateThresh = (dateSpecial && dateSpecial.lateThreshold) || workTimes.lateThreshold;
-
-      const entries = rec.entries.sort((a, b) => a.minutes - b.minutes);
-
-      const inEntries = entries.filter(e => !e.log['Action Type'] || e.log['Action Type'] === 'logAttendance');
-      if (inEntries.length > 0) {
-        const first = inEntries[0];
-        rec.checkIn = { timeStr: first.timeStr, minutes: first.minutes };
-        rec.locationName = first.log['Location'] || first.log.locationName || rec.locationName;
-        rec.gpsStatus = first.log['GPS Status'] || first.log.gpsStatus || rec.gpsStatus;
-        rec.gpsSkipReason = first.log['GPS Skip Reason'] || first.log.gpsSkipReason || rec.gpsSkipReason;
-      } else if (entries.length > 0 && !rec.checkIn) {
-        const first = entries[0];
-        rec.checkIn = { timeStr: first.timeStr, minutes: first.minutes };
-        rec.locationName = first.log['Location'] || first.log.locationName || rec.locationName;
-        rec.gpsStatus = first.log['GPS Status'] || first.log.gpsStatus || rec.gpsStatus;
-        rec.gpsSkipReason = first.log['GPS Skip Reason'] || first.log.gpsSkipReason || rec.gpsSkipReason;
-      }
-
-      const explicitOuts = entries.filter(e => e.log['Action Type'] === 'logCheckout');
-      if (explicitOuts.length > 0) {
-        const latest = explicitOuts[explicitOuts.length - 1];
-        rec.checkOut = { timeStr: latest.timeStr, minutes: latest.minutes };
-      } else if (entries.length > 1) {
-        const outCandidates = entries.filter(e => e.minutes >= CHECKOUT_MIN);
-        if (outCandidates.length > 0) {
-          const latest = outCandidates[outCandidates.length - 1];
-          if (!rec.checkIn || latest.timeStr !== rec.checkIn.timeStr) {
-            rec.checkOut = { timeStr: latest.timeStr, minutes: latest.minutes };
-          }
-        }
-      }
-
-      let statusType = 'absent';
-      let lateMinutes = 0;
-
-      if (rec.checkIn && Number.isFinite(rec.checkIn.minutes)) {
-        const checkInMin = rec.checkIn.minutes;
-        const lateMin = timeToMinutes(lateThresh);
-
-        if (checkInMin <= lateMin) {
-          statusType = 'ontime';
-        } else if (checkInMin <= VERY_LATE_MIN) {
-          statusType = 'late';
-          lateMinutes = checkInMin - lateMin;
-        } else {
-          statusType = 'verylate';
-          lateMinutes = checkInMin - lateMin;
-        }
-      }
-
-      return { ...rec, statusType, lateMinutes };
-    }).sort((a, b) => {
-      const ad = parseSheetDate(a.date);
-      const bd = parseSheetDate(b.date);
-      if (ad && bd && ad.getTime() !== bd.getTime()) return bd - ad;
-      if (ad && !bd) return -1;
-      if (!ad && bd) return 1;
-      return a.name.localeCompare(b.name, 'th');
-    });
-  }
-
-  function isoFromDmy(dmy) {
-    const m = String(dmy || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (!m) return '';
-    return m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
-  }
-
-  function renderTable(records) {
-    const nameFilter = document.getElementById('filterName').value.trim().toLowerCase();
-    const statusFilter = document.getElementById('filterStatus').value;
-
-    const filtered = records.filter(r => {
-      if (nameFilter && !r.name.toLowerCase().includes(nameFilter)) return false;
-      if (statusFilter === 'ontime' && r.statusType !== 'ontime') return false;
-      if (statusFilter === 'late' && r.statusType !== 'late') return false;
-      if (statusFilter === 'verylate' && r.statusType !== 'verylate') return false;
-      if (statusFilter === 'absent' && r.statusType !== 'absent') return false;
-      if (statusFilter === 'nocheckout' && (r.statusType === 'absent' || r.checkOut)) return false;
-      if (statusFilter === 'skipgps' && r.gpsStatus === 'ok') return false;
-      return true;
-    });
-
-    document.getElementById('tableCount').innerText = `${filtered.length} รายการ`;
-
+  function renderTable(logs) {
     const body = document.getElementById('reportBody');
-    if (filtered.length === 0) {
-      body.innerHTML = '<tr><td colspan="8" class="empty-row">📭 ไม่พบข้อมูลในช่วงที่เลือก</td></tr>';
+    if (logs.length === 0) {
+      body.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:var(--muted)">📭 ไม่พบข้อมูลในช่วงที่เลือก</td></tr>';
       return;
     }
 
-    body.innerHTML = filtered.map((r, i) => {
-      const statusBadge = getStatusBadge(r);
-      const gpsBadge = getGpsBadge(r);
-      const checkInClass = (r.statusType === 'late' || r.statusType === 'verylate') ? 'td-time late' : 'td-time';
-      const checkOutClass = !r.checkOut ? 'td-time missing' : 'td-time';
-      const checkInText = r.checkIn ? formatTimeHms(r.checkIn.timeStr) || '<span style="color:#f87171">—</span>' : '<span style="color:#f87171">—</span>';
-      const checkOutText = r.checkOut ? formatTimeHms(r.checkOut.timeStr) || '<span style="color:#64748b">—</span>' : '<span style="color:#64748b">—</span>';
-      return `<tr>
-        <td style="color:var(--muted);font-size:0.8em">${i+1}</td>
-        <td class="td-name">${esc(r.name)}</td>
-        <td style="font-size:0.85em;color:var(--muted)">${r.displayDate}</td>
-        <td class="${checkInClass}">${checkInText}</td>
-        <td class="${checkOutClass}">${checkOutText}</td>
-        <td style="font-size:0.82em;color:var(--muted)">${esc(r.locationName) || '—'}</td>
-        <td>${gpsBadge}</td>
-        <td>${statusBadge}</td>
-      </tr>`;
+    body.innerHTML = logs.map((log, i) => {
+      const status = log.status || (log.time ? 'ปกติ' : 'ไม่ระบุ');
+      let badgeClass = 'badge-ontime';
+      if (status.includes('สาย')) badgeClass = 'badge-late';
+      if (status.includes('ขาด') || status.includes('ไม่ระบุ')) badgeClass = 'badge-absent';
+
+      return `
+        <tr>
+          <td style="color:var(--muted)">${i + 1}</td>
+          <td class="td-name">${log.name || log.Name || '-'}</td>
+          <td>${log.date || log.Date || '-'}</td>
+          <td style="color:var(--accent); font-family:monospace">${formatTimeHms(log.time || log.Time || '-')}</td>
+          <td style="font-family:monospace">${formatTimeHms(log.checkoutTime || '-')}</td>
+          <td style="font-size:0.9em; color:var(--muted)">${log.locationName || log.Location || '-'}</td>
+          <td><span class="badge ${badgeClass}">${status}</span></td>
+        </tr>
+      `;
     }).join('');
   }
 
-  function getStatusBadge(r) {
-    const noOut = r.checkIn && !r.checkOut;
-    let badge = '';
-    if (r.statusType === 'ontime') {
-      badge = `<span class="badge badge-ontime">✅ ตรงเวลา</span>`;
-    } else if (r.statusType === 'late') {
-      const m = r.lateMinutes ? ` +${r.lateMinutes}น.` : '';
-      badge = `<span class="badge badge-late">⚠️ สาย${m}</span>`;
-    } else if (r.statusType === 'verylate') {
-      const m = r.lateMinutes ? ` +${r.lateMinutes}น.` : '';
-      badge = `<span class="badge badge-verylate">🔴 สายมาก${m}</span>`;
-    } else {
-      badge = `<span class="badge badge-absent">❌ ไม่ลงชื่อ</span>`;
-    }
-    if (noOut) {
-      badge += ` <span class="badge badge-nocheckout" style="margin-top:2px">🚪 ไม่เช็คออต์</span>`;
-    }
-    return badge;
+  function updateSummary(logs) {
+    document.getElementById('sumTotal').innerText = logs.length;
+    const onTime = logs.filter(l => (l.status || '').includes('ปกติ')).length;
+    const late = logs.filter(l => (l.status || '').includes('สาย')).length;
+    const absent = logs.length - onTime - late;
+
+    document.getElementById('sumOnTime').innerText = onTime;
+    document.getElementById('sumLate').innerText = late;
+    document.getElementById('sumAbsent').innerText = absent;
   }
 
-  function getGpsBadge(r) {
-    if (r.gpsStatus === 'skipped') {
-      const ttip = r.gpsSkipReason ? `เหตุ: ${r.gpsSkipReason}` : 'GPS ถูกข้าม';
-      return `<span class="badge badge-gps-skip" title="${esc(ttip)}">⚠️ ข้าม GPS</span>`;
-    }
-    if (r.gpsStatus === 'wifi') {
-      return `<span class="badge badge-wifi">📶 WiFi</span>`;
-    }
-    if (r.gpsStatus === 'ip') {
-      return `<span class="badge" style="background:rgba(245,158,11,0.1);color:#fcd34d;border:1px solid rgba(245,158,11,0.25)">📡 IP</span>`;
-    }
-    return `<span style="color:#34d399;font-size:0.85em">📍 GPS</span>`;
-  }
-
-  function updateSummary(records) {
-    document.getElementById('cntOntime').innerText = records.filter(r => r.statusType === 'ontime').length;
-    document.getElementById('cntLate').innerText = records.filter(r => r.statusType === 'late').length;
-    document.getElementById('cntVeryLate').innerText = records.filter(r => r.statusType === 'verylate').length;
-    document.getElementById('cntAbsent').innerText = records.filter(r => r.statusType === 'absent').length;
-  }
-
-  function getFilteredRecords() {
-    const nameFilter = document.getElementById('filterName').value.trim().toLowerCase();
-    const statusFilter = document.getElementById('filterStatus').value;
-    return allRecords.filter(r => {
-      if (nameFilter && !r.name.toLowerCase().includes(nameFilter)) return false;
-      if (statusFilter === 'ontime' && r.statusType !== 'ontime') return false;
-      if (statusFilter === 'late' && r.statusType !== 'late') return false;
-      if (statusFilter === 'verylate' && r.statusType !== 'verylate') return false;
-      if (statusFilter === 'absent' && r.statusType !== 'absent') return false;
-      if (statusFilter === 'nocheckout' && (r.statusType === 'absent' || r.checkOut)) return false;
-      if (statusFilter === 'skipgps' && r.gpsStatus === 'ok') return false;
-      return true;
-    });
-  }
-
-  function exportCSV() {
-    const records = getFilteredRecords();
-    if (records.length === 0) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
-    const header = ['ลำดับ', 'ชื่อ', 'วันที่', 'เช็คอิน', 'เช็คเอ้าท์', 'สถานที่', 'GPS', 'สถานะ', 'สายกี่นาที'];
-    const rows = records.map((r, i) => [
-      i + 1, r.name, r.displayDate,
-      r.checkIn ? formatTimeHms(r.checkIn.timeStr) : '',
-      r.checkOut ? formatTimeHms(r.checkOut.timeStr) : '',
-      r.locationName, r.gpsStatus,
-      r.statusType === 'ontime' ? 'ตรงเวลา' : r.statusType === 'late' ? 'สาย' : r.statusType === 'verylate' ? 'สายมาก' : 'ไม่ลงชื่อ',
-      r.lateMinutes || 0
-    ]);
-    const csv = [header, ...rows].map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'attendance_' + document.getElementById('filterStart').value + '.csv';
-    a.click();
-  }
-
-  function buildExportHTMLTable() {
-    const records = getFilteredRecords();
-    let html = `
-      <div style="font-family: 'Sarabun', sans-serif; padding: 20px;">
-        <h2 style="text-align:center; color:#333;">รายงานการลงชื่อเข้าออก</h2>
-        <p style="text-align:center; color:#666;">ช่วงวันที่: ${document.getElementById('filterStart').value} ถึง ${document.getElementById('filterEnd').value}</p>
-        <table border="1" style="border-collapse: collapse; width: 100%; font-size: 13px; text-align: left; color:#000;">
-          <thead>
-            <tr style="background-color: #f3f4f6;">
-              <th style="padding: 8px;">ลำดับ</th>
-              <th style="padding: 8px;">ชื่อ</th>
-              <th style="padding: 8px;">วันที่</th>
-              <th style="padding: 8px;">เช็คอิน</th>
-              <th style="padding: 8px;">เช็คเอ้าท์</th>
-              <th style="padding: 8px;">สถานที่</th>
-              <th style="padding: 8px;">สถานะ</th>
-              <th style="padding: 8px;">สาย (นาที)</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-    records.forEach((r, i) => {
-      const inTime = r.checkIn ? formatTimeHms(r.checkIn.timeStr) : '-';
-      const outTime = r.checkOut ? formatTimeHms(r.checkOut.timeStr) : '-';
-      const statusStr = r.statusType === 'ontime' ? 'ตรงเวลา' : r.statusType === 'late' ? 'สาย' : r.statusType === 'verylate' ? 'สายมาก' : 'ไม่ลงชื่อ';
-      html += `
-        <tr>
-          <td style="padding: 6px;">${i + 1}</td>
-          <td style="padding: 6px;">${r.name}</td>
-          <td style="padding: 6px;">${r.displayDate}</td>
-          <td style="padding: 6px;">${inTime}</td>
-          <td style="padding: 6px;">${outTime}</td>
-          <td style="padding: 6px;">${r.locationName}</td>
-          <td style="padding: 6px;">${statusStr}</td>
-          <td style="padding: 6px;">${r.lateMinutes || '-'}</td>
-        </tr>
-      `;
-    });
-    html += `</tbody></table></div>`;
-    return html;
-  }
-
-  function exportPDF() {
-    if (getFilteredRecords().length === 0) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
-    const element = document.createElement('div');
-    element.innerHTML = buildExportHTMLTable();
+  function exportToPdf() {
+    const element = document.getElementById('reportTable');
     const opt = {
-      margin: 0.5,
-      filename: 'attendance_' + document.getElementById('filterStart').value + '.pdf',
+      margin: 10,
+      filename: `Attendance_Report_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+      html2canvas: { scale: 2, backgroundColor: '#07071a' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
     };
     html2pdf().set(opt).from(element).save();
   }
 
-  function exportDOCX() {
-    if (getFilteredRecords().length === 0) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
-    const tableHtml = buildExportHTMLTable();
-    const docHtml = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-      <head><meta charset='utf-8'><title>Attendance Report</title></head>
-      <body>${tableHtml}</body></html>
-    `;
-    const blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'attendance_' + document.getElementById('filterStart').value + '.doc';
-    a.click();
-  }
-
-  function esc(s) { return String(s || '').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>'); }
-  function showError(html) {
-    const b = document.getElementById('errorBox');
-    b.innerHTML = html;
-    b.style.display = 'block';
-  }
-  function hideError() { document.getElementById('errorBox').style.display = 'none'; }
-
-  function renderAuthBadge() {
-    const host = document.getElementById('authBadgeHost');
-    if (!host) return;
-    const isAuthedNow = sessionStorage.getItem('adminAuth') === '1';
-    if (!isAuthedNow) {
-      host.innerHTML = '';
-      return;
-    }
-    const role = (sessionStorage.getItem('adminRole') || 'admin').trim() || 'admin';
-    const name = (sessionStorage.getItem('adminName') || '').trim() || 'Admin';
-    host.innerHTML = '<div class="auth-badge" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.28);color:#c7d2fe;font-size:0.82em;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.18)">' + '<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block"></span>' + '<span>' + name + '</span>' + '<span style="opacity:0.7">•</span>' + '<span>' + role + '</span>' + '</div>';
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('filterName').addEventListener('input', () => { if (allRecords.length) renderTable(allRecords); });
-    document.getElementById('filterStatus').addEventListener('change', () => { if (allRecords.length) renderTable(allRecords); });
-    renderAuthBadge();
-    if (isAuthed()) {
-      document.getElementById('adminLock').style.display = 'none';
-      document.getElementById('adminContent').style.display = 'block';
-      initPage();
-    } else {
-      document.getElementById('adminLock').style.display = 'flex';
-      document.getElementById('adminContent').style.display = 'none';
-    }
-  });
+  init();
 </script>
 </body>
 </html>

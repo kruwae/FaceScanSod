@@ -94,9 +94,9 @@
 </div>
 
 <script>
-let API_URL = localStorage.getItem('gasApiUrl') || '';
-const AUTH_TOKEN = localStorage.getItem('token') || '';
-const READ_TOKEN = localStorage.getItem('readToken') || '';
+// ดึง API URL จาก localStorage หรือพยายามดึงจากหน้า config
+let API_URL = localStorage.getItem('gasApiUrl') || localStorage.getItem('GAS_API_URL') || '';
+const AUTH_TOKEN = sessionStorage.getItem('token') || sessionStorage.getItem('adminToken') || localStorage.getItem('token') || '';
 
 let locations = [];
 let knownFaces = [];
@@ -107,8 +107,9 @@ let currentMatch = null;
 let actionType = 'logAttendance';
 
 async function init() {
+  // ถ้าไม่มี API URL ให้พาไปหน้า Config
   if (!API_URL) {
-    alert('กรุณาตั้งค่า API URL ก่อนใช้งาน');
+    alert('ยังไม่ได้ตั้งค่า API URL กรุณาตั้งค่าที่หน้า Config ก่อนครับ');
     window.location.href = 'config.html';
     return;
   }
@@ -123,17 +124,18 @@ async function init() {
     
     document.getElementById('loadingText').innerText = 'กำลังโหลดข้อมูลพนักงาน...';
 
-    const res = await fetch(API_URL + '?action=getConfig');
+    const res = await fetch(API_URL + '?action=getConfig&token=' + AUTH_TOKEN);
     const config = await res.json();
     locations = config.locations || [];
     
     const select = document.getElementById('locationSelect');
-    select.innerHTML = locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
-    
     if (locations.length > 0) {
+      select.innerHTML = locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
       selectedLoc = locations[0];
       select.value = selectedLoc.id;
       updateTargetGpsDisplay();
+    } else {
+      select.innerHTML = '<option value="">-- ไม่พบข้อมูลหน่วยบริการ --</option>';
     }
 
     await loadFaces();
@@ -142,16 +144,16 @@ async function init() {
     
     document.getElementById('loadingOverlay').style.display = 'none';
   } catch (e) {
-    alert('เกิดข้อผิดพลาด: ' + e.message);
-    document.getElementById('loadingOverlay').style.display = 'none';
+    console.error(e);
+    document.getElementById('loadingText').innerHTML = `<span style="color:#f87171">เชื่อมต่อ API ไม่ได้: ${e.message}</span><br><button onclick="window.location.href='config.html'" style="margin-top:10px; padding:5px 15px;">ไปหน้าตั้งค่า</button>`;
   }
 }
 
 async function loadFaces() {
   try {
-    const res = await fetch(API_URL + '?action=getKnownFaces&token=' + encodeURIComponent(READ_TOKEN || AUTH_TOKEN));
+    const res = await fetch(API_URL + '?action=getKnownFaces&token=' + encodeURIComponent(AUTH_TOKEN));
     const data = await res.json();
-    if (Array.isArray(data)) {
+    if (Array.isArray(data) && data.length > 0) {
       knownFaces = data.map(u => {
         let desc = null;
         if (u.descriptor) {
@@ -160,6 +162,12 @@ async function loadFaces() {
         }
         return { employeeId: u.employeeId, name: u.name || u.label, descriptor: desc };
       }).filter(u => u.descriptor !== null);
+      
+      if (knownFaces.length === 0) {
+        console.warn('No valid face descriptors found');
+      }
+    } else {
+      console.warn('No employee data found or unauthorized');
     }
   } catch (e) { console.error('Load faces failed', e); }
 }
@@ -187,7 +195,7 @@ function forceRefreshGps() {
       document.getElementById('currentGps').innerText = `${currentPos.lat.toFixed(5)}, ${currentPos.lng.toFixed(5)}`;
       checkDistance();
       alert('อัปเดตตำแหน่งปัจจุบันแล้ว');
-    }, err => alert('ไม่สามารถดึงตำแหน่งได้'), { enableHighAccuracy: true });
+    }, err => alert('ไม่สามารถดึงตำแหน่งได้: ' + err.message), { enableHighAccuracy: true });
   }
 }
 
@@ -200,7 +208,9 @@ function handleLocationChange() {
 
 function updateTargetGpsDisplay() {
   if (selectedLoc) {
-    document.getElementById('targetGps').innerText = `${parseFloat(selectedLoc.lat).toFixed(5)}, ${parseFloat(selectedLoc.lng).toFixed(5)}`;
+    const lat = parseFloat(selectedLoc.lat) || 0;
+    const lng = parseFloat(selectedLoc.lng) || 0;
+    document.getElementById('targetGps').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   }
 }
 
@@ -243,7 +253,10 @@ function checkTodayStatus() {
 }
 
 async function startScan() {
-  if (knownFaces.length === 0) return alert('ไม่พบข้อมูลใบหน้าในระบบ');
+  if (knownFaces.length === 0) {
+    alert('ไม่พบข้อมูลใบหน้าในระบบ! กรุณา Login ใหม่ หรือลงทะเบียนใบหน้าพนักงานก่อนครับ');
+    return;
+  }
   document.getElementById('videoWrap').style.display = 'block';
   document.getElementById('btnAction').style.display = 'none';
   

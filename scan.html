@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FaceScanSod - Vercel Edition</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <!-- โหลด face-api.js จาก CDN เพื่อให้รันบน Vercel ได้ทันที -->
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -13,42 +12,29 @@
     .container { width: 100%; max-width: 500px; }
     .card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 24px; margin-bottom: 16px; backdrop-filter: blur(10px); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
     h2 { font-size: 1.2em; margin-bottom: 16px; text-align: center; color: #818cf8; }
-    
-    /* API Config Overlay */
-    #apiConfigOverlay { display: none; position: fixed; inset: 0; background: #0f172a; z-index: 1000; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-    
     .form-group { margin-bottom: 16px; }
     label { display: block; font-size: 0.85em; color: #94a3b8; margin-bottom: 8px; }
     select, input { width: 100%; padding: 12px; border-radius: 12px; background: #1e293b; border: 1px solid #334155; color: white; font-family: inherit; font-size: 1em; outline: none; }
-    
     .gps-box { padding: 16px; border-radius: 16px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.05); margin-bottom: 16px; }
-    .gps-row { display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 4px; }
+    .gps-row { display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 6px; }
     .gps-label { color: #94a3b8; }
     .gps-value { color: #f1f5f9; font-weight: 600; }
     .gps-status-msg { text-align: center; padding: 10px; border-radius: 10px; font-size: 0.9em; font-weight: 600; margin-top: 8px; }
     .status-ok { background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
     .status-error { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
-
     .video-wrap { position: relative; width: 100%; border-radius: 20px; overflow: hidden; background: #000; aspect-ratio: 4/3; margin-bottom: 20px; display: none; border: 2px solid #6366f1; }
     video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-    .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: #10b981; box-shadow: 0 0 10px #10b981; z-index: 10; animation: scan 2s infinite ease-in-out; }
-    @keyframes scan { 0% { top: 10%; } 50% { top: 90%; } 100% { top: 10%; } }
-    
     .btn { width: 100%; padding: 16px; border-radius: 16px; border: none; font-family: inherit; font-size: 1.1em; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
     .btn-primary { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; }
     .btn-success { background: #10b981; color: white; }
-    .btn-danger { background: #ef4444; color: white; }
-    
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
     .modal-content { background: #1e293b; border-radius: 24px; padding: 30px; width: 100%; max-width: 360px; text-align: center; }
-    
-    #scanStatus { font-size: 0.9em; color: #a5b4fc; text-align: center; margin-top: 10px; font-weight: 600; min-height: 1.2em; }
     #loadingOverlay { position: fixed; inset: 0; background: #0f172a; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    
     .back-btn { display: inline-flex; align-items: center; gap: 6px; color: #94a3b8; text-decoration: none; font-size: 0.9em; margin-bottom: 16px; }
+    .refresh-gps-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 6px 12px; border-radius: 8px; font-size: 0.75em; cursor: pointer; margin-top: 10px; width: 100%; }
   </style>
 </head>
 <body>
@@ -56,18 +42,6 @@
 <div id="loadingOverlay">
   <div class="spinner"></div>
   <p id="loadingText">กำลังเตรียมระบบ AI...</p>
-</div>
-
-<div id="apiConfigOverlay">
-  <div class="card" style="width: 100%;">
-    <h2>⚙️ ตั้งค่าการเชื่อมต่อ</h2>
-    <p style="font-size: 0.8em; color: #94a3b8; margin-bottom: 16px; text-align: center;">กรุณาใส่ URL ของ Google Apps Script (API)</p>
-    <div class="form-group">
-      <label>GAS API URL (ลงท้ายด้วย /exec)</label>
-      <input type="text" id="inputApiUrl" placeholder="https://script.google.com/macros/s/.../exec">
-    </div>
-    <button class="btn btn-primary" onclick="saveApiConfig()">บันทึกและเริ่มใช้งาน</button>
-  </div>
 </div>
 
 <div class="container">
@@ -88,17 +62,21 @@
         <span class="gps-value" id="currentGps">-</span>
       </div>
       <div class="gps-row">
+        <span class="gps-label">พิกัดเป้าหมาย:</span>
+        <span class="gps-value" id="targetGps" style="color: #818cf8;">-</span>
+      </div>
+      <div class="gps-row">
         <span class="gps-label">ระยะห่าง:</span>
         <span class="gps-value" id="distanceText">-</span>
       </div>
       <div id="gpsStatusMsg" class="gps-status-msg">รอตรวจสอบ GPS...</div>
+      <button class="refresh-gps-btn" onclick="forceRefreshGps()">🔄 อัปเดตตำแหน่งปัจจุบัน</button>
     </div>
 
     <div class="video-wrap" id="videoWrap">
-      <div class="scan-line"></div>
       <video id="video" autoplay muted playsinline></video>
     </div>
-    <div id="scanStatus"></div>
+    <div id="scanStatus" style="text-align:center; margin-top:10px; font-size:0.9em; color:#a5b4fc;"></div>
 
     <button id="btnAction" class="btn btn-primary" disabled onclick="startScan()">
       ⌛ รอตรวจสอบระยะทาง...
@@ -130,8 +108,8 @@ let actionType = 'logAttendance';
 
 async function init() {
   if (!API_URL) {
-    document.getElementById('loadingOverlay').style.display = 'none';
-    document.getElementById('apiConfigOverlay').style.display = 'flex';
+    alert('กรุณาตั้งค่า API URL ก่อนใช้งาน');
+    window.location.href = 'config.html';
     return;
   }
   
@@ -151,9 +129,11 @@ async function init() {
     
     const select = document.getElementById('locationSelect');
     select.innerHTML = locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+    
     if (locations.length > 0) {
       selectedLoc = locations[0];
       select.value = selectedLoc.id;
+      updateTargetGpsDisplay();
     }
 
     await loadFaces();
@@ -162,7 +142,7 @@ async function init() {
     
     document.getElementById('loadingOverlay').style.display = 'none';
   } catch (e) {
-    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + e.message);
+    alert('เกิดข้อผิดพลาด: ' + e.message);
     document.getElementById('loadingOverlay').style.display = 'none';
   }
 }
@@ -196,14 +176,32 @@ function startGpsTracking() {
       document.getElementById('gpsStatusMsg').innerText = '❌ เข้าถึง GPS ไม่ได้';
       document.getElementById('gpsStatusMsg').className = 'gps-status-msg status-error';
     },
-    { enableHighAccuracy: true }
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
+}
+
+function forceRefreshGps() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      document.getElementById('currentGps').innerText = `${currentPos.lat.toFixed(5)}, ${currentPos.lng.toFixed(5)}`;
+      checkDistance();
+      alert('อัปเดตตำแหน่งปัจจุบันแล้ว');
+    }, err => alert('ไม่สามารถดึงตำแหน่งได้'), { enableHighAccuracy: true });
+  }
 }
 
 function handleLocationChange() {
   const select = document.getElementById('locationSelect');
   selectedLoc = locations.find(l => l.id == select.value);
-  checkDistance(); // ตรวจสอบระยะทางใหม่ทันทีเมื่อเปลี่ยนหน่วยบริการ
+  updateTargetGpsDisplay();
+  checkDistance();
+}
+
+function updateTargetGpsDisplay() {
+  if (selectedLoc) {
+    document.getElementById('targetGps').innerText = `${parseFloat(selectedLoc.lat).toFixed(5)}, ${parseFloat(selectedLoc.lng).toFixed(5)}`;
+  }
 }
 
 function checkDistance() {
@@ -214,13 +212,13 @@ function checkDistance() {
 
   const msg = document.getElementById('gpsStatusMsg');
   const btn = document.getElementById('btnAction');
-  const radius = selectedLoc.radius || 100;
+  const radius = parseFloat(selectedLoc.radius) || 100;
 
   if (dist <= radius) {
     msg.innerText = `✅ อยู่ในระยะ ${radius} เมตร`;
     msg.className = 'gps-status-msg status-ok';
     btn.disabled = false;
-    updateActionButtonText();
+    btn.innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างาน' : '📸 สแกนใบหน้าออกงาน';
   } else {
     msg.innerText = '❌ อยู่นอกระยะหน่วยบริการ';
     msg.className = 'gps-status-msg status-error';
@@ -242,13 +240,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 function checkTodayStatus() {
   const lastAction = localStorage.getItem('lastActionDate');
   actionType = (lastAction === new Date().toDateString()) ? 'logCheckout' : 'logAttendance';
-  updateActionButtonText();
-}
-
-function updateActionButtonText() {
-  const btn = document.getElementById('btnAction');
-  if (btn.disabled) return;
-  btn.innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างาน' : '📸 สแกนใบหน้าออกงาน';
 }
 
 async function startScan() {
@@ -335,12 +326,6 @@ async function submitAttendance() {
 }
 
 function closeModal() { document.getElementById('confirmModal').style.display = 'none'; }
-function saveApiConfig() {
-  const url = document.getElementById('inputApiUrl').value.trim();
-  if (!url.startsWith('https://')) return alert('URL ไม่ถูกต้อง');
-  localStorage.setItem('gasApiUrl', url);
-  window.location.reload();
-}
 
 init();
 </script>

@@ -47,16 +47,11 @@
     #loadingOverlay { position: fixed; inset: 0; background: #0f172a; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .back-btn { display: inline-flex; align-items: center; gap: 6px; color: #94a3b8; text-decoration: none; font-size: 0.9em; margin-bottom: 16px; }
   </style>
 </head>
 <body>
-  <div class="admin-lock" id="adminLock">
-    <a href="index.html" class="back-btn">← กลับเมนูหลัก</a>
-    <div class="admin-lock__badge">🔒</div>
-    <h2>Admin Only</h2>
-    <p>หน้านี้สำหรับผู้ดูแลระบบเท่านั้น<br>กรุณายืนยันรหัสแอดมินก่อนเข้าใช้งาน</p>
-    <button class="btn-admin btn-admin-login" id="btnAdminLogin">🔓 ยืนยันรหัสแอดมิน</button>
-  </div>
 
 <div id="loadingOverlay">
   <div class="spinner"></div>
@@ -76,12 +71,13 @@
 </div>
 
 <div class="container">
+  <a href="index.html" class="back-btn">← กลับเมนูหลัก</a>
   <div class="card">
-    <h2>📷 บันทึกเวลาทำงาน (Vercel)</h2>
+    <h2>📷 บันทึกเวลาทำงาน</h2>
     
     <div class="form-group">
       <label>เลือกหน่วยบริการ / สถานที่</label>
-      <select id="locationSelect" onchange="checkDistance()">
+      <select id="locationSelect" onchange="handleLocationChange()">
         <option value="">-- กำลังโหลดหน่วยบริการ --</option>
       </select>
     </div>
@@ -107,8 +103,6 @@
     <button id="btnAction" class="btn btn-primary" disabled onclick="startScan()">
       ⌛ รอตรวจสอบระยะทาง...
     </button>
-    
-    <button onclick="resetConfig()" style="background:none; border:none; color:#475569; font-size:0.7em; margin-top:20px; width:100%; cursor:pointer;">⚙️ รีเซ็ตการตั้งค่า API</button>
   </div>
 </div>
 
@@ -142,7 +136,6 @@ async function init() {
   }
   
   try {
-    // 1. โหลดโมเดล AI จาก CDN
     const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
     await Promise.all([
       faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
@@ -152,24 +145,22 @@ async function init() {
     
     document.getElementById('loadingText').innerText = 'กำลังโหลดข้อมูลพนักงาน...';
 
-    // 2. ดึง Config และรายชื่อหน่วยบริการ
     const res = await fetch(API_URL + '?action=getConfig');
     const config = await res.json();
     locations = config.locations || [];
     
     const select = document.getElementById('locationSelect');
     select.innerHTML = locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
-    if (locations.length > 0) selectedLoc = locations[0];
+    if (locations.length > 0) {
+      selectedLoc = locations[0];
+      select.value = selectedLoc.id;
+    }
 
-    // 3. โหลดข้อมูลใบหน้า
     await loadFaces();
-    
-    // 4. เริ่มระบบ GPS และเช็คสถานะ
     startGpsTracking();
     checkTodayStatus();
     
     document.getElementById('loadingOverlay').style.display = 'none';
-
   } catch (e) {
     alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + e.message);
     document.getElementById('loadingOverlay').style.display = 'none';
@@ -209,9 +200,13 @@ function startGpsTracking() {
   );
 }
 
-function checkDistance() {
+function handleLocationChange() {
   const select = document.getElementById('locationSelect');
   selectedLoc = locations.find(l => l.id == select.value);
+  checkDistance(); // ตรวจสอบระยะทางใหม่ทันทีเมื่อเปลี่ยนหน่วยบริการ
+}
+
+function checkDistance() {
   if (!selectedLoc || !currentPos) return;
 
   const dist = calculateDistance(currentPos.lat, currentPos.lng, selectedLoc.lat, selectedLoc.lng);
@@ -219,9 +214,10 @@ function checkDistance() {
 
   const msg = document.getElementById('gpsStatusMsg');
   const btn = document.getElementById('btnAction');
+  const radius = selectedLoc.radius || 100;
 
-  if (dist <= 100) {
-    msg.innerText = '✅ อยู่ในระยะ 100 เมตร';
+  if (dist <= radius) {
+    msg.innerText = `✅ อยู่ในระยะ ${radius} เมตร`;
     msg.className = 'gps-status-msg status-ok';
     btn.disabled = false;
     updateActionButtonText();
@@ -229,7 +225,7 @@ function checkDistance() {
     msg.innerText = '❌ อยู่นอกระยะหน่วยบริการ';
     msg.className = 'gps-status-msg status-error';
     btn.disabled = true;
-    btn.innerText = '⛔ ระยะห่างเกิน 100 เมตร';
+    btn.innerText = `⛔ ระยะห่างเกิน ${radius} เมตร`;
   }
 }
 
@@ -252,8 +248,7 @@ function checkTodayStatus() {
 function updateActionButtonText() {
   const btn = document.getElementById('btnAction');
   if (btn.disabled) return;
-  btn.innerText = actionType === 'logAttendance' ? '📷 สแกนใบหน้า "เข้างาน"' : '📷 สแกนใบหน้า "ออกงาน"';
-  btn.className = actionType === 'logAttendance' ? 'btn btn-primary' : 'btn btn-danger';
+  btn.innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างาน' : '📸 สแกนใบหน้าออกงาน';
 }
 
 async function startScan() {
@@ -344,10 +339,6 @@ function saveApiConfig() {
   const url = document.getElementById('inputApiUrl').value.trim();
   if (!url.startsWith('https://')) return alert('URL ไม่ถูกต้อง');
   localStorage.setItem('gasApiUrl', url);
-  window.location.reload();
-}
-function resetConfig() {
-  localStorage.removeItem('gasApiUrl');
   window.location.reload();
 }
 

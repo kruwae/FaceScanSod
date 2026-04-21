@@ -332,7 +332,7 @@ async function submitAttendance() {
       alert('✅ บันทึกสำเร็จ!');
       if (actionType === 'logAttendance') localStorage.setItem('lastActionDate', new Date().toDateString());
       else localStorage.removeItem('lastActionDate');
-      window.location.reload();
+      window.location.href = 'index.html';
     } else { alert('❌ ล้มเหลว: ' + result.message); }
   } catch (e) { alert('❌ เชื่อมต่อ Server ไม่ได้'); }
   finally { btn.disabled = false; closeModal(); }

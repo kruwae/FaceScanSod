@@ -7,87 +7,48 @@
   <title>ตั้งค่าระบบ | Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
-  <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-  <!-- Leaflet.js for Map Picker (FREE 100%) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    /* คง Style เดิมของคุณไว้ทั้งหมด */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Sarabun', sans-serif;
-      min-height: 100vh;
+      font-family: 'Sarabun', sans-serif; min-height: 100vh;
       background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1b2a 100%);
-      color: #e2e8f0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 28px 16px 60px;
-      position: relative;
-    }
-    body::before {
-      content: ''; position: fixed; width: 420px; height: 420px; background: #06b6d4;
-      border-radius: 50%; filter: blur(110px); opacity: 0.08; top: -120px; right: -100px;
-      pointer-events: none; z-index: 0;
+      color: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding: 28px 16px 60px;
     }
     .container { width: 100%; max-width: 760px; position: relative; z-index: 1; }
-    .page-header { margin-bottom: 18px; text-align: center; position: relative; z-index: 1; }
+    .page-header { margin-bottom: 18px; text-align: center; }
     .back-btn {
       display: inline-flex; align-items: center; gap: 6px; color: #64748b;
       text-decoration: none; font-size: 0.88em; padding: 6px 12px;
       border-radius: 20px; background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.1); transition: all 0.25s ease;
-      margin-bottom: 14px; position: relative; z-index: 2;
     }
     .admin-badge {
       display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px;
       border-radius: 999px; background: rgba(6, 182, 212, 0.14);
       border: 1px solid rgba(6, 182, 212, 0.25); color: #a5f3fc; font-size: 0.84em;
-      margin-bottom: 12px;
-    }
-    h2 {
-      font-size: 1.6em; font-weight: 700;
-      background: linear-gradient(135deg, #a5b4fc, #e2e8f0);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text; margin-bottom: 6px;
-    }
-    .page-subtitle { font-size: 0.83em; color: #94a3b8; line-height: 1.6; }
-    .warning-box {
-      background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.26);
-      color: #fde68a; border-radius: 16px; padding: 14px 16px; line-height: 1.65;
-      font-size: 0.9em; margin: 16px 0 18px; text-align: left;
-    }
-    .admin-header-actions { display: flex; justify-content: flex-end; margin-bottom: 14px; position: relative; z-index: 2; }
-    .logout-btn {
-      border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1);
-      color: #fecaca; border-radius: 12px; padding: 10px 14px; font-family: 'Sarabun', sans-serif;
-      font-weight: 600; cursor: pointer; transition: all 0.25s ease;
     }
     .card {
       background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 20px; padding: 24px 22px; backdrop-filter: blur(16px);
-      margin-bottom: 16px; position: relative; z-index: 1;
+      border-radius: 20px; padding: 24px 22px; backdrop-filter: blur(16px); margin-bottom: 16px;
     }
-    .section-header {
-      display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
-      padding-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-    }
+    .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
     .section-title-text { font-weight: 600; font-size: 0.95em; color: #c7d2fe; }
     label { display: block; font-size: 0.82em; font-weight: 600; color: #94a3b8; margin-bottom: 6px; }
     input {
       width: 100%; padding: 12px 14px; background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;
-      color: #e2e8f0; font-size: 14px; font-family: 'Sarabun', sans-serif;
-      outline: none; transition: all 0.3s ease; margin-bottom: 14px;
+      color: #e2e8f0; font-size: 14px; outline: none; margin-bottom: 14px;
     }
     .btn {
       border: none; border-radius: 12px; cursor: pointer; font-family: 'Sarabun', sans-serif;
       font-size: 15px; font-weight: 600; padding: 13px; width: 100%;
       display: flex; align-items: center; justify-content: center; gap: 8px;
     }
-    .btn-save { background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3); }
+    .btn-save { background: linear-gradient(135deg, #10b981, #059669); color: white; }
     .location-item { border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); border-radius: 16px; padding: 14px; margin-bottom: 14px; }
     .location-item__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -101,22 +62,24 @@
     .btn-map-current { flex: 1; background: #10b981; color: white; }
     .msg-success { color: #34d399; text-align: center; margin-top: 10px; font-weight: 600; }
     .msg-error { color: #f87171; text-align: center; margin-top: 10px; font-weight: 600; }
+    .logout-btn {
+      border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1);
+      color: #fecaca; border-radius: 12px; padding: 10px 14px; font-weight: 600; cursor: pointer;
+    }
   </style>
 </head>
 
 <body>
   <div class="container">
     <div class="page-header">
-      <a href="index.html" class="back-btn">← กลับเมนูหลัก</a>
+      <a href="index.html" class="back-btn">← กลับเมนูหลัก</a><br><br>
       <div class="admin-badge">🔒 Admin Only</div>
-      <h2>⚙️ ตั้งค่าระบบ</h2>
-      <p class="page-subtitle">กำหนด Web App URL และตั้งค่าพื้นที่ GPS ได้หลายตำแหน่ง</p>
-      <div class="warning-box">หน้านี้สำหรับผู้ดูแลระบบเท่านั้น การเปลี่ยนค่าจะมีผลต่อการสแกนเข้างานทั้งหมด</div>
+      <h2 style="margin-top:10px;">⚙️ ตั้งค่าระบบ</h2>
     </div>
 
     <div id="adminContent">
-      <div class="admin-header-actions">
-        <button class="logout-btn" id="btnLogoutTop" type="button">ออกจากระบบ</button>
+      <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
+        <button class="logout-btn" onclick="logout()">ออกจากระบบ</button>
       </div>
 
       <div class="card">
@@ -126,32 +89,27 @@
       </div>
 
       <div class="card">
-        <div class="section-header"><span class="section-title-text">📍 พื้นที่ GPS หลายตำแหน่ง</span></div>
+        <div class="section-header"><span class="section-title-text">📍 พื้นที่ GPS หน่วยบริการ</span></div>
         <div id="locations"></div>
         <div style="display:flex; gap:10px; margin-top:10px;">
           <button class="btn" style="background:rgba(99,102,241,0.15); color:#c7d2fe;" onclick="addLocation()">+ เพิ่มตำแหน่ง</button>
-          <button class="btn" style="background:rgba(255,255,255,0.05); color:#e2e8f0;" onclick="loadFromServer()">โหลดจากเซิร์ฟเวอร์</button>
+          <button class="btn" style="background:rgba(255,255,255,0.05); color:#e2e8f0;" onclick="loadFromServer()">🔄 โหลดข้อมูลใหม่</button>
         </div>
       </div>
 
       <div class="card">
-        <div class="section-header"><span class="section-title-text">⏰ กำหนดเวลาทำงาน</span></div>
+        <div class="section-header"><span class="section-title-text">⏰ เวลาทำงาน</span></div>
         <div class="input-row">
-          <div><label>เวลาเริ่มงาน</label><input type="time" id="workStartTime" value="08:30"></div>
-          <div><label>ถือว่ามาสายหลัง</label><input type="time" id="workLateThreshold" value="08:30"></div>
+          <div><label>เริ่มงาน</label><input type="time" id="workStartTime" value="08:30"></div>
+          <div><label>สายหลัง</label><input type="time" id="workLateThreshold" value="08:30"></div>
         </div>
         <div class="input-row">
-          <div><label>เวลาเลิกงาน (ออก)</label><input type="time" id="workEndTime" value="16:30"></div>
+          <div><label>เลิกงาน</label><input type="time" id="workEndTime" value="16:30"></div>
         </div>
       </div>
 
       <button class="btn btn-save" onclick="saveAll()">💾 บันทึกการตั้งค่าทั้งหมด</button>
       <div id="msg"></div>
-
-      <div class="card" style="margin-top:16px">
-        <div class="section-header"><span class="section-title-text">🚀 เครื่องมือจัดการชีต</span></div>
-        <button class="btn" onclick="runInitSetup()" style="background:rgba(16,185,129,0.1); color:#34d399;">Run Init Setup</button>
-      </div>
     </div>
   </div>
 
@@ -174,20 +132,15 @@
     let map, marker;
     let activeLatInput, activeLngInput;
 
-    // ฟังก์ชันดึง Token ที่ถูกต้องจาก sessionStorage (ตามที่ auth.gs ของคุณใช้)
+    // ดึง Token จากทุกที่ที่เป็นไปได้
     function getAuthToken() {
-      return sessionStorage.getItem('token') || sessionStorage.getItem('adminToken') || '';
+      return sessionStorage.getItem('token') || sessionStorage.getItem('adminToken') || localStorage.getItem('token') || '';
     }
 
-    function requireAuth() {
-      const isAuthed = sessionStorage.getItem('adminAuth') === '1';
-      if (!isAuthed) window.location.href = 'login.html?redirect=config.html';
-    }
-
-    document.getElementById('btnLogoutTop').addEventListener('click', () => {
+    function logout() {
       sessionStorage.clear();
-      window.location.href = 'index.html'; // ออกจากระบบแล้วกลับไปหน้า index
-    });
+      window.location.href = 'index.html';
+    }
 
     function openMap(latInput, lngInput) {
       activeLatInput = latInput;
@@ -263,8 +216,7 @@
       const apiUrl = document.getElementById('apiUrl').value.trim();
       const token = getAuthToken();
       if (!apiUrl) return alert('กรุณาใส่ API URL');
-      if (!token) return alert('Unauthorized: กรุณา Login ใหม่ (ไม่พบ Token)');
-
+      
       const data = {
         action: 'saveLocation',
         id: rowEl.dataset.id,
@@ -285,18 +237,16 @@
         const result = await res.json();
         if (result.success || result.status === 'ok') {
           rowEl.dataset.id = result.id;
-          alert('✅ บันทึกตำแหน่งนี้เรียบร้อย');
+          Swal.fire('สำเร็จ', 'บันทึกตำแหน่งเรียบร้อย', 'success');
         } else {
-          alert('❌ ' + (result.message || 'บันทึกล้มเหลว (Unauthorized)'));
+          Swal.fire('ผิดพลาด', result.message || 'Unauthorized', 'error');
         }
-      } catch (e) { alert('❌ Error: ' + e.message); }
+      } catch (e) { Swal.fire('ผิดพลาด', e.message, 'error'); }
     }
 
     function saveAll() {
       const apiUrl = document.getElementById('apiUrl').value.trim();
       const token = getAuthToken();
-      if (!token) return alert('Unauthorized: กรุณา Login ใหม่');
-
       const locations = [...document.querySelectorAll('.location-item')].map(item => ({
         id: item.dataset.id,
         name: item.querySelector('.loc-name').value,
@@ -316,12 +266,10 @@
         }})
       }).then(r => r.json()).then(res => {
         if (res.success || res.status === 'ok') {
-          msgDiv.innerText = '✅ บันทึกข้อมูลทั้งหมดเรียบร้อย';
-          msgDiv.className = 'msg-success';
+          Swal.fire('สำเร็จ', 'บันทึกข้อมูลทั้งหมดเรียบร้อย', 'success');
           localStorage.setItem('GAS_API_URL', apiUrl);
         } else {
-          msgDiv.innerText = '❌ ' + (res.message || 'บันทึกล้มเหลว');
-          msgDiv.className = 'msg-error';
+          Swal.fire('ผิดพลาด', res.message || 'Unauthorized', 'error');
         }
       });
     }
@@ -329,7 +277,7 @@
     function loadFromServer() {
       const apiUrl = document.getElementById('apiUrl').value.trim();
       const token = getAuthToken();
-      if (!apiUrl || !token) return;
+      if (!apiUrl) return;
       
       msgDiv.innerText = '⏳ กำลังโหลดข้อมูล...';
       fetch(apiUrl + '?action=getConfig&token=' + token)
@@ -339,8 +287,6 @@
           locationsBox.innerHTML = '';
           if (config.locations && config.locations.length > 0) {
             config.locations.forEach(loc => addLocation(loc));
-          } else {
-            addLocation({ name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true });
           }
           if (config.workTimes) {
             document.getElementById('workStartTime').value = config.workTimes.startTime || '08:30';
@@ -349,18 +295,9 @@
           }
         }).catch(err => {
           msgDiv.innerText = '❌ โหลดข้อมูลไม่สำเร็จ: ' + err.message;
-          msgDiv.className = 'msg-error';
         });
     }
 
-    async function runInitSetup() {
-      const apiUrl = document.getElementById('apiUrl').value.trim();
-      const res = await fetch(apiUrl + '?action=initSetup');
-      const data = await res.json();
-      alert(data.message);
-    }
-
-    requireAuth();
     document.getElementById('apiUrl').value = localStorage.getItem('GAS_API_URL') || '';
     loadFromServer();
   </script>

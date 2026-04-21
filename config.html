@@ -7,7 +7,6 @@
   <title>ตั้งค่าระบบ | Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
-  <!-- ES module removed: ใช้ inline getApiUrl() ด้านล่างแทน เพื่อหลีกเลี่ยง CORS/infinite recursion -->
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
@@ -763,6 +762,12 @@
       color: white;
     }
 
+    .btn-map-current {
+      flex: 1;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+    }
+
     .btn-map-cancel {
       flex: 1;
       background: rgba(255, 255, 255, 0.1);
@@ -810,7 +815,6 @@
         </div>
         <label>WEB APP URL</label>
         <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" data-enable-grammarly="false" spellcheck="false">
-    
       </div>
 
       <div class="card">
@@ -875,137 +879,126 @@
           <span class="section-title-text">เปลี่ยนรหัสแอดมิน</span>
         </div>
         <label>รหัสปัจจุบัน</label>
-        <input type="password" id="currentCode" placeholder="รหัสปัจจุบัน" autocomplete="current-password">
-        <label>รหัสใหม่ (อย่างน้อย 4 ตัว)</label>
-        <input type="password" id="newCode" placeholder="รหัสใหม่" autocomplete="new-password">
-        <label>ยืนยันรหัสใหม่</label>
-        <input type="password" id="confirmCode" placeholder="ยืนยันรหัสใหม่" autocomplete="new-password">
-        <button class="btn" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;margin-top:4px"
-          type="button" onclick="changeCode()">🔑 เปลี่ยนรหัส</button>
-        <div id="changeMsg" style="margin-top:10px;min-height:20px;font-size:0.88em;font-weight:600;text-align:center">
+        <input type="password" id="currentCode" placeholder="รหัสปัจจุบัน">
+        <div class="input-row">
+          <div>
+            <label>รหัสใหม่</label>
+            <input type="password" id="newCode" placeholder="รหัสใหม่">
+          </div>
+          <div>
+            <label>ยืนยันรหัสใหม่</label>
+            <input type="password" id="confirmCode" placeholder="ยืนยันรหัสใหม่">
+          </div>
         </div>
+        <button class="btn" onclick="changeCode()" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);color:#c7d2fe">เปลี่ยนรหัสผ่าน</button>
+        <div id="changeMsg" style="margin-top:10px;text-align:center;font-size:0.85em"></div>
       </div>
 
-      <div class="card" style="margin-top:0">
+      <div class="card" style="margin-top:16px">
         <div class="section-header">
-          <div class="section-icon" style="background:rgba(239,68,68,0.15);color:#fca5a5">🛟</div>
-          <span class="section-title-text">แผนสำรองเมื่อ GPS ใช้งานไม่ได้</span>
+          <div class="section-icon" style="background:rgba(16,185,129,0.15);color:#34d399">🛠️</div>
+          <span class="section-title-text">เครื่องมือจัดการชีต</span>
         </div>
-        <div class="toggle-wrap">
-          <label class="toggle-switch" aria-label="เปิดใช้งานแผนสำรอง">
-            <input type="checkbox" id="fallbackEnabled">
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="toggle-label">เปิดใช้งานแผนสำรอง</span>
-        </div>
-        <p class="note">หากเปิดเป็น <code>true</code> หน้า scan จะแสดงปุ่มแผนสำรองเมื่อค้นหา GPS ไม่ได้</p>
-
-        <label>ข้อความสำหรับผู้ใช้</label>
-        <input type="text" id="fallbackContactText" placeholder="หาก GPS ใช้งานไม่ได้ ให้ใช้ปุ่มแผนสำรองหรือโหมดออฟไลน์">
-        <p class="note">ข้อความนี้ใช้เป็นข้อความอธิบายสำหรับสถานะ fallback ในหน้า scan</p>
-        <div id="fallbackMsg" style="margin-top:10px;min-height:20px;font-size:0.88em;font-weight:600;text-align:center"></div>
-        <button class="btn" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;margin-top:12px" type="button" onclick="saveFallback()">💾 บันทึกแผนสำรอง</button>
+        <p class="gate-desc">ใช้สำหรับสร้างชีต staffOS และตั้งค่าเริ่มต้นในครั้งแรกที่ติดตั้ง</p>
+        <button class="btn" onclick="runInitSetup()" style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:#34d399">🚀 Run Init Setup</button>
+        <div id="initMsg" style="margin-top:10px;text-align:center;font-size:0.85em"></div>
       </div>
 
-      <a href="index.html" class="btn-back">← กลับเมนูหลัก</a>
+      <a href="index.html" class="btn-back">กลับหน้าหลัก</a>
     </div>
   </div>
 
+  <!-- Map Modal -->
   <div id="mapModal" class="map-modal">
     <div class="map-header">
       <h3>📍 เลือกตำแหน่งบนแผนที่</h3>
-      <button onclick="closeMap()" style="background:none;border:none;color:#94a3b8;font-size:24px;cursor:pointer;">&times;</button>
+      <button class="gate-btn secondary" style="flex:none;padding:6px 12px" onclick="closeMap()">ปิด</button>
     </div>
-    <div class="map-hint">🖱️ คลิกบนแผนที่เพื่อปักหมุดตำแหน่งที่ถูกต้อง</div>
+    <div id="mapHint" class="map-hint">กำลังโหลดแผนที่...</div>
     <div id="mapContainer"></div>
     <div class="map-footer">
+      <button class="btn btn-map-current" onclick="focusCurrentLocation()">📍 ตำแหน่งปัจจุบัน</button>
       <button class="btn btn-map-confirm" onclick="confirmMapSelection()">✅ ยืนยันตำแหน่งนี้</button>
       <button class="btn btn-map-cancel" onclick="closeMap()">ยกเลิก</button>
     </div>
   </div>
 
   <script>
-    const SESSION_KEY = 'adminAuth';
     const MSG_SUCCESS = 'msg-success';
     const MSG_ERROR = 'msg-error';
-    const msgDiv = document.getElementById('msg');
-    const btnLogoutTop = document.getElementById('btnLogoutTop');
     const locationsBox = document.getElementById('locations');
-    const fallbackEnabledEl = document.getElementById('fallbackEnabled');
-
-    let map = null;
-    let mapMarker = null;
-    let activeLatInput = null;
-    let activeLngInput = null;
+    const msgDiv = document.getElementById('msg');
     const mapModal = document.getElementById('mapModal');
-
-    function isAuthed() {
-      try { return sessionStorage.getItem(SESSION_KEY) === '1'; }
-      catch (e) { return false; }
-    }
+    let map, mapMarker;
+    let activeLatInput, activeLngInput;
 
     function requireAuth() {
-      if (!isAuthed()) window.location.replace('login.html?to=config.html');
+      const isAuthed = sessionStorage.getItem('adminAuth') === '1';
+      if (!isAuthed) {
+        window.location.href = 'login.html?redirect=config.html';
+      }
     }
 
-    function doLogout() {
-      try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
-      window.location.replace('login.html?to=config.html');
-    }
-
-    window.addEventListener('pageshow', function (e) {
-      if (e.persisted) requireAuth();
+    document.getElementById('btnLogoutTop').addEventListener('click', () => {
+      sessionStorage.clear();
+      window.location.href = 'login.html';
     });
 
-    if (btnLogoutTop) {
-      btnLogoutTop.addEventListener('click', doLogout);
+    function initMap() {
+      if (map) return;
+      map = L.map('mapContainer').setView([13.7563, 100.5018], 6);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      map.on('click', function (e) {
+        updateMarker(e.latlng.lat, e.latlng.lng);
+      });
     }
 
     function openMap(latInput, lngInput) {
       activeLatInput = latInput;
       activeLngInput = lngInput;
       mapModal.style.display = 'flex';
+      initMap();
 
-      const hasValue = latInput.value && lngInput.value;
-      const initialLat = parseFloat(latInput.value) || 13.7563;
-      const initialLng = parseFloat(lngInput.value) || 100.5018;
+      const initialLat = parseFloat(latInput.value);
+      const initialLng = parseFloat(lngInput.value);
+      const hasValue = !isNaN(initialLat) && !isNaN(initialLng);
+      const hintEl = document.getElementById('mapHint');
 
-      const hintEl = document.querySelector('.map-hint');
-
-      if (!map) {
-        map = L.map('mapContainer').setView([initialLat, initialLng], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
-
-        map.on('click', function(e) {
-          updateMarker(e.latlng.lat, e.latlng.lng);
-        });
+      if (hasValue) {
+        updateMarker(initialLat, initialLng);
+        map.setView([initialLat, initialLng], 16);
+        if (hintEl) hintEl.innerText = '📍 แสดงตำแหน่งเดิม (แก้ไขได้โดยคลิกบนแผนที่)';
       } else {
-        map.setView([initialLat, initialLng], 13);
-        setTimeout(() => map.invalidateSize(), 150);
+        focusCurrentLocation();
       }
+      
+      setTimeout(() => map.invalidateSize(), 300);
+    }
 
-      updateMarker(initialLat, initialLng);
-
-      if (!hasValue && navigator.geolocation) {
-        if (hintEl) hintEl.innerText = '🛰️ กำลังค้นหาตำแหน่งของคุณ...';
+    function focusCurrentLocation() {
+      const hintEl = document.getElementById('mapHint');
+      if (hintEl) hintEl.innerText = '⏳ กำลังค้นหาตำแหน่งปัจจุบัน...';
+      
+      if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          function(pos) {
-            const clat = pos.coords.latitude;
-            const clng = pos.coords.longitude;
-            map.setView([clat, clng], 16);
-            updateMarker(clat, clng);
-            if (hintEl) hintEl.innerText = '📍 พบตำแหน่งปัจจุบันของคุณแล้ว (แก้ไขได้โดยคลิกบนแผนที่)';
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            updateMarker(lat, lng);
+            map.setView([lat, lng], 17);
+            if (hintEl) hintEl.innerText = '✅ พบตำแหน่งปัจจุบันแล้ว (คลิกบนแผนที่เพื่อปรับแต่ง)';
           },
-          function(err) {
+          (err) => {
+            console.error('Geolocation error:', err);
             if (hintEl) hintEl.innerText = '❌ ไม่สามารถดึงตำแหน่งปัจจุบันได้ (กรุณาเลือกเองบนแผนที่)';
           },
-          { enableHighAccuracy: true, timeout: 5000 }
+          { enableHighAccuracy: true, timeout: 7000 }
         );
-      } else if (hasValue) {
-        if (hintEl) hintEl.innerText = '📍 แสดงตำแหน่งเดิม (แก้ไขได้โดยคลิกบนแผนที่)';
-        map.setView([initialLat, initialLng], 16);
+      } else {
+        if (hintEl) hintEl.innerText = '❌ เบราว์เซอร์ไม่รองรับ Geolocation';
       }
     }
 
@@ -1039,33 +1032,23 @@
     }
 
     function escapeHtml(value) {
-      return String(value)
-        .replace(/&/g, '&')
-        .replace(/</g, '<')
-        .replace(/>/g, '>')
-        .replace(/"/g, '"')
-        .replace(/'/g, '');
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
 
     function getApiUrl() {
       try {
-        const fromStorage = (
-          localStorage.getItem('GAS_API_URL') ||
-          localStorage.getItem('gasApiUrl') || ''
-        ).trim();
-        if (fromStorage) return fromStorage;
-      } catch(e) {}
-      if (typeof GAS_API_URL !== 'undefined' && GAS_API_URL) return String(GAS_API_URL).trim();
-      return '';
+        return (localStorage.getItem('GAS_API_URL') || '').trim();
+      } catch(e) { return ''; }
     }
 
     function setApiUrl(url) {
-      const normalized = String(url || '').trim();
       try {
-        if (normalized) {
-          localStorage.setItem('GAS_API_URL', normalized);
-          localStorage.setItem('gasApiUrl', normalized);
-        }
+        localStorage.setItem('GAS_API_URL', String(url || '').trim());
       } catch(e) {}
     }
 
@@ -1138,8 +1121,8 @@
             <input type='number' step='1' class='loc-radius' placeholder='100' value='${radVal}'>
           </div>
           <div>
-            <label>เปิดใช้งาน</label>
-            <input type='text' class='loc-enabled' placeholder='true / false' value='${enVal}'>
+            <label>เปิดใช้งาน (true/false)</label>
+            <input type='text' class='loc-enabled' placeholder='true' value='${enVal}'>
           </div>
         </div>
       `;
@@ -1153,12 +1136,8 @@
           wrap.querySelector('.loc-maps-url').value = '';
           wrap.querySelector('.loc-maps-url').placeholder = '✅ ดึงพิกัดสำเร็จ: ' + coords.lat + ', ' + coords.lng;
         } else {
-          alert('⚠️ ไม่พบพิกัดใน URL นี้\nตัวอย่าง URL ที่รองรับ:\nhttps://www.google.com/maps/place/.../@13.756,100.501,...\nhttps://maps.google.com/?q=13.756,100.501');
+          alert('⚠️ ไม่พบพิกัดใน URL นี้');
         }
-      });
-
-      wrap.querySelector('.loc-maps-url').addEventListener('paste', function () {
-        setTimeout(() => wrap.querySelector('.btn-parse-maps').click(), 80);
       });
 
       const latIn = wrap.querySelector('.loc-lat');
@@ -1177,7 +1156,7 @@
           wrap.remove();
           return;
         }
-        if (confirm('ยืนยันหน้าการลบพิกัดนี้ออกจากฐานข้อมูล?')) {
+        if (confirm('ยืนยันการลบพิกัดนี้ออกจากฐานข้อมูล?')) {
           deleteSingleLocation(id, wrap);
         }
       });
@@ -1186,6 +1165,7 @@
 
     async function saveSingleLocation(rowEl) {
       const apiUrl = getApiUrl();
+      const token = sessionStorage.getItem('adminToken') || '';
       if (!apiUrl) return alert('กรุณาตั้งค่า API URL ก่อน');
 
       const btn = rowEl.querySelector('.location-item__save');
@@ -1200,8 +1180,8 @@
         lat: rowEl.querySelector('.loc-lat').value,
         lng: rowEl.querySelector('.loc-lng').value,
         radius: rowEl.querySelector('.loc-radius').value,
-        token: '',
-        updatedBy: 'admin'
+        token: token,
+        updatedBy: sessionStorage.getItem('adminName') || 'admin'
       };
 
       try {
@@ -1211,13 +1191,13 @@
           body: JSON.stringify(data)
         });
         const result = await res.json();
-        if (result.success) {
+        if (result.success || result.status === 'ok') {
           rowEl.dataset.id = result.id;
           const badge = rowEl.querySelector('.loc-status-badge');
           badge.innerText = 'บันทึกแล้ว';
           badge.style.background = 'rgba(16,185,129,0.1)';
           badge.style.color = '#10b981';
-          alert('✅ ' + result.message);
+          alert('✅ ' + (result.message || 'บันทึกตำแหน่งเรียบร้อย'));
         } else {
           alert('❌ ' + (result.message || 'บันทึกล้มเหลว'));
         }
@@ -1231,6 +1211,7 @@
 
     async function deleteSingleLocation(id, rowEl) {
       const apiUrl = getApiUrl();
+      const token = sessionStorage.getItem('adminToken') || '';
       if (!apiUrl) return;
 
       const btn = rowEl.querySelector('.location-item__remove');
@@ -1241,12 +1222,12 @@
         const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'deleteLocation', id, token: '' })
+          body: JSON.stringify({ action: 'deleteLocation', id, token: token })
         });
         const result = await res.json();
-        if (result.success) {
+        if (result.success || result.status === 'ok') {
           rowEl.remove();
-          alert('✅ ' + result.message);
+          alert('✅ ' + (result.message || 'ลบตำแหน่งเรียบร้อย'));
         } else {
           alert('❌ ' + (result.message || 'ลบล้มเหลว'));
           btn.innerText = 'ลบ';
@@ -1264,26 +1245,6 @@
       locationsBox.appendChild(createLocationItem(location));
     }
 
-    function ensureDefaultLocations(locations) {
-      const source = Array.isArray(locations) ? locations : [];
-      const normalized = source.filter(loc => loc && (loc.name || loc.lat || loc.lng));
-      if (normalized.length >= 3) {
-        return normalized;
-      }
-
-      const defaults = [
-        { name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true },
-        { name: 'หน่วยบริการ 2', lat: '', lng: '', radius: 100, enabled: true },
-        { name: 'หน่วยบริการ 3', lat: '', lng: '', radius: 100, enabled: true }
-      ];
-
-      for (let i = normalized.length; i < 3; i++) {
-        normalized.push(defaults[i]);
-      }
-
-      return normalized;
-    }
-
     function collectLocations() {
       return [...document.querySelectorAll('.location-item')].map((item, idx) => ({
         id: item.dataset.id || ('loc-' + (idx + 1)),
@@ -1295,41 +1256,28 @@
       })).filter(loc => loc.name || loc.lat || loc.lng);
     }
 
-    function setFallbackEnabled(value) {
-      if (!fallbackEnabledEl) return;
-      fallbackEnabledEl.checked = value === true || String(value).toLowerCase() === 'true';
-    }
-
-    function getFallbackEnabled() {
-      return !!(fallbackEnabledEl && fallbackEnabledEl.checked);
-    }
-
     function loadFromServer() {
       const apiUrl = getApiUrl();
+      const token = sessionStorage.getItem('adminToken') || '';
       if (!apiUrl) {
         showMsg('❌ ยังไม่ได้ตั้งค่า API URL', MSG_ERROR);
-        const apiInput = document.getElementById('apiUrl');
-        if (apiInput) apiInput.value = '';
         return;
       }
 
-      const apiInput = document.getElementById('apiUrl');
-      if (apiInput) apiInput.value = apiUrl;
+      document.getElementById('apiUrl').value = apiUrl;
+      showMsg('⏳ กำลังโหลดข้อมูล...', '');
 
-      fetch(apiUrl + '?action=getConfig')
-        .then(async r => {
-          if (!r.ok) {
-            const txt = await r.text();
-            throw new Error('HTTP ' + r.status + ': ' + (txt.substring(0, 50)));
-          }
-          return r.json();
-        })
+      fetch(apiUrl + '?action=getConfig&token=' + token)
+        .then(r => r.json())
         .then(config => {
           if (locationsBox) locationsBox.innerHTML = '';
-          if (apiInput) apiInput.value = config.apiUrl || apiUrl;
-
-          const locations = ensureDefaultLocations(Array.isArray(config.locations) ? config.locations : []);
-          locations.forEach(loc => addLocation(loc));
+          
+          const locations = Array.isArray(config.locations) ? config.locations : [];
+          if (locations.length === 0) {
+            addLocation({ name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true });
+          } else {
+            locations.forEach(loc => addLocation(loc));
+          }
 
           if (config.workTimes) {
             const wt = config.workTimes;
@@ -1340,20 +1288,10 @@
             sdBox.innerHTML = '';
             (wt.specialDates || []).forEach(sd => addSpecialDate(sd));
           }
-
-          const fallback = config.fallbackSettings || {};
-          setFallbackEnabled(fallback.enabled === true);
-          document.getElementById('fallbackContactText').value = fallback.contactText || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง';
-          showMsg('✅ โหลดข้อมูลจากเซิร์ฟเวอร์แล้ว', MSG_SUCCESS);
+          showMsg('✅ โหลดข้อมูลสำเร็จ', MSG_SUCCESS);
         })
         .catch(err => {
-          console.error('[Load] Fetch error:', err);
           showMsg('❌ เชื่อมต่อ API ไม่ได้: ' + err.message, MSG_ERROR);
-          if (locationsBox && !locationsBox.children.length) {
-            addLocation({ name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true });
-            addLocation({ name: 'หน่วยบริการ 2', lat: '', lng: '', radius: 100, enabled: true });
-            addLocation({ name: 'หน่วยบริการ 3', lat: '', lng: '', radius: 100, enabled: true });
-          }
         });
     }
 
@@ -1362,7 +1300,7 @@
       const row = document.createElement('div');
       row.style.cssText = 'display:grid;grid-template-columns:1fr 90px 90px 90px auto;gap:8px;margin-bottom:8px;align-items:end;';
       row.innerHTML = `
-        <div><label style='font-size:0.75em;color:#64748b'>วัน/เดือน/ปี (YYYY-MM-DD)</label>
+        <div><label style='font-size:0.75em;color:#64748b'>วันที่</label>
           <input type='date' class='sd-date' value='${sd.date || ''}' style='width:100%'></div>
         <div><label style='font-size:0.75em;color:#64748b'>เริ่มงาน</label>
           <input type='time' class='sd-start' value='${sd.startTime || '08:30'}'></div>
@@ -1373,7 +1311,7 @@
         <div style='padding-bottom:1px'>
           <input type='text' class='sd-note' value='${escapeHtml(sd.note || '')}'
             placeholder='หมายเหตุ' style='width:100px'>
-          <button type='button' style='padding:8px 10px;background:rgba(239,68,68,0.12);border:none;color:#fca5a5;border-radius:8px;cursor:pointer;margin-left:4px;font-family:Sarabun,sans-serif;font-size:12px' onclick='this.closest("div").parentElement.remove()'>ลบ</button>
+          <button type='button' style='padding:8px 10px;background:rgba(239,68,68,0.12);border:none;color:#fca5a5;border-radius:8px;cursor:pointer;margin-left:4px' onclick='this.closest("div").parentElement.remove()'>ลบ</button>
         </div>`;
       sdBox.appendChild(row);
     }
@@ -1390,6 +1328,7 @@
 
     function saveAll() {
       const apiUrl = document.getElementById('apiUrl').value.trim();
+      const token = sessionStorage.getItem('adminToken') || '';
       const locations = collectLocations();
       const workTimes = {
         startTime: document.getElementById('workStartTime').value || '08:30',
@@ -1397,87 +1336,35 @@
         endTime: document.getElementById('workEndTime').value || '16:30',
         specialDates: collectSpecialDates()
       };
-      const fallbackSettings = {
-        enabled: getFallbackEnabled(),
-        contactText: document.getElementById('fallbackContactText').value.trim() || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
-      };
+      
       if (!apiUrl) return showMsg('❌ กรุณากรอก API URL', MSG_ERROR);
       if (locations.length === 0) return showMsg('❌ กรุณาเพิ่มอย่างน้อย 1 ตำแหน่ง', MSG_ERROR);
+      
       showMsg('⏳ กำลังบันทึก...', '');
       fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'saveConfig', apiUrl, locations, workTimes, fallbackSettings, updatedBy: 'admin' })
+        body: JSON.stringify({ 
+          action: 'saveConfig', 
+          apiUrl, 
+          locations, 
+          workTimes, 
+          token: token,
+          updatedBy: sessionStorage.getItem('adminName') || 'admin' 
+        })
       })
-        .then(async r => {
-          if (!r.ok) {
-            const txt = await r.text();
-            throw new Error('HTTP ' + r.status + ': ' + (txt.substring(0, 50)));
-          }
-          return r.json();
-        })
-        .then(data => {
-          if (data && (data.success || data.status === 'ok')) {
-            setApiUrl(apiUrl);
-            document.getElementById('apiUrl').value = apiUrl;
-            showMsg('✅ ' + (data.message || 'บันทึกสำเร็จ'), MSG_SUCCESS);
-            return;
-          }
-          showMsg('❌ ' + (data.error || data.message || 'บันทึกไม่สำเร็จ'), MSG_ERROR);
-        })
-        .catch(err => {
-          console.error('[Save] Fetch error:', err);
-          showMsg('❌ เชื่อมต่อ API ไม่ได้: ' + err.message, MSG_ERROR);
-        });
-    }
-
-    function saveFallback() {
-      const fbMsg = document.getElementById('fallbackMsg');
-      const apiUrl = (document.getElementById('apiUrl').value || '').trim() || getApiUrl();
-      if (!apiUrl) {
-        fbMsg.innerText = '❌ ยังไม่ได้ตั้งค่า API URL — กรอก URL ด้านบนก่อน';
-        fbMsg.className = MSG_ERROR;
-        return;
-      }
-      const locations = collectLocations();
-      if (locations.length === 0) {
-        fbMsg.innerText = '❌ กรุณาเพิ่มอย่างน้อย 1 ตำแหน่ง GPS ด้านบน';
-        fbMsg.className = MSG_ERROR;
-        return;
-      }
-      const workTimes = {
-        startTime:     document.getElementById('workStartTime').value || '08:30',
-        lateThreshold: document.getElementById('workLateThreshold').value || '08:30',
-        endTime:       document.getElementById('workEndTime').value || '16:30',
-        specialDates:  collectSpecialDates()
-      };
-      const fallbackSettings = {
-        enabled: getFallbackEnabled(),
-        contactText: document.getElementById('fallbackContactText').value.trim() ||
-          'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
-      };
-      fbMsg.innerText = '⏳ กำลังบันทึก...';
-      fbMsg.className = '';
-      fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'saveConfig', apiUrl, locations, workTimes, fallbackSettings, updatedBy: 'admin' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success || data.status === 'ok') {
+          setApiUrl(apiUrl);
+          showMsg('✅ ' + (data.message || 'บันทึกสำเร็จ'), MSG_SUCCESS);
+        } else {
+          showMsg('❌ ' + (data.message || 'บันทึกไม่สำเร็จ'), MSG_ERROR);
+        }
       })
-        .then(r => r.json())
-        .then(data => {
-          if (data && (data.success || data.status === 'ok')) {
-            setApiUrl(apiUrl);
-            fbMsg.innerText = '✅ บันทึกแผนสำรองสำเร็จ!';
-            fbMsg.className = MSG_SUCCESS;
-          } else {
-            fbMsg.innerText = '❌ ' + (data.error || data.message || 'บันทึกไม่สำเร็จ');
-            fbMsg.className = MSG_ERROR;
-          }
-        })
-        .catch(err => {
-          fbMsg.innerText = '❌ เชื่อมต่อ API ไม่ได้: ' + err.message;
-          fbMsg.className = MSG_ERROR;
-        });
+      .catch(err => {
+        showMsg('❌ เชื่อมต่อ API ไม่ได้: ' + err.message, MSG_ERROR);
+      });
     }
 
     async function changeCode() {
@@ -1485,17 +1372,16 @@
       const newCode = document.getElementById('newCode').value.trim();
       const confirmCode = document.getElementById('confirmCode').value.trim();
       const changeMsg = document.getElementById('changeMsg');
+      const apiUrl = getApiUrl();
+      
       if (!currentCode || !newCode || !confirmCode) {
         changeMsg.innerText = '❌ กรุณากรอกข้อมูลให้ครบ'; changeMsg.className = MSG_ERROR; return;
       }
       if (newCode !== confirmCode) {
         changeMsg.innerText = '❌ รหัสใหม่ไม่ตรงกัน'; changeMsg.className = MSG_ERROR; return;
       }
-      if (newCode.length < 4) {
-        changeMsg.innerText = '❌ รหัสใหม่ต้องมีอย่างน้อย 4 ตัวอักษร'; changeMsg.className = MSG_ERROR; return;
-      }
-      const apiUrl = getApiUrl();
       if (!apiUrl) { changeMsg.innerText = '❌ ยังไม่ได้ตั้งค่า API URL'; changeMsg.className = MSG_ERROR; return; }
+      
       changeMsg.innerText = '⏳ กำลังเปลี่ยนรหัส...'; changeMsg.className = '';
       try {
         const res = await fetch(apiUrl, {
@@ -1505,10 +1391,9 @@
         });
         const data = await res.json();
         if (data.success) {
-          changeMsg.innerText = '✅ ' + (data.message || 'เปลี่ยนรหัสสำเร็จ');
+          changeMsg.innerText = '✅ เปลี่ยนรหัสสำเร็จ';
           changeMsg.className = MSG_SUCCESS;
           ['currentCode', 'newCode', 'confirmCode'].forEach(id => document.getElementById(id).value = '');
-          console.log('Admin code changed successfully. Verify the staffOS sheet code column after refresh.');
         } else {
           changeMsg.innerText = '❌ ' + (data.error || 'เปลี่ยนรหัสล้มเหลว');
           changeMsg.className = MSG_ERROR;
@@ -1521,14 +1406,14 @@
 
     async function runInitSetup() {
       const apiUrl = getApiUrl();
-      const initMsg = document.getElementById('initMsg') || document.getElementById('msg');
+      const initMsg = document.getElementById('initMsg');
       if (!apiUrl) {
-        initMsg.innerText = '❌ กรุณากรอก API URL ก่อนแล้วบันทึก';
+        initMsg.innerText = '❌ กรุณากรอก API URL ก่อน';
         initMsg.className = MSG_ERROR; return;
       }
       initMsg.innerText = '⏳ กำลังสร้าง staffOS sheet...'; initMsg.className = '';
       try {
-        const res = await fetch(apiUrl + '?action=initSetup', { method: 'GET' });
+        const res = await fetch(apiUrl + '?action=initSetup');
         const data = await res.json();
         if (data.success) {
           initMsg.innerText = '✅ ' + (data.message || 'เรียบร้อย');
@@ -1547,13 +1432,12 @@
       const host = document.getElementById('authBadgeHost');
       if (!host) return;
       const isAuthedNow = sessionStorage.getItem('adminAuth') === '1';
-      if (!isAuthedNow) {
-        host.innerHTML = '';
-        return;
-      }
-      const role = (sessionStorage.getItem('adminRole') || 'admin').trim() || 'admin';
-      const name = (sessionStorage.getItem('adminName') || '').trim() || 'Admin';
-      host.innerHTML = '<div class="auth-badge" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.28);color:#c7d2fe;font-size:0.82em;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.18)">' + '<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block"></span>' + '<span>' + name + '</span>' + '<span style="opacity:0.7">•</span>' + '<span>' + role + '</span>' + '</div>';
+      if (!isAuthedNow) return;
+      const role = sessionStorage.getItem('adminRole') || 'admin';
+      const name = sessionStorage.getItem('adminName') || 'Admin';
+      host.innerHTML = `<div class="auth-badge" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.28);color:#c7d2fe;font-size:0.82em;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.18)">
+        <span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block"></span>
+        <span>${name}</span><span style="opacity:0.7">•</span><span>${role}</span></div>`;
     }
 
     requireAuth();
@@ -1561,14 +1445,8 @@
       loadFromServer();
     } else {
       addLocation({ name: 'สำนักงานใหญ่', lat: '', lng: '', radius: 100, enabled: true });
-      addLocation({ name: 'หน่วยบริการ 2', lat: '', lng: '', radius: 100, enabled: true });
-      addLocation({ name: 'หน่วยบริการ 3', lat: '', lng: '', radius: 100, enabled: true });
-      setFallbackEnabled(false);
-      document.getElementById('fallbackContactText').value = 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง';
     }
-
     document.addEventListener('DOMContentLoaded', renderAuthBadge);
   </script>
 </body>
-
 </html>

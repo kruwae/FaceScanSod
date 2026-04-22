@@ -7,30 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script>
-    const GAS_API_URL = localStorage.getItem('gasApiUrl') || '';
-    
-    function formatTimeHms(timeStr) {
-      if (!timeStr || timeStr === '-') return '-';
-      return timeStr;
-    }
-
-    function getApiUrl() {
-      return (window.GAS_API_URL || localStorage.getItem('gasApiUrl') || '').trim();
-    }
-    function getToken() { return localStorage.getItem('token') || ''; }
-    function getUsername() { return localStorage.getItem('username') || 'Admin'; }
-    function getRole() { return localStorage.getItem('role') || ''; }
-
-    function logout() {
-      localStorage.removeItem('token');
-      localStorage.removeItem('username');
-      localStorage.removeItem('role');
-      window.location.href = 'login.html';
-    }
-
-    function goBack() { window.history.back(); }
-  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -77,13 +53,50 @@
     .sum-card.yellow .sum-num { color: #fcd34d; }
     .sum-card.red .sum-num { color: #fca5a5; }
 
+    /* API URL warning banner */
+    .api-warning {
+      background: rgba(245,158,11,0.12);
+      border: 1px solid rgba(245,158,11,0.35);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.88em;
+      color: #fcd34d;
+    }
+    .api-warning.show { display: flex; }
+    .api-warning input {
+      flex: 1;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(245,158,11,0.35);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9em;
+      outline: none;
+    }
+    .api-warning button {
+      padding: 8px 14px;
+      background: rgba(245,158,11,0.2);
+      border: 1px solid rgba(245,158,11,0.4);
+      border-radius: 8px;
+      color: #fcd34d;
+      font-family: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
     .filter-bar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
     .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
     .filter-group { display: flex; flex-direction: column; gap: 4px; }
     .filter-group label { font-size: 0.78em; color: var(--muted); font-weight: 600; }
     .filter-input { padding: 10px 14px; background: rgba(99,102,241,0.07); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; font-size: 0.9em; outline: none; }
-    .btn-filter { border: none; background: linear-gradient(135deg, var(--accent), #818cf8); color: white; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; }
-    .btn-export { border: 1px solid rgba(16,185,129,0.3); background: rgba(16,185,129,0.1); color: #34d399; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+    .btn-filter { border: none; background: linear-gradient(135deg, var(--accent), #818cf8); color: white; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .btn-export { border: 1px solid rgba(16,185,129,0.3); background: rgba(16,185,129,0.1); color: #34d399; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; font-family: inherit; }
 
     .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.85em; min-width: 800px; }
@@ -114,6 +127,13 @@
       <button class="topbar-btn" onclick="goBack()">⬅️ กลับ</button>
       <button class="topbar-btn logout" onclick="logout()">🚪 ออกจากระบบ</button>
     </div>
+  </div>
+
+  <!-- API URL Warning Banner (แสดงเมื่อหา API URL ไม่เจอ) -->
+  <div class="api-warning" id="apiWarning">
+    ⚠️ ไม่พบ API URL — กรุณากรอกด้านล่างเพื่อดำเนินการต่อ:
+    <input type="url" id="apiUrlInput" placeholder="https://script.google.com/macros/s/..." />
+    <button onclick="saveApiUrl()">💾 บันทึก</button>
   </div>
 
   <div class="summary-grid">
@@ -163,6 +183,98 @@
 </div>
 
 <script>
+  // ============================================================
+  //  FIX 1: ระบบค้นหา API URL ที่ทนทาน — ค้นหาจากทุกแหล่ง
+  // ============================================================
+  function getApiUrl() {
+    // ลำดับความสำคัญ: window global → localStorage → sessionStorage → ทั้งหมดใน localStorage
+    const sources = [
+      () => (typeof window.GAS_API_URL !== 'undefined' ? window.GAS_API_URL : ''),
+      () => localStorage.getItem('gasApiUrl') || '',
+      () => localStorage.getItem('apiUrl') || '',
+      () => localStorage.getItem('api_url') || '',
+      () => localStorage.getItem('GAS_API_URL') || '',
+      () => sessionStorage.getItem('gasApiUrl') || '',
+      () => sessionStorage.getItem('apiUrl') || '',
+      () => sessionStorage.getItem('api_url') || '',
+      () => sessionStorage.getItem('GAS_API_URL') || '',
+      // สแกนทุก key ใน localStorage ที่มีคำว่า "url" หรือ "api"
+      () => {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.toLowerCase().includes('url') || key.toLowerCase().includes('api'))) {
+            const val = localStorage.getItem(key) || '';
+            if (val.startsWith('https://')) return val;
+          }
+        }
+        return '';
+      },
+      // สแกนทุก key ใน sessionStorage ที่มีคำว่า "url" หรือ "api"
+      () => {
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && (key.toLowerCase().includes('url') || key.toLowerCase().includes('api'))) {
+            const val = sessionStorage.getItem(key) || '';
+            if (val.startsWith('https://')) return val;
+          }
+        }
+        return '';
+      }
+    ];
+
+    for (const source of sources) {
+      try {
+        const val = source().trim();
+        if (val && val.startsWith('https://')) return val;
+      } catch (_) { /* ignore */ }
+    }
+    return '';
+  }
+
+  function getToken() {
+    return localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  }
+
+  function getUsername() {
+    return localStorage.getItem('username') || sessionStorage.getItem('username') || 'Admin';
+  }
+
+  function getRole() {
+    return localStorage.getItem('role') || sessionStorage.getItem('role') || '';
+  }
+
+  function formatTimeHms(timeStr) {
+    if (!timeStr || timeStr === '-') return '-';
+    return timeStr;
+  }
+
+  function logout() {
+    ['token','username','role'].forEach(k => {
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    });
+    window.location.href = 'login.html';
+  }
+
+  function goBack() { window.history.back(); }
+
+  // บันทึก API URL จาก warning banner
+  function saveApiUrl() {
+    const val = document.getElementById('apiUrlInput').value.trim();
+    if (!val || !val.startsWith('https://')) {
+      alert('⚠️ กรุณากรอก URL ที่ขึ้นต้นด้วย https://');
+      return;
+    }
+    localStorage.setItem('gasApiUrl', val);
+    sessionStorage.setItem('gasApiUrl', val);
+    document.getElementById('apiWarning').classList.remove('show');
+    alert('✅ บันทึก API URL เรียบร้อยแล้ว กำลังโหลดข้อมูล...');
+    loadReport();
+  }
+
+  // ============================================================
+  //  Init
+  // ============================================================
   async function init() {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -175,9 +287,18 @@
       return;
     }
 
+    // ตรวจสอบ API URL ก่อนโหลด
+    if (!getApiUrl()) {
+      document.getElementById('apiWarning').classList.add('show');
+      return; // รอให้ user กรอก API URL ก่อน
+    }
+
     await loadReport();
   }
 
+  // ============================================================
+  //  FIX 2: Logic การโหลดและจัดกลุ่ม
+  // ============================================================
   async function loadReport() {
     const apiUrl = getApiUrl();
     const token = getToken();
@@ -185,7 +306,10 @@
     const end = document.getElementById('filterEnd').value;
     const nameFilter = document.getElementById('filterName').value.trim();
 
-    if (!apiUrl) return alert('❌ ยังไม่ได้ตั้งค่า API URL');
+    if (!apiUrl) {
+      document.getElementById('apiWarning').classList.add('show');
+      return;
+    }
     if (!start || !end) return alert('⚠️ กรุณาเลือกช่วงวันที่');
 
     document.getElementById('loadingOverlay').style.display = 'flex';
@@ -209,48 +333,67 @@
       if (!response.ok) {
         throw new Error(result.message || `HTTP ${response.status}`);
       }
-
       if (result && result.status === 'error') {
         throw new Error(result.message || 'Unknown server error');
       }
 
+      // รองรับรูปแบบ response หลายแบบ
       const logs = Array.isArray(result)
         ? result
-        : Array.isArray(result.data)
-          ? result.data
-          : Array.isArray(result.logs)
-            ? result.logs
-            : Array.isArray(result.result)
-              ? result.result
-              : [];
+        : Array.isArray(result.data)   ? result.data
+        : Array.isArray(result.logs)   ? result.logs
+        : Array.isArray(result.result) ? result.result
+        : [];
 
-      // --- LOGIC แก้ไขการแสดงผลเวลาเข้า-ออก ---
+      // ============================================================
+      //  FIX 3: จัดกลุ่ม เข้า/ออก ให้อยู่ในแถวเดียวกัน
+      //  — ใช้ชื่อ + วันที่เป็น key
+      //  — log แรกของวัน = เวลาเข้า, log ที่สองขึ้นไป = เวลาออก
+      //  — ถ้า server ส่ง checkOut field มาแล้ว ให้ใช้โดยตรง
+      // ============================================================
       const groupedLogs = [];
       const map = new Map();
 
       logs.forEach(log => {
-        const name = log.name || log.Name || '-';
-        const date = log.date || log.Date || '-';
-        const key = `${name}_${date}`;
+        const name  = (log.name  || log.Name  || '').trim() || '-';
+        const date  = (log.date  || log.Date  || '').trim() || '-';
+        const key   = `${name}_${date}`;
 
+        // ดึง field เวลาเข้า/ออก ที่ server อาจส่งมาในชื่อต่างๆ
+        const rawTime    = log.time           || log.Time           || '';
+        const rawCheckIn = log.checkinTime    || log.checkInTime    || log.checkIn   || log.CheckIn  || '';
+        const rawCheckOut= log.checkoutTime   || log.checkOutTime   || log.checkout  || log.CheckOut
+                         || log.checkOut      || log.outTime        || log.OutTime   || '';
+
+        // --- server ส่งทั้ง in/out มาในบรรทัดเดียว ---
+        if (rawCheckIn || rawCheckOut) {
+          if (!map.has(key)) {
+            const newLog = { ...log };
+            newLog.displayIn  = rawCheckIn  || rawTime || '-';
+            newLog.displayOut = rawCheckOut || '-';
+            map.set(key, newLog);
+            groupedLogs.push(newLog);
+          } else {
+            // อัปเดตข้อมูลที่ยังขาดอยู่
+            const ex = map.get(key);
+            if (rawCheckIn  && ex.displayIn  === '-') ex.displayIn  = rawCheckIn;
+            if (rawCheckOut && ex.displayOut === '-') ex.displayOut = rawCheckOut;
+          }
+          return;
+        }
+
+        // --- server ส่งทีละ log (เข้า/ออก แยก record) ---
         if (!map.has(key)) {
-          // ถ้ายังไม่มีข้อมูลของคนนี้ในวันนี้ ให้สร้างแถวใหม่ (เป็นเวลาเข้างาน)
           const newLog = { ...log };
-          // กำหนดเวลาเข้างาน
-          newLog.displayIn = log.time || log.Time || log.checkinTime || log.checkInTime || '-';
-          // กำหนดเวลาออกงาน (ถ้ามีข้อมูล checkout มาอยู่แล้วให้ใช้เลย ถ้าไม่มีให้เป็น -)
-          newLog.displayOut = log.checkoutTime || log.checkOutTime || log.checkout || log.outTime || '-';
-          
+          newLog.displayIn  = rawTime || '-';
+          newLog.displayOut = '-';
           map.set(key, newLog);
           groupedLogs.push(newLog);
         } else {
-          // ถ้ามีข้อมูลอยู่แล้ว (ครั้งที่ 2 ของวัน) ให้เอาเวลาไปใส่ในช่อง "เวลาออกงาน"
-          const existingLog = map.get(key);
-          const secondTime = log.time || log.Time || log.checkinTime || log.checkInTime || '-';
-          
-          // ถ้าช่องเวลาออกงานยังว่างอยู่ ให้ใส่เวลาครั้งที่ 2 ลงไป
-          if (existingLog.displayOut === '-' || !existingLog.displayOut) {
-            existingLog.displayOut = secondTime;
+          // record ที่ 2 → เวลาออกงาน
+          const ex = map.get(key);
+          if (rawTime && ex.displayOut === '-') {
+            ex.displayOut = rawTime;
           }
         }
       });
@@ -260,12 +403,16 @@
 
     } catch (e) {
       alert('❌ โหลดข้อมูลล้มเหลว: ' + e.message);
-      document.getElementById('reportBody').innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--red)">⚠️ ไม่สามารถโหลดข้อมูลได้: ${e.message}</td></tr>`;
+      document.getElementById('reportBody').innerHTML =
+        `<tr><td colspan="7" style="text-align:center; color:var(--red)">⚠️ ไม่สามารถโหลดข้อมูลได้: ${e.message}</td></tr>`;
     } finally {
       document.getElementById('loadingOverlay').style.display = 'none';
     }
   }
 
+  // ============================================================
+  //  Render Table
+  // ============================================================
   function renderTable(logs) {
     const body = document.getElementById('reportBody');
     if (logs.length === 0) {
@@ -274,9 +421,10 @@
     }
 
     body.innerHTML = logs.map((log, i) => {
-      const status = log.status || log.Status || (log.displayIn !== '-' ? 'ปกติ' : 'ไม่ระบุ');
+      const status = log.status || log.Status
+                   || (log.displayIn !== '-' ? 'ปกติ' : 'ไม่ระบุ');
       let badgeClass = 'badge-ontime';
-      if (status.includes('สาย')) badgeClass = 'badge-late';
+      if (status.includes('สาย'))                              badgeClass = 'badge-late';
       if (status.includes('ขาด') || status.includes('ไม่ระบุ')) badgeClass = 'badge-absent';
 
       return `
@@ -294,14 +442,13 @@
   }
 
   function updateSummary(logs) {
-    document.getElementById('sumTotal').innerText = logs.length;
-    const onTime = logs.filter(l => (l.status || '').includes('ปกติ')).length;
-    const late = logs.filter(l => (l.status || '').includes('สาย')).length;
-    const absent = logs.length - onTime - late;
-
-    document.getElementById('sumOnTime').innerText = onTime;
-    document.getElementById('sumLate').innerText = late;
-    document.getElementById('sumAbsent').innerText = absent;
+    document.getElementById('sumTotal').innerText   = logs.length;
+    const onTime  = logs.filter(l => (l.status || '').includes('ปกติ')).length;
+    const late    = logs.filter(l => (l.status || '').includes('สาย')).length;
+    const absent  = logs.length - onTime - late;
+    document.getElementById('sumOnTime').innerText  = onTime;
+    document.getElementById('sumLate').innerText    = late;
+    document.getElementById('sumAbsent').innerText  = absent;
   }
 
   function exportToPdf() {
@@ -309,9 +456,9 @@
     const opt = {
       margin: 10,
       filename: `Attendance_Report_${new Date().toISOString().split('T')[0]}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image:    { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, backgroundColor: '#07071a' },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      jsPDF:    { unit: 'mm', format: 'a4', orientation: 'landscape' }
     };
     html2pdf().set(opt).from(element).save();
   }

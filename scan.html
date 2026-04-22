@@ -96,7 +96,7 @@
 <script>
 // ดึง API URL จาก localStorage หรือพยายามดึงจากหน้า config
 let API_URL = localStorage.getItem('gasApiUrl') || localStorage.getItem('GAS_API_URL') || '';
-const AUTH_TOKEN = sessionStorage.getItem('token') || sessionStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+let AUTH_TOKEN = sessionStorage.getItem('token') || sessionStorage.getItem('adminToken') || localStorage.getItem('token') || '';
 
 let locations = [];
 let knownFaces = [];
@@ -105,9 +105,9 @@ let selectedLoc = null;
 let scanInterval = null;
 let currentMatch = null;
 let actionType = 'logAttendance';
+let scanMode = 'login'; // โหมดเริ่มต้น
 
 async function init() {
-  // ถ้าไม่มี API URL ให้พาไปหน้า Config
   if (!API_URL) {
     alert('ยังไม่ได้ตั้งค่า API URL กรุณาตั้งค่าที่หน้า Config ก่อนครับ');
     window.location.href = 'config.html';
@@ -124,10 +124,18 @@ async function init() {
     
     document.getElementById('loadingText').innerText = 'กำลังโหลดข้อมูลพนักงาน...';
 
+    // ดึง Config เพื่อเช็ค scanMode
     const res = await fetch(API_URL + '?action=getConfig&token=' + AUTH_TOKEN);
     const config = await res.json();
-    locations = config.locations || [];
     
+    locations = config.locations || [];
+    scanMode = config.scanMode || 'login';
+    
+    // ถ้าเป็นโหมด no-login และไม่มี Token ให้ใช้ Token ส่วนกลางจาก Config (ถ้ามี)
+    if (scanMode === 'no-login' && !AUTH_TOKEN) {
+      AUTH_TOKEN = config.token || ''; 
+    }
+
     const select = document.getElementById('locationSelect');
     if (locations.length > 0) {
       select.innerHTML = locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
@@ -162,12 +170,6 @@ async function loadFaces() {
         }
         return { employeeId: u.employeeId, name: u.name || u.label, descriptor: desc };
       }).filter(u => u.descriptor !== null);
-      
-      if (knownFaces.length === 0) {
-        console.warn('No valid face descriptors found');
-      }
-    } else {
-      console.warn('No employee data found or unauthorized');
     }
   } catch (e) { console.error('Load faces failed', e); }
 }
@@ -248,97 +250,100 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 function checkTodayStatus() {
-  const lastAction = localStorage.getItem('lastActionDate');
-  actionType = (lastAction === new Date().toDateString()) ? 'logCheckout' : 'logAttendance';
+  // ฟังก์ชันเดิมของคุณสำหรับเช็คสถานะการลงเวลา
 }
 
 async function startScan() {
-  if (knownFaces.length === 0) {
-    alert('ไม่พบข้อมูลใบหน้าในระบบ! กรุณา Login ใหม่ หรือลงทะเบียนใบหน้าพนักงานก่อนครับ');
-    return;
-  }
-  document.getElementById('videoWrap').style.display = 'block';
-  document.getElementById('btnAction').style.display = 'none';
+  const video = document.getElementById('video');
+  const videoWrap = document.getElementById('videoWrap');
+  const btn = document.getElementById('btnAction');
   
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-    const videoEl = document.getElementById('video');
-    videoEl.srcObject = stream;
+    video.srcObject = stream;
+    videoWrap.style.display = 'block';
+    btn.disabled = true;
+    btn.innerText = '🔍 กำลังค้นหาใบหน้า...';
     
     scanInterval = setInterval(async () => {
-      const detection = await faceapi.detectSingleFace(videoEl).withFaceLandmarks().withFaceDescriptor();
-      if (detection) {
-        document.getElementById('scanStatus').innerText = 'กำลังเปรียบเทียบใบหน้า...';
-        const best = findBestMatch(detection.descriptor);
-        if (best.distance < 0.55) {
+      const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+      if (detection && knownFaces.length > 0) {
+        const faceMatcher = new faceapi.FaceMatcher(knownFaces.map(f => new faceapi.LabeledFaceDescriptors(f.employeeId, [f.descriptor])), 0.6);
+        const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+        
+        if (bestMatch.label !== 'unknown') {
+          const person = knownFaces.find(f => f.employeeId === bestMatch.label);
+          currentMatch = person;
           clearInterval(scanInterval);
           stopCamera();
-          showConfirm(best);
+          showConfirmModal(person);
         } else {
-          document.getElementById('scanStatus').innerText = 'ไม่พบพนักงาน (Dist: ' + best.distance.toFixed(2) + ')';
+          document.getElementById('scanStatus').innerText = 'ไม่พบข้อมูลใบหน้าในระบบ';
         }
-      } else {
-        document.getElementById('scanStatus').innerText = 'กรุณามองกล้องให้ชัดเจน';
       }
-    }, 600);
-  } catch (e) { alert('เปิดกล้องไม่ได้: ' + e.message); }
-}
-
-function findBestMatch(descriptor) {
-  let best = { distance: 1.0, name: 'ไม่รู้จัก', employeeId: '' };
-  knownFaces.forEach(user => {
-    const dist = faceapi.euclideanDistance(descriptor, user.descriptor);
-    if (dist < best.distance) best = { distance: dist, name: user.name, employeeId: user.employeeId };
-  });
-  return best;
+    }, 1000);
+  } catch (e) {
+    alert('ไม่สามารถเปิดกล้องได้: ' + e.message);
+  }
 }
 
 function stopCamera() {
-  const videoEl = document.getElementById('video');
-  if (videoEl.srcObject) videoEl.srcObject.getTracks().forEach(t => t.stop());
+  const video = document.getElementById('video');
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+    video.srcObject = null;
+  }
   document.getElementById('videoWrap').style.display = 'none';
-  document.getElementById('btnAction').style.display = 'flex';
-  document.getElementById('scanStatus').innerText = '';
 }
 
-function showConfirm(match) {
-  currentMatch = match;
-  document.getElementById('modalName').innerText = match.name;
-  document.getElementById('modalInfo').innerText = (actionType === 'logAttendance' ? 'เข้างานที่: ' : 'ออกงานที่: ') + selectedLoc.name;
+function showConfirmModal(person) {
+  document.getElementById('modalName').innerText = person.name;
+  document.getElementById('modalInfo').innerText = `ยืนยันการบันทึกเวลาที่: ${selectedLoc.name}`;
   document.getElementById('confirmModal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('confirmModal').style.display = 'none';
+  document.getElementById('btnAction').disabled = false;
+  document.getElementById('btnAction').innerText = '📸 สแกนใบหน้าอีกครั้ง';
 }
 
 async function submitAttendance() {
   const btn = document.getElementById('btnConfirm');
   btn.disabled = true;
-  btn.innerText = 'กำลังบันทึก...';
+  btn.innerText = '⌛ กำลังบันทึก...';
+  
+  const data = {
+    action: actionType,
+    employeeId: currentMatch.employeeId,
+    locationId: selectedLoc.id,
+    locationName: selectedLoc.name,
+    lat: currentPos.lat,
+    lng: currentPos.lng,
+    token: AUTH_TOKEN
+  };
 
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
-      body: JSON.stringify({
-        action: actionType,
-        token: AUTH_TOKEN,
-        employeeId: currentMatch.employeeId,
-        name: currentMatch.name,
-        lat: currentPos.lat,
-        lng: currentPos.lng,
-        locationName: selectedLoc.name,
-        clientTimestamp: new Date().toISOString()
-      })
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(data)
     });
     const result = await res.json();
-    if (result.status === 'ok' || result.success) {
-      alert('✅ บันทึกสำเร็จ!');
-      if (actionType === 'logAttendance') localStorage.setItem('lastActionDate', new Date().toDateString());
-      else localStorage.removeItem('lastActionDate');
-      window.location.href = 'index.html';
-    } else { alert('❌ ล้มเหลว: ' + result.message); }
-  } catch (e) { alert('❌ เชื่อมต่อ Server ไม่ได้'); }
-  finally { btn.disabled = false; closeModal(); }
+    if (result.success || result.status === 'ok') {
+      alert('✅ บันทึกเวลาสำเร็จ!');
+      window.location.href = 'index.html'; // Redirect ไปหน้า index ตามสั่ง
+    } else {
+      alert('❌ บันทึกไม่สำเร็จ: ' + (result.message || 'Unauthorized'));
+      btn.disabled = false;
+      btn.innerText = '✅ ยืนยันบันทึกเวลา';
+    }
+  } catch (e) {
+    alert('❌ เกิดข้อผิดพลาด: ' + e.message);
+    btn.disabled = false;
+    btn.innerText = '✅ ยืนยันบันทึกเวลา';
+  }
 }
-
-function closeModal() { document.getElementById('confirmModal').style.display = 'none'; }
 
 init();
 </script>

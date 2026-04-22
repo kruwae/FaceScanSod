@@ -38,11 +38,12 @@
     .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
     .section-title-text { font-weight: 600; font-size: 0.95em; color: #c7d2fe; }
     label { display: block; font-size: 0.82em; font-weight: 600; color: #94a3b8; margin-bottom: 6px; }
-    input {
+    input, select {
       width: 100%; padding: 12px 14px; background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;
       color: #e2e8f0; font-size: 14px; outline: none; margin-bottom: 14px;
     }
+    select option { background: #1a1a3e; color: white; }
     .btn {
       border: none; border-radius: 12px; cursor: pointer; font-family: 'Sarabun', sans-serif;
       font-size: 15px; font-weight: 600; padding: 13px; width: 100%;
@@ -66,6 +67,11 @@
       border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1);
       color: #fecaca; border-radius: 12px; padding: 10px 14px; font-weight: 600; cursor: pointer;
     }
+    .toggle-container {
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255, 255, 255, 0.03); padding: 12px 16px; border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 14px;
+    }
   </style>
 </head>
 
@@ -86,6 +92,21 @@
         <div class="section-header"><span class="section-title-text">🔗 Google Apps Script API</span></div>
         <label>WEB APP URL</label>
         <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+
+      <!-- ส่วนใหม่: ตั้งค่าความปลอดภัยหน้าสแกน -->
+      <div class="card">
+        <div class="section-header"><span class="section-title-text">🛡️ ความปลอดภัยหน้าสแกน</span></div>
+        <div class="toggle-container">
+          <div>
+            <div style="font-size: 0.9em; font-weight: 600; color: #e2e8f0;">โหมดการสแกนใบหน้า</div>
+            <div style="font-size: 0.75em; color: #94a3b8;">เลือกโหมดการเข้าใช้งานสำหรับพนักงาน</div>
+          </div>
+          <select id="scanMode" style="width: auto; margin-bottom: 0; padding: 8px 12px;">
+            <option value="login">🔵 ต้อง Login ก่อนสแกน</option>
+            <option value="no-login">🟢 สแกนได้ทันที (ไม่ต้อง Login)</option>
+          </select>
+        </div>
       </div>
 
       <div class="card">
@@ -244,9 +265,35 @@
       } catch (e) { Swal.fire('ผิดพลาด', e.message, 'error'); }
     }
 
-    function saveAll() {
+    async function loadFromServer() {
       const apiUrl = document.getElementById('apiUrl').value.trim();
       const token = getAuthToken();
+      if (!apiUrl) return;
+
+      try {
+        const res = await fetch(`${apiUrl}?action=getConfig&token=${token}`);
+        const data = await res.json();
+        if (data.status === 'ok') {
+          locationsBox.innerHTML = '';
+          if (data.locations) data.locations.forEach(addLocation);
+          if (data.workTimes) {
+            document.getElementById('workStartTime').value = data.workTimes.start || '08:30';
+            document.getElementById('workLateThreshold').value = data.workTimes.late || '08:30';
+            document.getElementById('workEndTime').value = data.workTimes.end || '16:30';
+          }
+          if (data.scanMode) {
+            document.getElementById('scanMode').value = data.scanMode;
+          }
+          Swal.fire('สำเร็จ', 'โหลดข้อมูลจากเซิร์ฟเวอร์เรียบร้อย', 'success');
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function saveAll() {
+      const apiUrl = document.getElementById('apiUrl').value.trim();
+      const token = getAuthToken();
+      if (!apiUrl) return Swal.fire('ผิดพลาด', 'กรุณาใส่ API URL', 'error');
+
       const locations = [...document.querySelectorAll('.location-item')].map(item => ({
         id: item.dataset.id,
         name: item.querySelector('.loc-name').value,
@@ -256,50 +303,43 @@
         enabled: item.querySelector('.loc-enabled').value === 'true'
       }));
 
-      fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'saveConfig', apiUrl, locations, token, workTimes: {
-          startTime: document.getElementById('workStartTime').value,
-          lateThreshold: document.getElementById('workLateThreshold').value,
-          endTime: document.getElementById('workEndTime').value
-        }})
-      }).then(r => r.json()).then(res => {
-        if (res.success || res.status === 'ok') {
-          Swal.fire('สำเร็จ', 'บันทึกข้อมูลทั้งหมดเรียบร้อย', 'success');
-          localStorage.setItem('GAS_API_URL', apiUrl);
-        } else {
-          Swal.fire('ผิดพลาด', res.message || 'Unauthorized', 'error');
-        }
-      });
-    }
+      const data = {
+        action: 'saveConfig',
+        apiUrl: apiUrl,
+        scanMode: document.getElementById('scanMode').value,
+        locations: JSON.stringify(locations),
+        workTimes: {
+          start: document.getElementById('workStartTime').value,
+          late: document.getElementById('workLateThreshold').value,
+          end: document.getElementById('workEndTime').value
+        },
+        token: token,
+        updatedBy: sessionStorage.getItem('adminName') || 'admin'
+      };
 
-    function loadFromServer() {
-      const apiUrl = document.getElementById('apiUrl').value.trim();
-      const token = getAuthToken();
-      if (!apiUrl) return;
-      
-      msgDiv.innerText = '⏳ กำลังโหลดข้อมูล...';
-      fetch(apiUrl + '?action=getConfig&token=' + token)
-        .then(r => r.json())
-        .then(config => {
-          msgDiv.innerText = '';
-          locationsBox.innerHTML = '';
-          if (config.locations && config.locations.length > 0) {
-            config.locations.forEach(loc => addLocation(loc));
-          }
-          if (config.workTimes) {
-            document.getElementById('workStartTime').value = config.workTimes.startTime || '08:30';
-            document.getElementById('workLateThreshold').value = config.workTimes.lateThreshold || '08:30';
-            document.getElementById('workEndTime').value = config.workTimes.endTime || '16:30';
-          }
-        }).catch(err => {
-          msgDiv.innerText = '❌ โหลดข้อมูลไม่สำเร็จ: ' + err.message;
+      try {
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(data)
         });
+        const result = await res.json();
+        if (result.success || result.status === 'ok') {
+          localStorage.setItem('GAS_API_URL', apiUrl);
+          Swal.fire('สำเร็จ', 'บันทึกการตั้งค่าทั้งหมดเรียบร้อย', 'success');
+        } else {
+          Swal.fire('ผิดพลาด', result.message || 'Unauthorized', 'error');
+        }
+      } catch (e) { Swal.fire('ผิดพลาด', e.message, 'error'); }
     }
 
-    document.getElementById('apiUrl').value = localStorage.getItem('GAS_API_URL') || '';
-    loadFromServer();
+    window.onload = () => {
+      const savedUrl = localStorage.getItem('GAS_API_URL');
+      if (savedUrl) {
+        document.getElementById('apiUrl').value = savedUrl;
+        loadFromServer();
+      }
+    };
   </script>
 </body>
 </html>

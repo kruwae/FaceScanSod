@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
   <script src="js/api-init.js"></script>
+  <script src="https://accounts.google.com/gsi/client"></script>
   <script src="auth-badge.js"></script>
   <!-- ES module removed: ใช้ inline getApiUrl() ด้านล่างแทน เพื่อหลีกเลี่ยง CORS/infinite recursion -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -300,13 +301,11 @@
     <button class="btn-login" id="btnLogin">🔓 ยืนยันรหัสแอดมิน</button>
 
     <a href="index.html" class="back-link">← กลับเมนูหลัก</a>
-
     <div class="security-note">
       🛡️ Session จะหมดอายุเมื่อปิด browser tab — ต้อง login ใหม่ทุกครั้ง
     </div>
   </div>
 
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
     // ============================================================
     //  Admin Login — Central page

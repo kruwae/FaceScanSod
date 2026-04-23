@@ -9,7 +9,7 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' cdn.jsdelivr.net unpkg.com accounts.google.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' fonts.googleapis.com unpkg.com cdn.jsdelivr.net 'unsafe-inline'; font-src fonts.gstatic.com; connect-src 'self' script.google.com script.googleusercontent.com *.googleapis.com https://*.tile.openstreetmap.org; img-src 'self' data: blob: https://*.tile.openstreetmap.org;"
+          "value": "default-src 'self'; script-src 'self' cdn.jsdelivr.net unpkg.com accounts.google.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' fonts.googleapis.com unpkg.com cdn.jsdelivr.net 'unsafe-inline'; font-src fonts.gstatic.com; connect-src 'self' script.google.com script.googleusercontent.com *.googleapis.com https://*.tile.openstreetmap.org accounts.google.com; img-src 'self' data: blob: https://*.tile.openstreetmap.org *.googleusercontent.com; frame-src accounts.google.com;"
         }
       ]
     }

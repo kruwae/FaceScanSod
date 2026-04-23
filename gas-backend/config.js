@@ -288,7 +288,18 @@ function deleteSingleLocation(data) {
 
 function getConfig(params) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Config');
+  let sheet = ss.getSheetByName('Config');
+  if (!sheet) {
+    // Try case-insensitive search
+    const sheets = ss.getSheets();
+    for (var s = 0; s < sheets.length; s++) {
+      if (sheets[s].getName().toLowerCase() === 'config') {
+        sheet = sheets[s];
+        break;
+      }
+    }
+  }
+
   let locations = [];
   let readToken = '';
 
@@ -296,22 +307,29 @@ function getConfig(params) {
     const values = sheet.getDataRange().getValues();
     const headers = values.length > 0 ? values[0].map(function(h) { return String(h).trim(); }) : [];
     const headerMap = buildHeaderMap(headers);
-    const tokenCol = headerMap['Read Token'];
+    const tokenCol = headerMap['Read Token'] || headerMap['ReadToken'];
 
     if (tokenCol) {
       readToken = String(sheet.getRange(2, tokenCol).getValue() || '').trim();
     }
 
+    const colId = headerMap['Id'] || 1;
+    const colName = headerMap['Name'] || 2;
+    const colLat = headerMap['Latitude'] || 3;
+    const colLng = headerMap['Longitude'] || 4;
+    const colRadius = headerMap['Radius'] || 5;
+    const colEnabled = headerMap['Enabled'] || 6;
+
     for (let i = 1; i < values.length; i++) {
       const row = values[i];
-      if (!row[0] && !row[1]) continue;
+      if (!row[colId - 1] && !row[colName - 1]) continue;
       locations.push({
-        id: String(row[0] || ('loc-' + i)),
-        name: String(row[1] || ('Location ' + i)),
-        lat: parseFloat(row[2]) || 0,
-        lng: parseFloat(row[3]) || 0,
-        radius: parseFloat(row[4]) || 100,
-        enabled: row[5] !== false && row[5] !== 'false' && row[5] !== 0
+        id: String(row[colId - 1] || ('loc-' + i)),
+        name: String(row[colName - 1] || ('Location ' + i)),
+        lat: parseFloat(row[colLat - 1]) || 0,
+        lng: parseFloat(row[colLng - 1]) || 0,
+        radius: parseFloat(row[colRadius - 1]) || 100,
+        enabled: row[colEnabled - 1] !== false && row[colEnabled - 1] !== 'false' && row[colEnabled - 1] !== 0
       });
     }
   }

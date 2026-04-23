@@ -16,7 +16,7 @@ function dispatchAction(action, params, method) {
   else if (action === 'initSetup') result = initSetup();
   else if (action === 'registerUser') result = registerUser(params.name, params.faceDescriptor, params.registeredBy, params.status, params.position, params.roles, params.role, params.employeeId);
   else if (action === 'logAttendance' || action === 'logCheckout') result = logAttendance(params, action);
-  else if (action === 'saveConfig') result = saveConfig(params.apiUrl, params.locations, params.workTimes, params.fallbackSettings, params.updatedBy, params.token);
+  else if (action === 'saveConfig') result = saveConfig(params.apiUrl, params.locations, params.workTimes, params.fallbackSettings, params.updatedBy, params.token, params.scanMode);
   else if (action === 'saveLocation') result = saveSingleLocation(params);
   else if (action === 'deleteLocation') result = deleteSingleLocation(params);
   else if (action === 'verifyAdmin') result = verifyAdmin(params.code);

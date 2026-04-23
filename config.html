@@ -270,23 +270,42 @@
       const token = getAuthToken();
       if (!apiUrl) return;
 
+      Swal.fire({
+        title: '正在加载...',
+        text: 'กำลังโหลดข้อมูลพิกัดจาก Google Sheets...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
       try {
         const res = await fetch(`${apiUrl}?action=getConfig&token=${token}`);
         const data = await res.json();
+        Swal.close();
+
         if (data.status === 'ok') {
           locationsBox.innerHTML = '';
-          if (data.locations) data.locations.forEach(addLocation);
-          if (data.workTimes) {
-            document.getElementById('workStartTime').value = data.workTimes.start || '08:30';
-            document.getElementById('workLateThreshold').value = data.workTimes.late || '08:30';
-            document.getElementById('workEndTime').value = data.workTimes.end || '16:30';
+          if (data.locations && data.locations.length > 0) {
+            data.locations.forEach(addLocation);
+            if (data.workTimes) {
+              document.getElementById('workStartTime').value = data.workTimes.start || '08:30';
+              document.getElementById('workLateThreshold').value = data.workTimes.late || '08:30';
+              document.getElementById('workEndTime').value = data.workTimes.end || '16:30';
+            }
+            if (data.scanMode) {
+              document.getElementById('scanMode').value = data.scanMode;
+            }
+            Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'โหลดข้อมูลพิกัดเรียบร้อย (' + data.locations.length + ' จุด)', timer: 1500 });
+          } else {
+            Swal.fire({ icon: 'info', title: 'ไม่พบข้อมูล', text: 'ในชีต Config ยังไม่มีรายการข้อมูลพิกัด' });
           }
-          if (data.scanMode) {
-            document.getElementById('scanMode').value = data.scanMode;
-          }
-          Swal.fire('สำเร็จ', 'โหลดข้อมูลจากเซิร์ฟเวอร์เรียบร้อย', 'success');
+        } else {
+          Swal.fire('ผิดพลาด', data.message || 'ไม่สามารถโหลดข้อมูลได้', 'error');
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { 
+        Swal.close();
+        Swal.fire('เชื่อมต่อล้มเหลว', 'ไม่สามารถเชื่อมต่อกับ Apps Script ได้: ' + e.message, 'error');
+        console.error(e); 
+      }
     }
 
     async function saveAll() {
@@ -317,6 +336,13 @@
         updatedBy: sessionStorage.getItem('adminName') || 'admin'
       };
 
+      Swal.fire({
+        title: '正在保存...',
+        text: 'กำลังบันทึกการตั้งค่าลง Google Sheets...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
       try {
         const res = await fetch(apiUrl, {
           method: 'POST',
@@ -324,13 +350,18 @@
           body: JSON.stringify(data)
         });
         const result = await res.json();
+        Swal.close();
+
         if (result.success || result.status === 'ok') {
           localStorage.setItem('GAS_API_URL', apiUrl);
           Swal.fire('สำเร็จ', 'บันทึกการตั้งค่าทั้งหมดเรียบร้อย', 'success');
         } else {
-          Swal.fire('ผิดพลาด', result.message || 'Unauthorized', 'error');
+          Swal.fire('บันทึกไม่สำเร็จ', result.message || 'Unauthorized', 'error');
         }
-      } catch (e) { Swal.fire('ผิดพลาด', e.message, 'error'); }
+      } catch (e) { 
+        Swal.close();
+        Swal.fire('เชื่อมต่อล้มเหลว', 'ไม่สามารถส่งข้อมูลไปยัง Apps Script ได้: ' + e.message, 'error');
+      }
     }
 
     window.onload = () => {

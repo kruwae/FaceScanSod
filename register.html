@@ -9,7 +9,7 @@
   <script src="js/api-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
+  <script src="face-api.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -499,15 +499,14 @@
       if (!API_URL) {
         statusDiv.innerHTML = '<span style="color:#f87171">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่าก่อน</a></span>';
       } else {
-        setTimeout(initModels, 0);
+        // รอให้ DOM และ Scripts โหลดเสร็จก่อน
+        if (typeof faceapi !== 'undefined') {
+          initModels();
+        } else {
+          window.addEventListener('load', initModels);
+        }
       }
     }
-
-    window.addEventListener('pageshow', function (e) {
-      if (e.persisted && !isAuthed()) {
-        window.location.replace('login.html?to=register.html');
-      }
-    });
 
     function updateDots() {
       [1, 2, 3].forEach(i => {
@@ -525,7 +524,7 @@
     async function initModels() {
       try {
         statusDiv.innerHTML = '<span class="spinner"></span> กำลังโหลด AI Model...';
-        const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+        const MODEL_URL = './models';
         await Promise.all([
           faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),

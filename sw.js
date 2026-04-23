@@ -1,4 +1,4 @@
-const CACHE_NAME = 'facescansod-v2';
+const CACHE_NAME = 'facescansod-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -7,8 +7,8 @@ const STATIC_ASSETS = [
   '/register.html',
   '/config.html',
   '/report.html',
+  '/face-api.js',
   '/js/security.js',
-  'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js',
   'https://cdn.jsdelivr.net/npm/sweetalert2@11',
   'https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap'
 ];

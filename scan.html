@@ -5,7 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FaceScanSod - Vercel Edition</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
+  <link rel="manifest" href="/manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(err => console.error('Service Worker registration failed', err));
+    }
+  </script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Sarabun', sans-serif; min-height: 100vh; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding: 20px 16px; }
@@ -115,7 +122,7 @@ async function init() {
   }
   
   try {
-    const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+    const MODEL_URL = './models';
     await Promise.all([
       faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
       faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -253,23 +260,49 @@ function checkTodayStatus() {
   // ฟังก์ชันเดิมของคุณสำหรับเช็คสถานะการลงเวลา
 }
 
+let faceMatcherInstance = null; // เก็บ FaceMatcher ไว้ใช้ซ้ำ
+
 async function startScan() {
   const video = document.getElementById('video');
   const videoWrap = document.getElementById('videoWrap');
   const btn = document.getElementById('btnAction');
   
+  if (knownFaces.length > 0 && !faceMatcherInstance) {
+    faceMatcherInstance = new faceapi.FaceMatcher(
+      knownFaces.map(f => new faceapi.LabeledFaceDescriptors(f.employeeId, [f.descriptor])),
+      0.6 // ค่าความแม่นยำ (Distance Threshold)
+    );
+  }
+
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    // iOS Safari Fix: use proper constraints
+    const constraints = {
+      video: {
+        facingMode: 'user',
+        width: { ideal: 640 },
+        height: { ideal: 480 }
+      },
+      audio: false
+    };
+    
+    // สำคัญ: ต้องใช้ user gesture ในการ trigger video.play() บน iOS
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
     videoWrap.style.display = 'block';
+    
+    // Ensure video plays
+    video.play().catch(e => console.warn('Autoplay prevented:', e));
+
     btn.disabled = true;
     btn.innerText = '🔍 กำลังค้นหาใบหน้า...';
     
     scanInterval = setInterval(async () => {
+      // ป้องกัน error ถ้าวิดีโอยังไม่พร้อม
+      if (video.readyState !== 4) return;
+      
       const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
-      if (detection && knownFaces.length > 0) {
-        const faceMatcher = new faceapi.FaceMatcher(knownFaces.map(f => new faceapi.LabeledFaceDescriptors(f.employeeId, [f.descriptor])), 0.6);
-        const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+      if (detection && faceMatcherInstance) {
+        const bestMatch = faceMatcherInstance.findBestMatch(detection.descriptor);
         
         if (bestMatch.label !== 'unknown') {
           const person = knownFaces.find(f => f.employeeId === bestMatch.label);
@@ -283,7 +316,8 @@ async function startScan() {
       }
     }, 1000);
   } catch (e) {
-    alert('ไม่สามารถเปิดกล้องได้: ' + e.message);
+    alert('ไม่สามารถเปิดกล้องได้ กรุณาให้สิทธิ์การเข้าถึงกล้อง (Error: ' + e.message + ')');
+    btn.disabled = false;
   }
 }
 
@@ -294,6 +328,7 @@ function stopCamera() {
     video.srcObject = null;
   }
   document.getElementById('videoWrap').style.display = 'none';
+  document.getElementById('scanStatus').innerText = '';
 }
 
 function showConfirmModal(person) {
@@ -305,7 +340,8 @@ function showConfirmModal(person) {
 function closeModal() {
   document.getElementById('confirmModal').style.display = 'none';
   document.getElementById('btnAction').disabled = false;
-  document.getElementById('btnAction').innerText = '📸 สแกนใบหน้าอีกครั้ง';
+  document.getElementById('btnAction').innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างานอีกครั้ง' : '📸 สแกนใบหน้าออกงานอีกครั้ง';
+  currentMatch = null;
 }
 
 async function submitAttendance() {
@@ -316,6 +352,7 @@ async function submitAttendance() {
   const data = {
     action: actionType,
     employeeId: currentMatch.employeeId,
+    name: currentMatch.name, // บันทึกชื่อแทนรหัสพนักงาน
     locationId: selectedLoc.id,
     locationName: selectedLoc.name,
     lat: currentPos.lat,
@@ -327,19 +364,19 @@ async function submitAttendance() {
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(data)
+      body: Security ? Security.sanitize(JSON.stringify(data)) : JSON.stringify(data) // Protected if security.js is loaded
     });
     const result = await res.json();
     if (result.success || result.status === 'ok') {
       alert('✅ บันทึกเวลาสำเร็จ!');
-      window.location.href = 'index.html'; // Redirect ไปหน้า index ตามสั่ง
+      window.location.href = 'index.html';
     } else {
       alert('❌ บันทึกไม่สำเร็จ: ' + (result.message || 'Unauthorized'));
       btn.disabled = false;
       btn.innerText = '✅ ยืนยันบันทึกเวลา';
     }
   } catch (e) {
-    alert('❌ เกิดข้อผิดพลาด: ' + e.message);
+    alert('❌ การเชื่อมต่อล้มเหลว กรุณาลองใหม่');
     btn.disabled = false;
     btn.innerText = '✅ ยืนยันบันทึกเวลา';
   }

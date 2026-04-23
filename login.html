@@ -7,6 +7,7 @@
   <title>Admin Login | ระบบสแกนหน้า</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="js/api-config.js"></script>
+  <script src="js/api-init.js"></script>
   <script src="auth-badge.js"></script>
   <!-- ES module removed: ใช้ inline getApiUrl() ด้านล่างแทน เพื่อหลีกเลี่ยง CORS/infinite recursion -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -602,6 +603,13 @@
     }
 
     waitForGoogleScriptReady();
+    
+    // ---- ดักจับปุ่ม Enter ในหน้า Login ----
+    adminCode.addEventListener('keyup', function(e) {
+      if (e.key === 'Enter') {
+        btnLogin.click();
+      }
+    });
 
     // ---- ปุ่ม Login ----
     btnLogin.addEventListener('click', async function () {

@@ -1,4 +1,6 @@
 // ============================================================
+//  Helper Functions
+// ============================================================
 
 function ensureSheetWithHeaders(ss, sheetName, headers) {
   let sheet = ss.getSheetByName(sheetName);
@@ -104,7 +106,6 @@ function normalizeLocation(loc, index) {
 }
 
 // ============================================================
-
 //  Locations (read)
 // ============================================================
 
@@ -140,11 +141,10 @@ function getLocations(params) {
 }
 
 // ============================================================
-
 //  Config — Save / Load
 // ============================================================
 
-function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, token) {
+function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, token, scanMode) {
   const auth = authorize('saveConfig', { token: token || '' });
   if (!auth.ok) {
     logAction({
@@ -201,6 +201,7 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
   props.setProperty('CONFIG_UPDATED_AT',  now.toISOString());
   props.setProperty('WORK_TIMES',         JSON.stringify(workTimes || {}));
   props.setProperty('FALLBACK_SETTINGS',  JSON.stringify(fallbackSettings || {}));
+  props.setProperty('SCAN_MODE',          scanMode || 'login');
 
   logAction({
     username: auth.user && auth.user.username ? auth.user.username : '',
@@ -208,7 +209,7 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
     action: 'updateConfig',
     endpoint: 'saveConfig',
     status: 'success',
-    details: { locationsCount: (parseLocations(locations) || []).length }
+    details: { locationsCount: (parseLocations(locations) || []).length, scanMode: scanMode }
   });
 
   return { success: true, message: 'บันทึกการตั้งค่าลง Google Sheets เรียบร้อย' };
@@ -317,23 +318,25 @@ function getConfig(params) {
 
   let workTimes = {};
   let fallbackSettings = {};
+  const props = PropertiesService.getScriptProperties();
 
   try {
-    workTimes = JSON.parse(PropertiesService.getScriptProperties().getProperty('WORK_TIMES') || '{}');
+    workTimes = JSON.parse(props.getProperty('WORK_TIMES') || '{}');
   } catch (e) {
     workTimes = {};
   }
 
   try {
-    fallbackSettings = JSON.parse(PropertiesService.getScriptProperties().getProperty('FALLBACK_SETTINGS') || '{}');
+    fallbackSettings = JSON.parse(props.getProperty('FALLBACK_SETTINGS') || '{}');
   } catch (e) {
     fallbackSettings = {};
   }
 
   return {
     status: 'ok',
-    apiUrl: PropertiesService.getScriptProperties().getProperty('API_URL') || '',
+    apiUrl: props.getProperty('API_URL') || '',
     readToken: readToken,
+    scanMode: props.getProperty('SCAN_MODE') || 'login',
     locations: locations,
     workTimes: workTimes,
     fallbackSettings: {

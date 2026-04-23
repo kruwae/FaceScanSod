@@ -140,7 +140,7 @@ async function init() {
     
     // ถ้าเป็นโหมด no-login และไม่มี Token ให้ใช้ Token ส่วนกลางจาก Config (ถ้ามี)
     if (scanMode === 'no-login' && !AUTH_TOKEN) {
-      AUTH_TOKEN = config.token || ''; 
+      AUTH_TOKEN = config.readToken || config.token || ''; 
     }
 
     const select = document.getElementById('locationSelect');

@@ -306,12 +306,12 @@ function getConfig(params) {
       const row = values[i];
       if (!row[0] && !row[1]) continue;
       locations.push({
-        id: row[0] || ('loc-' + i),
-        name: row[1] || ('Location ' + i),
+        id: String(row[0] || ('loc-' + i)),
+        name: String(row[1] || ('Location ' + i)),
         lat: parseFloat(row[2]) || 0,
         lng: parseFloat(row[3]) || 0,
         radius: parseFloat(row[4]) || 100,
-        enabled: row[5] !== false
+        enabled: row[5] !== false && row[5] !== 'false' && row[5] !== 0
       });
     }
   }
@@ -332,16 +332,31 @@ function getConfig(params) {
     fallbackSettings = {};
   }
 
-  return {
+  // สร้าง Response พื้นฐาน
+  var response = {
     status: 'ok',
-    apiUrl: props.getProperty('API_URL') || '',
-    readToken: readToken,
-    scanMode: props.getProperty('SCAN_MODE') || 'login',
-    locations: locations,
+    scanMode: props.getProperty('SCAN_MODE') || 'login', // สำคัญ: ส่ง scanMode กลับไปให้ Frontend ทำงานได้ถูกต้อง
+    locations: locations, // สำคัญ: ส่ง locations กลับไปเพื่อให้ config.html นำไปแสดงผลและ scan.html ไปเลือกได้
     workTimes: workTimes,
     fallbackSettings: {
       enabled: fallbackSettings.enabled === true,
       contactText: fallbackSettings.contactText || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
     }
   };
+
+  // ตรวจสอบสิทธิ์ (Token) สำหรับข้อมูลที่สำคัญ
+  var auth = { ok: false };
+  if (typeof validateToken === 'function') {
+    auth = validateToken(params && params.token);
+  } else if (typeof authorize === 'function') {
+    auth = authorize('getConfig', params);
+  }
+
+  // ส่งข้อมูลสำคัญให้เฉพาะหน้าต่างที่ได้รับสิทธิ์เท่านั้น (Security Phase 1)
+  if (auth.ok || (params && params.token && params.token === readToken)) {
+    response.readToken = readToken;
+    response.apiUrl = props.getProperty('API_URL') || '';
+  }
+
+  return response;
 }

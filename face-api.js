@@ -1,2 +1,0 @@
-// Placeholder file created to satisfy tooling verification. The actual face-api.js library is loaded externally from CDN in scan.html via:
-/// https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js

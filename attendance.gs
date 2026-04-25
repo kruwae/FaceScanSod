@@ -522,15 +522,16 @@ function login(params) {
   }
 
   var code = String((params && params.code) || '').trim();
-  var verified = verifyAdmin(code);
+  var inputUsername = String((params && params.username) || 'admin').trim();
+  var verified = verifyAdmin(code, inputUsername);
   if (!verified || !verified.success) {
     logAction({
-      username: maskSensitiveValue(username),
+      username: maskSensitiveValue(inputUsername),
       role: DEFAULT_ROLE,
       action: 'login',
       endpoint: 'login',
       status: 'fail',
-      details: { reason: 'invalid_credentials', username: maskSensitiveValue(username), authMethod: 'code' }
+      details: { reason: 'invalid_credentials', username: maskSensitiveValue(inputUsername), authMethod: 'code' }
     });
     return { status: 'error', message: (verified && verified.error) || 'Unauthorized' };
   }
@@ -601,10 +602,15 @@ function initSetup() {
   return { success: true, created: false, message: 'staffOS sheet พร้อมใช้งาน แอดมินมีอยู่แล้ว' };
 }
 
-function verifyAdmin(code) {
+function verifyAdmin(code, inputUsername) {
   var input = normalizePasswordInput(code);
   if (!input) {
     return { success: false, error: 'กรุณากรอกรหัส' };
+  }
+
+  var targetUsername = String(inputUsername || 'admin').trim().toLowerCase();
+  if (!targetUsername) {
+    return { success: false, error: 'กรุณากรอกชื่อผู้ใช้' };
   }
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -615,13 +621,18 @@ function verifyAdmin(code) {
 
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
+    var username = String(row[hm['Username'] - 1] || 'admin').trim().toLowerCase();
+    
+    if (username !== targetUsername) continue;
+
     var role = String(row[hm['Role'] - 1] || '').toLowerCase();
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
     var stored = String(row[hm['Code'] - 1] || '');
-    var username = String(row[hm['Username'] - 1] || 'admin').trim();
 
-    // ยอมรับทั้ง 'admin' และ 'super_admin' และต้องเป็น active เท่านั้น
-    if (!isAdminRole(role) || status !== 'active') continue;
+    // ต้องเป็น active เท่านั้น
+    if (status !== 'active') {
+      return { success: false, error: 'บัญชีนี้ถูกระงับการใช้งาน' };
+    }
 
     var version = String(row[hm['Hash Version'] - 1] || '').trim().toLowerCase();
     var salt    = String(row[hm['Hash Salt']    - 1] || '').trim();

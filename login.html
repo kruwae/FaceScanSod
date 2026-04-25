@@ -288,7 +288,8 @@
     </div>
 
     <div class="login-field active" id="fieldCode">
-      <input type="password" id="adminCode" placeholder="รหัสแอดมิน" autocomplete="current-password">
+      <input type="text" id="adminUsername" placeholder="ชื่อผู้ใช้ (Username)" autocomplete="username" style="margin-bottom: 12px;">
+      <input type="password" id="adminCode" placeholder="รหัสผ่าน" autocomplete="current-password">
     </div>
 
     <div class="login-field" id="fieldGoogle">
@@ -318,6 +319,9 @@
     const tabCode   = document.getElementById('tabCode');
     const tabGoogle = document.getElementById('tabGoogle');
     const fieldCode = document.getElementById('fieldCode');
+    const adminUsernameInput = document.getElementById('adminUsername');
+    const adminCodeInput = document.getElementById('adminCode');
+    let authMethod  = 'code';
     const fieldGoogle = document.getElementById('fieldGoogle');
     const adminCode = document.getElementById('adminCode');
     const googleButton = document.getElementById('googleButton');
@@ -397,10 +401,11 @@
         .trim();
     }
 
-    async function loginWithCode(code) {
-      const trimmed = normalizeCodeInput(code);
+    async function loginWithCode(username, code) {
+      const trimmedUsername = String(username || '').trim();
+      const trimmedCode = normalizeCodeInput(code);
       const apiUrl  = getApiUrl();
-      console.log('[loginWithCode] apiUrl:', apiUrl, '| code length:', trimmed.length);
+      console.log('[loginWithCode] apiUrl:', apiUrl, '| user:', trimmedUsername, '| code length:', trimmedCode.length);
 
       if (!apiUrl) {
         return { ok: false, error: 'ยังไม่ได้ตั้งค่า API URL — ไปตั้งค่าที่ config.html ก่อน' };
@@ -413,7 +418,7 @@
         const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'login', authMethod: 'code', username: 'admin', code: trimmed }),
+          body: JSON.stringify({ action: 'login', authMethod: 'code', username: trimmedUsername, code: trimmedCode }),
           signal: ctrl.signal,
           redirect: 'follow',
           credentials: 'omit'
@@ -608,13 +613,20 @@
     // ---- ฟังก์ชัน submit รหัส (ใช้ร่วมกันทั้งปุ่มและ Enter) ----
     async function doCodeLogin() {
       if (authMethod !== 'code') return;
-      const value = adminCode.value;
-      if (!normalizeCodeInput(value)) {
+      const userValue = adminUsernameInput ? adminUsernameInput.value.trim() : 'admin';
+      const codeValue = adminCodeInput ? adminCodeInput.value : '';
+      if (!userValue) {
+        Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อมูล', text: 'กรอกชื่อผู้ใช้ก่อน', confirmButtonColor: '#6366f1', background: '#1e1b4b', color: '#e2e8f0' });
+        if (adminUsernameInput) adminUsernameInput.focus();
+        return;
+      }
+      if (!normalizeCodeInput(codeValue)) {
         Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อมูล', text: 'กรอกรหัสแอดมินก่อน', confirmButtonColor: '#6366f1', background: '#1e1b4b', color: '#e2e8f0' });
+        if (adminCodeInput) adminCodeInput.focus();
         return;
       }
       Swal.fire({ title: '⏳ กำลังตรวจสอบ...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e1b4b', color: '#e2e8f0' });
-      const result = await loginWithCode(value);
+      const result = await loginWithCode(userValue, codeValue);
       if (result.ok) {
         try { sessionStorage.setItem(SESSION_KEY, '1'); } catch(e) {}
         await Swal.fire({ icon: 'success', title: '✅ เข้าสู่ระบบสำเร็จ', text: 'กำลังนำท่านไปยังหน้าที่ต้องการ...', timer: 1200, showConfirmButton: false, background: '#1e1b4b', color: '#e2e8f0' });
@@ -628,12 +640,23 @@
     btnLogin.addEventListener('click', doCodeLogin);
 
     // ---- กด Enter ในช่อง input ----
-    adminCode.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter' || e.keyCode === 13) {
-        e.preventDefault();
-        doCodeLogin();
-      }
-    });
+    if (adminUsernameInput) {
+      adminUsernameInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+          e.preventDefault();
+          if (adminCodeInput) adminCodeInput.focus();
+        }
+      });
+    }
+
+    if (adminCodeInput) {
+      adminCodeInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+          e.preventDefault();
+          doCodeLogin();
+        }
+      });
+    }
   </script>
 </body>
 </html>

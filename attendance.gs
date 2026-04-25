@@ -2,7 +2,7 @@
 
 var STAFFOS_SHEET   = 'staffOS';
 var STAFFOS_HEADERS = [
-  'Username', 'Code', 'Role', 'Status', 'Note',
+  'Username', 'Name', 'Code', 'Role', 'Status', 'Note',
   'Created At', 'Updated At', 'Hash Version', 'Hash Salt', 'Email',
   'Scope', 'Unit', 'Permissions',
   'Can Register Face', 'Can View Report', 'Can Manage Staff', 'Can Manage Config'
@@ -167,7 +167,7 @@ function safeHashEqualsV2(input, storedRecord) {
 
 var TOKEN_CACHE_PREFIX = 'auth_token_';
 var TOKEN_TTL_SECONDS = 8 * 60 * 60;
-var LEGACY_MIGRATION_MODE = true;
+var LEGACY_MIGRATION_MODE = false;
 var REQUIRE_AUTH_FOR_ALL_API = false;
 var DEFAULT_ROLE = 'staff';
 var ROLE_HIERARCHY = {
@@ -333,6 +333,17 @@ function requireRole(allowedRoles, params) {
 
 function authorize(action, params) {
   if (LEGACY_MIGRATION_MODE) return { ok: true, migrated: true, user: { role: DEFAULT_ROLE } };
+  
+  // โหมด no-login: อนุญาตให้ getKnownFaces และ logAttendance/logCheckout โดยใช้ READ_TOKEN
+  const scanMode = PropertiesService.getScriptProperties().getProperty('SCAN_MODE') || 'login';
+  if (scanMode === 'no-login' && (action === 'getKnownFaces' || action === 'logAttendance' || action === 'logCheckout')) {
+    const token = String((params && params.token) || '').trim();
+    const readToken = String(PropertiesService.getScriptProperties().getProperty('READ_TOKEN') || '').trim();
+    if (token && token === readToken) {
+       return { ok: true, user: { username: 'guest', role: 'staff' } };
+    }
+  }
+
   return requireRole(ENDPOINT_ROLE_RULES[action] || [], params);
 }
 
@@ -366,6 +377,7 @@ function getAdminByEmail(email) {
       return {
         rowNumber: i + 1,
         username: String(row[hm['Username'] - 1] || 'admin').trim(),
+        name: hm['Name'] ? String(row[hm['Name'] - 1] || '').trim() : '',
         email: rowEmail,
         role: role
       };
@@ -379,7 +391,7 @@ function verifyAdminByEmail(email) {
   if (!admin) {
     return { success: false, error: 'ไม่พบอีเมลแอดมินหรือบัญชีถูกระงับ' };
   }
-  return { success: true, username: admin.username, email: admin.email, hashVersion: 'email' };
+  return { success: true, username: admin.username, name: admin.name, email: admin.email, hashVersion: 'email' };
 }
 
 function verifyGoogleIdToken(idToken) {
@@ -486,7 +498,7 @@ function login(params) {
 
     var readTok = '';
     try { readTok = String(PropertiesService.getScriptProperties().getProperty('READ_TOKEN') || '').trim(); } catch(e) {}
-    return { status: 'ok', token: token, readToken: readTok, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'google' };
+    return { status: 'ok', token: token, readToken: readTok, username: username, name: googleAdmin.name || username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'google' };
   }
 
   if (authMethod === 'email') {
@@ -519,7 +531,7 @@ function login(params) {
 
     var readTokE = '';
     try { readTokE = String(PropertiesService.getScriptProperties().getProperty('READ_TOKEN') || '').trim(); } catch(e) {}
-    return { status: 'ok', token: token, readToken: readTokE, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'email' };
+    return { status: 'ok', token: token, readToken: readTokE, username: username, name: verifiedEmail.name || username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'email' };
   }
 
   var code = String((params && params.code) || '').trim();
@@ -551,7 +563,7 @@ function login(params) {
   });
   var readTokC = '';
   try { readTokC = String(PropertiesService.getScriptProperties().getProperty('READ_TOKEN') || '').trim(); } catch(e) {}
-  return { status: 'ok', token: token, readToken: readTokC, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'code' };
+  return { status: 'ok', token: token, readToken: readTokC, username: username, name: verified.name || username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'code' };
 }
 
 function migrateAdminPasswordIfNeeded(sheet, rowNumber, hm, plainCode) {
@@ -627,6 +639,7 @@ function verifyAdmin(code, inputUsername) {
     if (username !== targetUsername) continue;
 
     var role = String(row[hm['Role'] - 1] || '').toLowerCase();
+    var name = hm['Name'] ? String(row[hm['Name'] - 1] || '').trim() : '';
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
     var stored = String(row[hm['Code'] - 1] || '');
 
@@ -656,7 +669,7 @@ function verifyAdmin(code, inputUsername) {
         // บันทึก Hash Version ลงชีทถ้ายังว่าง
         if (!version && hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
         if (!salt && hm['Hash Salt'])       sheet.getRange(i + 1, hm['Hash Salt']).setValue(v2Salt);
-        return { success: true, username: username, role: role, hashVersion: HASH_VERSION_V2 };
+        return { success: true, username: username, name: name, role: role, hashVersion: HASH_VERSION_V2 };
       }
       // V2 ไม่ตรง → อย่าลอง V1 เพราะ format ชัดเจนว่าเป็น bcrypt
       continue;
@@ -665,13 +678,13 @@ function verifyAdmin(code, inputUsername) {
     if (detectedVersion === HASH_VERSION_V1) {
       var v1Record = buildPasswordRecord(input, '', HASH_VERSION_V1);
       if (safeStringEquals(normalizeHash(stored), normalizeHash(v1Record.hash))) {
-        return { success: true, username: username, role: role, hashVersion: HASH_VERSION_V1 };
+        return { success: true, username: username, name: name, role: role, hashVersion: HASH_VERSION_V1 };
       }
     }
 
     // Fallback: plain-text comparison (legacy ก่อน hash)
     if (safeStringEquals(stored, input)) {
-      return { success: true, username: username, role: role, hashVersion: 'plain' };
+      return { success: true, username: username, name: name, role: role, hashVersion: 'plain' };
     }
   }
 

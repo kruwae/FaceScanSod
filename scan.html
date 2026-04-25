@@ -45,7 +45,10 @@
 </div>
 
 <div class="container">
-  <a href="index.html" class="back-btn">← กลับเมนูหลัก</a>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <a href="index.html" class="back-btn" style="margin-bottom: 0;">← กลับเมนูหลัก</a>
+    <div id="loggedInUserBadge" style="display: none; background: rgba(16,185,129,0.1); color: #10b981; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600; border: 1px solid rgba(16,185,129,0.2);"></div>
+  </div>
   <div class="card">
     <h2>📷 บันทึกเวลาทำงาน</h2>
     
@@ -132,8 +135,23 @@ async function init() {
     scanMode = config.scanMode || 'login';
     
     // ถ้าเป็นโหมด no-login และไม่มี Token ให้ใช้ Token ส่วนกลางจาก Config (ถ้ามี)
-    if (scanMode === 'no-login' && !AUTH_TOKEN) {
-      AUTH_TOKEN = config.token || ''; 
+    if (scanMode === 'no-login') {
+      if (!AUTH_TOKEN || AUTH_TOKEN === 'undefined') {
+        AUTH_TOKEN = config.readToken || ''; 
+      }
+    } else if (scanMode === 'login') {
+      if (!AUTH_TOKEN || AUTH_TOKEN === 'undefined' || AUTH_TOKEN.length < 20) {
+        alert('หน้านี้ต้องเข้าสู่ระบบก่อนใช้งาน');
+        window.location.href = 'login.html?to=scan.html';
+        return;
+      }
+    }
+
+    const adminName = sessionStorage.getItem('adminName');
+    if (adminName && AUTH_TOKEN && scanMode === 'login') {
+      const badge = document.getElementById('loggedInUserBadge');
+      badge.innerText = '👤 ผู้ใช้งาน: ' + adminName;
+      badge.style.display = 'block';
     }
 
     const select = document.getElementById('locationSelect');

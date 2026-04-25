@@ -795,7 +795,7 @@
             <table>
               <thead>
                 <tr>
-                  <th>ผู้ใช้</th>
+                  <th>ผู้ใช้ (Username / ชื่อจริง)</th>
                   <th>บทบาท</th>
                   <th>สถานะ</th>
                   <th>ขอบเขต</th>
@@ -829,10 +829,16 @@
                 <input id="username" name="username" required autocomplete="off" placeholder="เช่น staff01">
               </div>
               <div class="field">
+                <label for="name">ชื่อ-นามสกุล</label>
+                <input id="name" name="name" autocomplete="off" placeholder="เช่น นายสมชาย ใจดี">
+              </div>
+            </div>
+            
+            <div class="grid-2">
+              <div class="field">
                 <label for="email">Email</label>
                 <input id="email" name="email" type="email" autocomplete="off" placeholder="name@example.com">
               </div>
-            </div>
 
             <div class="grid-2">
               <div class="field">
@@ -1185,6 +1191,7 @@
 
     function fillForm(item) {
       document.getElementById('username').value = item.username || '';
+      document.getElementById('name').value = item.name || '';
       document.getElementById('email').value = item.email || '';
       document.getElementById('role').value = normalizeRoleLabel(item.role);
       document.getElementById('status').value = item.status || 'active';
@@ -1200,6 +1207,7 @@
     function collectFormData() {
       return {
         username: document.getElementById('username').value.trim(),
+        name: document.getElementById('name').value.trim(),
         email: document.getElementById('email').value.trim(),
         role: document.getElementById('role').value,
         status: document.getElementById('status').value,
@@ -1247,6 +1255,7 @@
 
       staffTableBody.innerHTML = items.map(item => {
         const username = escapeHtml(item.username || '-');
+        const name = escapeHtml(item.name || '');
         const email = escapeHtml(item.email || '-');
         const note = escapeHtml(item.note || '-');
         const role = normalizeRoleLabel(item.role);
@@ -1259,8 +1268,10 @@
           ? '<button class="btn btn-danger small-btn" data-action="delete" data-username="' + escapeHtml(item.username) + '">ลบ</button>'
           : '';
 
+        const nameHtml = name ? '<span class="muted" style="color:#a5b4fc">' + name + '</span>' : '';
+
         return '<tr>' +
-          '<td><div class="stack"><strong>' + username + '</strong><span class="muted">' + email + '</span><span class="muted">' + note + '</span></div></td>' +
+          '<td><div class="stack"><strong>' + username + '</strong>' + nameHtml + '<span class="muted">' + email + '</span><span class="muted">' + note + '</span></div></td>' +
           '<td><span class="chip role-' + role + '">' + escapeHtml(role) + '</span></td>' +
           '<td><span class="chip status-' + status + '">' + escapeHtml(status) + '</span></td>' +
           '<td><div class="stack"><span>' + unit + '</span><span class="muted">' + scope + '</span></div></td>' +

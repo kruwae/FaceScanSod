@@ -77,6 +77,7 @@ function getBoolCol(row, hm, colName) {
 function rowToStaffObject(row, hm, includeHash) {
   var obj = {
     username:        String(row[hm['Username'] - 1]     || '').trim(),
+    name:            hm['Name'] ? String(row[hm['Name'] - 1] || '').trim() : '',
     role:            String(row[hm['Role']     - 1]     || '').trim().toLowerCase(),
     status:          String(row[hm['Status']   - 1]     || '').trim().toLowerCase(),
     note:            String(row[hm['Note']     - 1]     || '').trim(),
@@ -177,6 +178,7 @@ function createStaffMember(params) {
   if (!auth.ok) return { status: 'error', message: auth.error || 'Unauthorized' };
 
   var username = String((params && params.username) || '').trim();
+  var name     = String((params && params.name)     || '').trim();
   var code     = String((params && params.code)     || '').trim();
   var role     = String((params && params.role)     || 'staff').trim().toLowerCase();
   var email    = String((params && params.email)    || '').trim();
@@ -214,6 +216,7 @@ function createStaffMember(params) {
   var rowNum = sheet.getLastRow() + 1;
   setRowByHeaders(sheet, rowNum, hm, {
     'Username':         username,
+    'Name':             name,
     'Code':             hashRecord.hash,
     'Role':             role,
     'Status':           'active',
@@ -266,6 +269,7 @@ function updateStaffMember(params) {
     var now = new Date();
 
     if (params.role   !== undefined) sheet.getRange(rowNum, hm['Role']  ).setValue(String(params.role).toLowerCase());
+    if (params.name   !== undefined && hm['Name']) sheet.getRange(rowNum, hm['Name']).setValue(String(params.name).trim());
     if (params.status !== undefined) sheet.getRange(rowNum, hm['Status']).setValue(String(params.status).toLowerCase());
     if (params.email  !== undefined) sheet.getRange(rowNum, hm['Email'] ).setValue(String(params.email).trim());
     if (params.note   !== undefined) sheet.getRange(rowNum, hm['Note']  ).setValue(String(params.note).trim());
@@ -495,10 +499,10 @@ function seedStaffOsDemoData(params) {
   var hm = result.headerMap;
 
   var demoUsers = [
-    { username: 'head_unit1', code: 'head1234', role: 'head_unit', email: 'head1@example.com', scope: 'unit-a', unit: 'unit-a', note: 'Demo head unit-a' },
-    { username: 'head_unit2', code: 'head1234', role: 'head_unit', email: 'head2@example.com', scope: 'unit-b', unit: 'unit-b', note: 'Demo head unit-b' },
-    { username: 'staff1',     code: 'staff123', role: 'staff',     email: 'staff1@example.com', scope: 'unit-a', unit: 'unit-a', note: 'Demo staff' },
-    { username: 'staff2',     code: 'staff123', role: 'staff',     email: 'staff2@example.com', scope: 'unit-a', unit: 'unit-a', note: 'Demo staff' }
+    { username: 'head_unit1', name: 'หัวหน้า 1', code: 'head1234', role: 'head_unit', email: 'head1@example.com', scope: 'unit-a', unit: 'unit-a', note: 'Demo head unit-a' },
+    { username: 'head_unit2', name: 'หัวหน้า 2', code: 'head1234', role: 'head_unit', email: 'head2@example.com', scope: 'unit-b', unit: 'unit-b', note: 'Demo head unit-b' },
+    { username: 'staff1',     name: 'สตาฟ 1',    code: 'staff123', role: 'staff',     email: 'staff1@example.com', scope: 'unit-a', unit: 'unit-a', note: 'Demo staff' },
+    { username: 'staff2',     name: 'สตาฟ 2',    code: 'staff123', role: 'staff',     email: 'staff2@example.com', scope: 'unit-a', unit: 'unit-a', note: 'Demo staff' }
   ];
 
   var now = new Date();
@@ -516,6 +520,7 @@ function seedStaffOsDemoData(params) {
     var rowNum = sheet.getLastRow() + 1;
     setRowByHeaders(sheet, rowNum, hm, {
       'Username':     u.username,
+      'Name':         u.name,
       'Code':         hashRecord.hash,
       'Role':         u.role,
       'Status':       'active',

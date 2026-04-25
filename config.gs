@@ -2,32 +2,35 @@
 
 function ensureSheetWithHeaders(ss, sheetName, headers) {
   let sheet = ss.getSheetByName(sheetName);
-  if (!sheet) sheet = ss.insertSheet(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    return { sheet, headerMap: buildHeaderMap(headers) };
+  }
 
   const schema = headers.slice();
   const existingHeaders = sheet.getLastRow() > 0
-    ? sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), schema.length)).getValues()[0]
+    ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h || '').trim(); })
     : [];
-  const existingMap = buildHeaderMap(existingHeaders.map(function(h) { return String(h || '').trim(); }));
+  const existingMap = buildHeaderMap(existingHeaders);
 
+  let updatedHeaders = existingHeaders.slice();
   let changed = false;
-  for (let i = 0; i < schema.length; i++) {
-    if (!existingMap[schema[i]]) {
-      existingHeaders[i] = schema[i];
+
+  schema.forEach(function(headerName) {
+    if (!existingMap[headerName] && !existingMap[headerName.toLowerCase()]) {
+      updatedHeaders.push(headerName);
+      existingMap[headerName] = updatedHeaders.length;
+      existingMap[headerName.toLowerCase()] = updatedHeaders.length;
       changed = true;
     }
-  }
+  });
 
-  if (!existingHeaders.length) {
-    changed = true;
-  }
-
-  const finalHeaders = existingHeaders.length ? existingHeaders : schema.slice();
   if (changed) {
-    sheet.getRange(1, 1, 1, finalHeaders.length).setValues([finalHeaders]);
+    sheet.getRange(1, 1, 1, updatedHeaders.length).setValues([updatedHeaders]);
   }
 
-  return { sheet, headerMap: buildHeaderMap(finalHeaders.map(function(h) { return String(h || '').trim(); })) };
+  return { sheet, headerMap: existingMap };
 }
 
 function buildHeaderMap(headers) {

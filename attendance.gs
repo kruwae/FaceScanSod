@@ -2,9 +2,9 @@
 
 var STAFFOS_SHEET   = 'staffOS';
 var STAFFOS_HEADERS = [
-  'Username', 'Name', 'Code', 'Role', 'Status', 'Note',
+  'Username', 'Code', 'Role', 'Status', 'Note',
   'Created At', 'Updated At', 'Hash Version', 'Hash Salt', 'Email',
-  'Scope', 'Unit', 'Permissions',
+  'Name', 'Scope', 'Unit', 'Permissions',
   'Can Register Face', 'Can View Report', 'Can Manage Staff', 'Can Manage Config'
 ];
 var DEFAULT_ADMIN_CODE = '2569';

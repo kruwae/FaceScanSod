@@ -276,10 +276,11 @@ function updateStaffMember(params) {
     if (params.scope  !== undefined && hm['Scope']) sheet.getRange(rowNum, hm['Scope']).setValue(String(params.scope).trim());
     if (params.unit   !== undefined && hm['Unit'])  sheet.getRange(rowNum, hm['Unit'] ).setValue(String(params.unit).trim());
 
-    // อัปเดต password ถ้ามี
-    if (params.newCode && String(params.newCode).trim().length >= 4) {
-      var newSalt = createUserSalt(username + '|' + params.newCode);
-      var newHash = buildPasswordRecord(params.newCode, newSalt, HASH_VERSION_V2);
+    // อัปเดต password ถ้ามี (รองรับทั้ง newCode และ code)
+    var newCodeVal = String((params && (params.newCode || params.code)) || '').trim();
+    if (newCodeVal && newCodeVal.length >= 4) {
+      var newSalt = createUserSalt(username + '|' + newCodeVal);
+      var newHash = buildPasswordRecord(newCodeVal, newSalt, HASH_VERSION_V2);
       sheet.getRange(rowNum, hm['Code']).setValue(newHash.hash);
       if (hm['Hash Version']) sheet.getRange(rowNum, hm['Hash Version']).setValue(newHash.version);
       if (hm['Hash Salt'])    sheet.getRange(rowNum, hm['Hash Salt']   ).setValue(newHash.salt);

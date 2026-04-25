@@ -537,8 +537,8 @@
             client_id: clientId,
             callback: handleGoogleCredentialResponse,
             auto_select: false,
-            cancel_on_tap_outside: true
-            // นำ use_fedcm_for_prompt ออก เพื่อให้รองรับ Chrome/Safari รุ่นใหม่ที่บล็อก 3rd-party cookies
+            cancel_on_tap_outside: true,
+            itp_support: true
           });
           googleClientReady = true;
         } catch(initErr) {

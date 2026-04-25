@@ -361,7 +361,8 @@ function getAdminByEmail(email) {
     var role = String(row[hm['Role'] - 1] || '').toLowerCase();
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
     var rowEmail = normalizeEmail(row[hm['Email'] - 1] || '');
-    if (isAdminRole(role) && status === 'active' && rowEmail === target) {
+    // ยอมรับทุก role ที่เป็น active (ระบบสิทธิ์จะไปตรวจสอบที่ API อีกที)
+    if (status === 'active' && rowEmail === target) {
       return {
         rowNumber: i + 1,
         username: String(row[hm['Username'] - 1] || 'admin').trim(),

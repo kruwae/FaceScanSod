@@ -167,7 +167,7 @@ function safeHashEqualsV2(input, storedRecord) {
 
 var TOKEN_CACHE_PREFIX = 'auth_token_';
 var TOKEN_TTL_SECONDS = 8 * 60 * 60;
-var LEGACY_MIGRATION_MODE = true;
+var LEGACY_MIGRATION_MODE = false;
 var REQUIRE_AUTH_FOR_ALL_API = false;
 var DEFAULT_ROLE = 'staff';
 var ROLE_HIERARCHY = {
@@ -334,6 +334,9 @@ function requireRole(allowedRoles, params) {
 function authorize(action, params) {
   if (LEGACY_MIGRATION_MODE) return { ok: true, migrated: true, user: { role: DEFAULT_ROLE } };
   
+  // อนุญาตให้ getConfig เป็น public เพื่อให้หน้ากากสแกนเช็ค scanMode ได้
+  if (action === 'getConfig') return { ok: true, user: { username: 'guest', role: 'viewer' } };
+
   // โหมด no-login: อนุญาตให้ getKnownFaces และ logAttendance/logCheckout โดยใช้ READ_TOKEN
   const scanMode = PropertiesService.getScriptProperties().getProperty('SCAN_MODE') || 'login';
   if (scanMode === 'no-login' && (action === 'getKnownFaces' || action === 'logAttendance' || action === 'logCheckout')) {

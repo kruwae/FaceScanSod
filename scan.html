@@ -316,6 +316,7 @@ async function submitAttendance() {
   const data = {
     action: actionType,
     employeeId: currentMatch.employeeId,
+    name: currentMatch.name, // เพิ่มการส่งชื่อ
     locationId: selectedLoc.id,
     locationName: selectedLoc.name,
     lat: currentPos.lat,

@@ -13,8 +13,10 @@ var HASH_VERSION_V2 = HASH_VERSION_BCRYPT;
 var DEFAULT_HASH_VERSION = HASH_VERSION_BCRYPT;
 var DEFAULT_USER_SALT_LENGTH = 16;
 var PASSWORD_ALGORITHM = 'sha256';
-var GOOGLE_OAUTH_CLIENT_ID = '';
-var GOOGLE_ID_TOKEN_AUDIENCE = '';
+var GOOGLE_OAUTH_CLIENT_ID = (function() {
+  try { return PropertiesService.getScriptProperties().getProperty('GOOGLE_OAUTH_CLIENT_ID') || ''; } catch(e) { return ''; }
+})();
+var GOOGLE_ID_TOKEN_AUDIENCE = GOOGLE_OAUTH_CLIENT_ID;
 
 function normalizePasswordInput(password) {
   return String(password || '')
@@ -329,18 +331,34 @@ function verifyGoogleIdToken(idToken) {
     var parts = token.split('.');
     if (parts.length !== 3) return { success: false, error: 'Invalid Google token format' };
 
-    var payload = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[1])).getDataAsString());
+    // แก้ base64url → base64 padding ให้ถูกต้องทุก browser
+    var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4 !== 0) b64 += '=';
+    var payload = JSON.parse(Utilities.newBlob(Utilities.base64Decode(b64)).getDataAsString());
+
     var email = normalizeEmail(payload.email || '');
     var aud = String(payload.aud || '');
     var iss = String(payload.iss || '').toLowerCase();
+    var now = Math.floor(Date.now() / 1000);
 
     if (!email) return { success: false, error: 'Missing email in token' };
     if (iss !== 'https://accounts.google.com' && iss !== 'accounts.google.com') {
-      return { success: false, error: 'Invalid token issuer' };
+      return { success: false, error: 'Invalid token issuer: ' + iss };
     }
 
-    var expectedAud = String(GOOGLE_ID_TOKEN_AUDIENCE || GOOGLE_OAUTH_CLIENT_ID || '').trim();
+    // ตรวจ token หมดอายุ (exp)
+    if (payload.exp && now > Number(payload.exp) + 300) {
+      return { success: false, error: 'Google token expired' };
+    }
+
+    // ตรวจ audience เฉพาะเมื่อตั้งค่าไว้
+    var expectedAud = String(
+      (typeof GOOGLE_ID_TOKEN_AUDIENCE !== 'undefined' ? GOOGLE_ID_TOKEN_AUDIENCE : '') ||
+      (typeof GOOGLE_OAUTH_CLIENT_ID !== 'undefined' ? GOOGLE_OAUTH_CLIENT_ID : '') ||
+      ''
+    ).trim();
     if (expectedAud && aud !== expectedAud) {
+      Logger.log('[verifyGoogleIdToken] aud mismatch: got=' + aud + ' expected=' + expectedAud);
       return { success: false, error: 'Invalid token audience' };
     }
 
@@ -350,7 +368,8 @@ function verifyGoogleIdToken(idToken) {
 
     return { success: true, email: email, payload: payload };
   } catch (e) {
-    return { success: false, error: 'Unable to verify Google token' };
+    Logger.log('[verifyGoogleIdToken] error: ' + e.message);
+    return { success: false, error: 'Unable to verify Google token: ' + e.message };
   }
 }
 
@@ -406,7 +425,9 @@ function login(params) {
       details: { tokenIssued: true, authMethod: 'google', email: maskSensitiveValue(googleResult.email) }
     });
 
-    return { status: 'ok', token: token, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'google' };
+    var readTok = '';
+    try { readTok = String(PropertiesService.getScriptProperties().getProperty('READ_TOKEN') || '').trim(); } catch(e) {}
+    return { status: 'ok', token: token, readToken: readTok, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'google' };
   }
 
   if (authMethod === 'email') {
@@ -437,7 +458,9 @@ function login(params) {
       details: { tokenIssued: true, authMethod: 'email' }
     });
 
-    return { status: 'ok', token: token, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'email' };
+    var readTokE = '';
+    try { readTokE = String(PropertiesService.getScriptProperties().getProperty('READ_TOKEN') || '').trim(); } catch(e) {}
+    return { status: 'ok', token: token, readToken: readTokE, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'email' };
   }
 
   var code = String((params && params.code) || '').trim();
@@ -464,7 +487,9 @@ function login(params) {
     status: 'success',
     details: { tokenIssued: true, authMethod: 'code' }
   });
-  return { status: 'ok', token: token, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'code' };
+  var readTokC = '';
+  try { readTokC = String(PropertiesService.getScriptProperties().getProperty('READ_TOKEN') || '').trim(); } catch(e) {}
+  return { status: 'ok', token: token, readToken: readTokC, username: username, role: role, expiresIn: TOKEN_TTL_SECONDS, authMethod: 'code' };
 }
 
 function migrateAdminPasswordIfNeeded(sheet, rowNumber, hm, plainCode) {
@@ -745,84 +770,6 @@ function getKnownFaces(params) {
 
 //  Attendance Log
 // ============================================================
-
-function getKnownFaces(params) {
-  var auth = authorize('getKnownFaces', params);
-  if (!auth.ok) {
-    logAction({
-      username: '',
-      role: DEFAULT_ROLE,
-      action: 'access_denied',
-      endpoint: 'getKnownFaces',
-      status: 'fail',
-      details: { reason: auth.error || 'Unauthorized' }
-    });
-    return { status: 'error', message: auth.error || 'Unauthorized', code: auth.code || 401 };
-  }
-
-  var token = String((params && params.token) || '').trim();
-  var config = getConfig(params) || {};
-  var requiredToken = String(config.readToken || '').trim();
-  if (requiredToken && token !== requiredToken) {
-    logAction({
-      username: auth.user && auth.user.username ? auth.user.username : '',
-      role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
-      action: 'access_denied',
-      endpoint: 'getKnownFaces',
-      status: 'fail',
-      details: { reason: 'invalid_read_token' }
-    });
-    return { status: 'error', message: 'Unauthorized', code: 401 };
-  }
-
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var result = ensureUsersSheetWithContract(ss);
-  var sheet = result.sheet;
-  var hm = result.headerMap;
-  var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return [];
-
-  var employeeIdCol = hm['Employee ID'];
-  var nameCol = hm['Name'];
-  var positionCol = hm['Position'];
-  var descriptorCol = hm['Face Descriptor'];
-  var statusCol = hm['Status'];
-
-  var users = [];
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    var employeeId = employeeIdCol ? String(row[employeeIdCol - 1] || '').trim() : '';
-    var name = nameCol ? String(row[nameCol - 1] || '').trim() : '';
-    var position = positionCol ? String(row[positionCol - 1] || '').trim() : '';
-    var jsonStr = descriptorCol ? String(row[descriptorCol - 1] || '').trim() : '';
-    var status = statusCol ? String(row[statusCol - 1] || 'active').toLowerCase() : 'active';
-
-    if (!jsonStr || status === 'inactive') continue;
-
-    try {
-      var descriptor = JSON.parse(jsonStr);
-      users.push({
-        employeeId: employeeId || normalizeEmployeeId('', name, i + 1),
-        label: name || employeeId || ('User ' + (i + 1)),
-        name: name || '',
-        position: position || '',
-        descriptor: descriptor,
-        status: status || 'active'
-      });
-    } catch (e) {}
-  }
-
-  logAction({
-    username: auth.user && auth.user.username ? auth.user.username : '',
-    role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
-    action: 'getKnownFaces',
-    endpoint: 'getKnownFaces',
-    status: 'success',
-    details: { count: users.length }
-  });
-
-  return users;
-}
 
 function logAttendance(payload, actionParam) {
   var actionType = actionParam || 'logAttendance';

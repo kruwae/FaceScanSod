@@ -167,7 +167,7 @@ function safeHashEqualsV2(input, storedRecord) {
 
 var TOKEN_CACHE_PREFIX = 'auth_token_';
 var TOKEN_TTL_SECONDS = 8 * 60 * 60;
-var LEGACY_MIGRATION_MODE = false;
+var LEGACY_MIGRATION_MODE = true;
 var REQUIRE_AUTH_FOR_ALL_API = false;
 var DEFAULT_ROLE = 'staff';
 var ROLE_HIERARCHY = {
@@ -374,6 +374,7 @@ function getAdminByEmail(email) {
     var row = data[i];
     var role = String(row[hm['Role'] - 1] || '').toLowerCase();
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
+    if (!status) status = 'active';
     var rowEmail = normalizeEmail(row[hm['Email'] - 1] || '');
     // ยอมรับทุก role ที่เป็น active (ระบบสิทธิ์จะไปตรวจสอบที่ API อีกที)
     if (status === 'active' && rowEmail === target) {
@@ -644,8 +645,9 @@ function verifyAdmin(code, inputUsername) {
     var role = String(row[hm['Role'] - 1] || '').toLowerCase();
     var name = hm['Name'] ? String(row[hm['Name'] - 1] || '').trim() : '';
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
+    if (!status) status = 'active'; // Default for existing users
     var stored = String(row[hm['Code'] - 1] || '');
-
+    
     // ต้องเป็น active เท่านั้น
     if (status !== 'active') {
       return { success: false, error: 'บัญชีนี้ถูกระงับการใช้งาน' };

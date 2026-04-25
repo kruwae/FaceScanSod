@@ -111,7 +111,7 @@ function getLocations(params) {
 //  Config — Save / Load
 // ============================================================
 
-function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, token) {
+function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, token, scanMode) {
   const auth = authorize('saveConfig', { token: token || '' });
   if (!auth.ok) {
     logAction({
@@ -168,6 +168,7 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
   props.setProperty('CONFIG_UPDATED_AT',  now.toISOString());
   props.setProperty('WORK_TIMES',         JSON.stringify(workTimes || {}));
   props.setProperty('FALLBACK_SETTINGS',  JSON.stringify(fallbackSettings || {}));
+  props.setProperty('SCAN_MODE',          scanMode || 'login');
 
   logAction({
     username: auth.user && auth.user.username ? auth.user.username : '',
@@ -270,7 +271,8 @@ function getConfig(params) {
 
     for (let i = 1; i < values.length; i++) {
       const row = values[i];
-      if (!row[0] && !row[1]) continue;
+      // ข้ามถ้าไม่มีพิกัด lat, lng เพราะชื่อกับ id อาจจะว่างได้ในตอนแรก
+      if (!row[2] && !row[3]) continue;
       locations.push({
         id: row[0] || ('loc-' + i),
         name: row[1] || ('Location ' + i),
@@ -310,6 +312,7 @@ function getConfig(params) {
     fallbackSettings: {
       enabled: fallbackSettings.enabled === true,
       contactText: fallbackSettings.contactText || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
-    }
+    },
+    scanMode: PropertiesService.getScriptProperties().getProperty('SCAN_MODE') || 'login'
   };
 }

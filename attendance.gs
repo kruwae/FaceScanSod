@@ -168,7 +168,8 @@ var DEFAULT_ROLE = 'staff';
 var ROLE_HIERARCHY = {
   'viewer': 1,
   'staff': 2,
-  'admin': 3
+  'admin': 3,
+  'super_admin': 4
 };
 var ENDPOINT_ROLE_RULES = {
   'getKnownFaces': ['staff', 'admin'],
@@ -201,8 +202,16 @@ function storeToken(token, username, role) {
 function normalizeRole(role) {
   var value = String(role || '').trim().toLowerCase();
   if (!value) return DEFAULT_ROLE;
+  // super_admin ถือว่าเป็น admin ด้วย
+  if (value === 'super_admin') return 'super_admin';
   if (!ROLE_HIERARCHY[value]) return DEFAULT_ROLE;
   return value;
+}
+
+// ตรวจว่า role มีสิทธิ์ระดับ admin หรือไม่
+function isAdminRole(role) {
+  var r = String(role || '').trim().toLowerCase();
+  return r === 'admin' || r === 'super_admin';
 }
 
 function getUserRole(username) {
@@ -264,7 +273,8 @@ function requireRole(allowedRoles, params) {
 
   if (!allowed.length) return { ok: true, user: auth.user };
 
-  if (role === 'admin') return { ok: true, user: auth.user };
+  // super_admin มีสิทธิ์ทุกอย่าง
+  if (role === 'admin' || role === 'super_admin') return { ok: true, user: auth.user };
 
   for (var i = 0; i < allowed.length; i++) {
     if (allowed[i] === role) return { ok: true, user: auth.user };
@@ -303,12 +313,12 @@ function getAdminByEmail(email) {
     var role = String(row[hm['Role'] - 1] || '').toLowerCase();
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
     var rowEmail = normalizeEmail(row[hm['Email'] - 1] || '');
-    if (role === 'admin' && status === 'active' && rowEmail === target) {
+    if (isAdminRole(role) && status === 'active' && rowEmail === target) {
       return {
         rowNumber: i + 1,
         username: String(row[hm['Username'] - 1] || 'admin').trim(),
         email: rowEmail,
-        role: 'admin'
+        role: role
       };
     }
   }
@@ -477,7 +487,9 @@ function login(params) {
     return { status: 'error', message: (verified && verified.error) || 'Unauthorized' };
   }
 
-  role = 'admin';
+  // ใช้ username และ role จากผลลัพธ์ของ verifyAdmin (support super_admin)
+  username = (verified && verified.username) || username;
+  role = (verified && verified.role) ? normalizeRole(verified.role) : 'admin';
   token = storeToken(generateToken(username, role), username, role);
   logAction({
     username: username,
@@ -485,7 +497,7 @@ function login(params) {
     action: 'login',
     endpoint: 'login',
     status: 'success',
-    details: { tokenIssued: true, authMethod: 'code' }
+    details: { tokenIssued: true, authMethod: 'code', hashVersion: verified.hashVersion || '' }
   });
   var readTokC = '';
   try { readTokC = String(PropertiesService.getScriptProperties().getProperty('READ_TOKEN') || '').trim(); } catch(e) {}
@@ -558,37 +570,48 @@ function verifyAdmin(code) {
     var role = String(row[hm['Role'] - 1] || '').toLowerCase();
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
     var stored = String(row[hm['Code'] - 1] || '');
+    var username = String(row[hm['Username'] - 1] || 'admin').trim();
+
+    // ยอมรับทั้ง 'admin' และ 'super_admin' และต้องเป็น active เท่านั้น
+    if (!isAdminRole(role) || status !== 'active') continue;
+
     var version = String(row[hm['Hash Version'] - 1] || '').trim().toLowerCase();
-    var salt = String(row[hm['Hash Salt'] - 1] || '').trim();
-    var parsed = parsePasswordRecord(stored);
+    var salt    = String(row[hm['Hash Salt']    - 1] || '').trim();
+    var parsed  = parsePasswordRecord(stored);
 
-    if (role !== 'admin' || status !== 'active') continue;
+    // Auto-detect version จาก format ของ hash เมื่อ Hash Version column ว่าง
+    var detectedVersion = version || detectHashVersion(stored);
+    Logger.log('[verifyAdmin] user=' + username + ' role=' + role + ' detectedVersion=' + detectedVersion + ' storedPrefix=' + stored.substring(0, 20));
 
-    if (version === HASH_VERSION_V2 || parsed.version === HASH_VERSION_V2) {
-      var v2Salt = salt || parsed.salt || createUserSalt(row[hm['Username'] - 1] || 'admin');
+    if (detectedVersion === HASH_VERSION_V2) {
+      // ต้องใช้ salt — ถ้าไม่มีใน column ให้ลองสร้างจาก username (กรณี hash ที่สร้างโดย initSetup)
+      var v2Salt = salt || parsed.salt || '';
+      if (!v2Salt) {
+        // ไม่มี salt → ไม่สามารถ verify bcrypt ได้ → ข้ามไป
+        Logger.log('[verifyAdmin] bcrypt hash แต่ไม่มี salt สำหรับ user=' + username);
+        continue;
+      }
       var v2Record = buildPasswordRecord(input, v2Salt, HASH_VERSION_V2);
-
       if (safeStringEquals(normalizeHash(stored), normalizeHash(v2Record.hash))) {
-        if (!version || version !== HASH_VERSION_V2 || !salt || !parsed.salt) {
-          sheet.getRange(i + 1, hm['Code']).setValue(v2Record.hash);
-          if (hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
-          if (hm['Hash Salt']) sheet.getRange(i + 1, hm['Hash Salt']).setValue(v2Salt);
-          sheet.getRange(i + 1, hm['Updated At']).setValue(new Date());
-          return { success: true, migrated: true, hashVersion: HASH_VERSION_V2 };
-        }
-        return { success: true, hashVersion: HASH_VERSION_V2 };
+        // บันทึก Hash Version ลงชีทถ้ายังว่าง
+        if (!version && hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
+        if (!salt && hm['Hash Salt'])       sheet.getRange(i + 1, hm['Hash Salt']).setValue(v2Salt);
+        return { success: true, username: username, role: role, hashVersion: HASH_VERSION_V2 };
       }
+      // V2 ไม่ตรง → อย่าลอง V1 เพราะ format ชัดเจนว่าเป็น bcrypt
+      continue;
     }
 
-    if (version === HASH_VERSION_V1 || parsed.version === HASH_VERSION_V1 || !version) {
+    if (detectedVersion === HASH_VERSION_V1) {
       var v1Record = buildPasswordRecord(input, '', HASH_VERSION_V1);
-      if (safeStringEquals(normalizeHash(stored), normalizeHash(v1Record.hash)) || safeStringEquals(stored, input)) {
-        return { success: true, hashVersion: HASH_VERSION_V1 };
+      if (safeStringEquals(normalizeHash(stored), normalizeHash(v1Record.hash))) {
+        return { success: true, username: username, role: role, hashVersion: HASH_VERSION_V1 };
       }
     }
 
-    if (stored === input) {
-      return { success: true, hashVersion: HASH_VERSION_V1 };
+    // Fallback: plain-text comparison (legacy ก่อน hash)
+    if (safeStringEquals(stored, input)) {
+      return { success: true, username: username, role: role, hashVersion: 'plain' };
     }
   }
 
@@ -611,11 +634,11 @@ function changeAdminCode(currentCode, newCode) {
     var role   = String(row[hm['Role']   - 1] || '').toLowerCase();
     var status = String(row[hm['Status'] - 1] || '').toLowerCase();
     var stored = String(row[hm['Code']   - 1] || '');
-    var version = String(row[hm['Hash Version'] - 1] || '').trim().toLowerCase();
+    var version = String(row[hm['Hash Version'] - 1] || '').trim().toLowerCase() || detectHashVersion(stored);
     var salt = String(row[hm['Hash Salt'] - 1] || '').trim();
     var parsed = parsePasswordRecord(stored);
 
-    if (role !== 'admin' || status !== 'active') continue;
+    if (!isAdminRole(role) || status !== 'active') continue;
 
     var matched = false;
     if (version === HASH_VERSION_V2 || parsed.version === HASH_VERSION_V2) {

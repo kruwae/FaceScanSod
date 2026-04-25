@@ -211,6 +211,42 @@ function storeToken(token, username, role) {
   return token;
 }
 
+function maskSensitiveValue(value) {
+  var text = String(value || '');
+  if (!text) return '';
+  if (text.length <= 4) return '****';
+  return text.substring(0, 2) + '****' + text.substring(text.length - 2);
+}
+
+function logAction(entry) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var schema = ['timestamp', 'username', 'role', 'action', 'endpoint', 'status', 'ip', 'details'];
+    var result = ensureSheetWithHeaders(ss, 'AuditLog', schema);
+    var sheet = result.sheet;
+    var row = sheet.getLastRow() + 1;
+    var timestamp = new Date();
+    var payload = entry || {};
+    var details = payload.details;
+    if (typeof details !== 'string') {
+      try { details = JSON.stringify(details || {}); } catch (e) { details = '{}'; }
+    }
+    var role = (typeof normalizeRole === 'function') ? normalizeRole(payload.role) : (payload.role || DEFAULT_ROLE);
+    sheet.getRange(row, 1, 1, schema.length).setValues([[
+      timestamp,
+      String(payload.username || ''),
+      role,
+      String(payload.action || ''),
+      String(payload.endpoint || ''),
+      String(payload.status || 'success'),
+      String(payload.ip || ''),
+      details
+    ]]);
+  } catch (e) {
+    // Fail-safe: never block main logic
+  }
+}
+
 function normalizeRole(role) {
   var value = String(role || '').trim().toLowerCase();
   if (!value) return DEFAULT_ROLE;

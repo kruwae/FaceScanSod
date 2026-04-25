@@ -167,7 +167,7 @@ function safeHashEqualsV2(input, storedRecord) {
 
 var TOKEN_CACHE_PREFIX = 'auth_token_';
 var TOKEN_TTL_SECONDS = 8 * 60 * 60;
-var LEGACY_MIGRATION_MODE = false;
+var LEGACY_MIGRATION_MODE = true;
 var REQUIRE_AUTH_FOR_ALL_API = false;
 var DEFAULT_ROLE = 'staff';
 var ROLE_HIERARCHY = {

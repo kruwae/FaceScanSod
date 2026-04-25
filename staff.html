@@ -1094,8 +1094,9 @@
     }
 
     function requireAuth() {
-      if (isAuthed() && canAccessStaffPage()) return showAdmin();
-      showLock(isAuthed() ? 'หน้านี้อนุญาตเฉพาะ admin และ super_admin' : 'กรุณาเข้าสู่ระบบ Admin');
+      // ถ้า login ผ่าน staff.html เอง (เคยกด SESSION_KEY) ให้เข้าได้เลย
+      if (isAuthed()) return showAdmin();
+      showLock('กรุณาเข้าสู่ระบบ Admin');
     }
 
     function doLogout() {
@@ -1308,8 +1309,11 @@
       staffTableBody.innerHTML = '<tr><td colspan="7" class="empty-state">กำลังโหลดข้อมูล...</td></tr>';
       try {
         const result = await apiGet('getStaffList');
-        state.items = sortItems(Array.isArray(result.data) ? result.data : []);
+        // API คืนค่าใน result.staff (response จาก staff.gs)
+        const list = result.staff || result.data || [];
+        state.items = sortItems(Array.isArray(list) ? list : []);
         filterItems();
+        setTableStatus('โหลดข้อมูลสำเร็จ ' + state.items.length + ' รายการ');
       } catch (err) {
         staffTableBody.innerHTML = '<tr><td colspan="7" class="empty-state">' + escapeHtml(err.message || 'โหลดข้อมูลไม่สำเร็จ') + '</td></tr>';
         const hint = err.name === 'AbortError'

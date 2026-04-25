@@ -43,9 +43,9 @@ function createUserSalt(seed) {
 
 function normalizeHash(hash) {
   return String(hash || '')
-    .replace(/^sha256[:$]/, '')
-    .replace(/^bcrypt[:$]/, '')
-    .replace(/^v[12][:$]/, '')
+    .replace(/^(bcrypt|sha256|v1|v2)[:$]/i, '')
+    .replace(/^(bcrypt|sha256|v1|v2)[:$]/i, '') // Second pass for nested
+    .split('|').pop()
     .trim();
 }
 
@@ -81,10 +81,11 @@ function buildPasswordRecord(password, userSalt, version) {
     var bcryptBase = ['bcrypt', salt, bcryptSalt, input].join('|');
     var bcryptBytes = Utilities.newBlob(bcryptBase).getBytes();
     var bcryptDigest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bcryptBytes);
+    var finalHash = bytesToHex(bcryptDigest);
     return {
       version: HASH_VERSION_BCRYPT,
       salt: bcryptSalt,
-      hash: HASH_VERSION_BCRYPT + ':' + HASH_PREFIX + bytesToHex(bcryptDigest)
+      hash: HASH_VERSION_BCRYPT + ':' + bcryptSalt + '|' + HASH_PREFIX + finalHash
     };
   }
 
@@ -115,23 +116,17 @@ function parsePasswordRecord(value) {
   var raw = String(value || '').trim();
   if (!raw) return { version: HASH_VERSION_LEGACY, salt: '', hash: '' };
 
-  var version = HASH_VERSION_LEGACY;
-  var body = raw;
-
-  var versionMatch = raw.match(/^(v[12])[:$](.*)$/i);
-  if (versionMatch) {
-    version = String(versionMatch[1]).toLowerCase();
-    body = versionMatch[2];
-  }
-
-  var hash = normalizeHash(body);
+  var version = detectHashVersion(raw);
+  var body = raw.replace(/^(bcrypt|sha256|v1|v2)[:$]/i, '');
+  
   var salt = '';
+  var hash = normalizeHash(body);
 
-  if (version === HASH_VERSION_V2) {
+  if (version === HASH_VERSION_BCRYPT || version === 'v2') {
     var parts = body.split('|');
-    if (parts.length >= 4) {
-      salt = parts[2] || '';
-      hash = normalizeHash(parts[parts.length - 1]);
+    if (parts.length >= 2) {
+      salt = parts[0];
+      hash = normalizeHash(parts[1]);
     }
   }
 
@@ -661,22 +656,34 @@ function verifyAdmin(code, inputUsername) {
     var detectedVersion = version || detectHashVersion(stored);
     Logger.log('[verifyAdmin] user=' + username + ' role=' + role + ' detectedVersion=' + detectedVersion + ' storedPrefix=' + stored.substring(0, 20));
 
-    if (detectedVersion === HASH_VERSION_V2) {
-      // ต้องใช้ salt — ถ้าไม่มีใน column ให้ลองสร้างจาก username (กรณี hash ที่สร้างโดย initSetup)
+    if (detectedVersion === HASH_VERSION_V2 || detectedVersion === 'v2') {
+      // ต้องใช้ salt — ถ้าไม่มีใน column ให้ลองดึงจากกตัว hash (parsed.salt)
       var v2Salt = salt || parsed.salt || '';
+      
       if (!v2Salt) {
-        // ไม่มี salt → ไม่สามารถ verify bcrypt ได้ → ข้ามไป
-        Logger.log('[verifyAdmin] bcrypt hash แต่ไม่มี salt สำหรับ user=' + username);
+        Logger.log('[verifyAdmin] bcrypt hash แต่ไม่มี salt สำหรับ user=' + username + ' stored=' + stored);
+        // ถ้าไม่มีจริงๆ ลองดึงจากส่วนแรกของ stored (เผื่อไม่ได้ผ่าน parsePasswordRecord มาก่อน)
+        var saltMatch = stored.match(/bcrypt:([^|]+)\|/);
+        if (saltMatch) v2Salt = saltMatch[1];
+      }
+
+      if (!v2Salt) {
+        Logger.log('[verifyAdmin] ไม่สามารถหา salt ได้สำหรับ user=' + username);
         continue;
       }
+
       var v2Record = buildPasswordRecord(input, v2Salt, HASH_VERSION_V2);
-      if (safeStringEquals(normalizeHash(stored), normalizeHash(v2Record.hash))) {
-        // บันทึก Hash Version ลงชีทถ้ายังว่าง
+      var computed = normalizeHash(v2Record.hash);
+      var target   = normalizeHash(stored);
+
+      Logger.log('[verifyAdmin] V2 check: user=' + username + ' salt=' + v2Salt + ' target=' + target + ' computed=' + computed);
+
+      if (safeStringEquals(target, computed)) {
+        // บันทึก Hash Version/Salt ลงชีทถ้ายังว่าง (Self-healing)
         if (!version && hm['Hash Version']) sheet.getRange(i + 1, hm['Hash Version']).setValue(HASH_VERSION_V2);
         if (!salt && hm['Hash Salt'])       sheet.getRange(i + 1, hm['Hash Salt']).setValue(v2Salt);
         return { success: true, username: username, name: name, role: role, hashVersion: HASH_VERSION_V2 };
       }
-      // V2 ไม่ตรง → อย่าลอง V1 เพราะ format ชัดเจนว่าเป็น bcrypt
       continue;
     }
 

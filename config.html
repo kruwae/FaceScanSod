@@ -12,65 +12,219 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      font-family: 'Sarabun', sans-serif; min-height: 100vh;
+      font-family: 'Sarabun', sans-serif;
+      min-height: 100vh;
       background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1b2a 100%);
-      color: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding: 28px 16px 60px;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 16px 60px;
     }
-    .container { width: 100%; max-width: 760px; position: relative; z-index: 1; }
-    .page-header { margin-bottom: 18px; text-align: center; }
+
+    .container {
+      width: 100%;
+      max-width: 760px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .page-header {
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
     .back-btn {
-      display: inline-flex; align-items: center; gap: 6px; color: #64748b;
-      text-decoration: none; font-size: 0.88em; padding: 6px 12px;
-      border-radius: 20px; background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1); transition: all 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.88em;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.25s ease;
     }
+
     .admin-badge {
-      display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px;
-      border-radius: 999px; background: rgba(6, 182, 212, 0.14);
-      border: 1px solid rgba(6, 182, 212, 0.25); color: #a5f3fc; font-size: 0.84em;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(6, 182, 212, 0.14);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      color: #a5f3fc;
+      font-size: 0.84em;
     }
+
     .card {
-      background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 20px; padding: 24px 22px; backdrop-filter: blur(16px); margin-bottom: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 24px 22px;
+      backdrop-filter: blur(16px);
+      margin-bottom: 16px;
     }
-    .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
-    .section-title-text { font-weight: 600; font-size: 0.95em; color: #c7d2fe; }
-    label { display: block; font-size: 0.82em; font-weight: 600; color: #94a3b8; margin-bottom: 6px; }
-    input, select {
-      width: 100%; padding: 12px 14px; background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;
-      color: #e2e8f0; font-size: 14px; outline: none; margin-bottom: 14px;
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
     }
-    select option { background: #1a1a3e; color: white; }
+
+    .section-title-text {
+      font-weight: 600;
+      font-size: 0.95em;
+      color: #c7d2fe;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82em;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      color: #e2e8f0;
+      font-size: 14px;
+      outline: none;
+      margin-bottom: 14px;
+    }
+
+    select option {
+      background: #1a1a3e;
+      color: white;
+    }
+
     .btn {
-      border: none; border-radius: 12px; cursor: pointer; font-family: 'Sarabun', sans-serif;
-      font-size: 15px; font-weight: 600; padding: 13px; width: 100%;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 13px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
-    .btn-save { background: linear-gradient(135deg, #10b981, #059669); color: white; }
-    .location-item { border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); border-radius: 16px; padding: 14px; margin-bottom: 14px; }
-    .location-item__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .btn-save {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+    }
+
+    .location-item {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .location-item__top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
     .map-modal {
-      display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95);
-      z-index: 9999; flex-direction: column; backdrop-filter: blur(12px);
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.95);
+      z-index: 9999;
+      flex-direction: column;
+      backdrop-filter: blur(12px);
     }
-    #mapContainer { flex: 1; width: 100%; }
-    .map-footer { padding: 16px; background: rgba(255, 255, 255, 0.05); display: flex; gap: 12px; }
-    .btn-map-confirm { flex: 2; background: #06b6d4; color: white; }
-    .btn-map-current { flex: 1; background: #10b981; color: white; }
-    .msg-success { color: #34d399; text-align: center; margin-top: 10px; font-weight: 600; }
-    .msg-error { color: #f87171; text-align: center; margin-top: 10px; font-weight: 600; }
+
+    #mapContainer {
+      flex: 1;
+      width: 100%;
+    }
+
+    .map-footer {
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-map-confirm {
+      flex: 2;
+      background: #06b6d4;
+      color: white;
+    }
+
+    .btn-map-current {
+      flex: 1;
+      background: #10b981;
+      color: white;
+    }
+
+    .msg-success {
+      color: #34d399;
+      text-align: center;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+
+    .msg-error {
+      color: #f87171;
+      text-align: center;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+
     .logout-btn {
-      border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1);
-      color: #fecaca; border-radius: 12px; padding: 10px 14px; font-weight: 600; cursor: pointer;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: rgba(239, 68, 68, 0.1);
+      color: #fecaca;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
     }
+
     .toggle-container {
-      display: flex; align-items: center; justify-content: space-between;
-      background: rgba(255, 255, 255, 0.03); padding: 12px 16px; border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 14px;
     }
   </style>
 </head>
@@ -94,18 +248,20 @@
         <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec">
       </div>
 
-      <!-- ส่วนใหม่: ตั้งค่าความปลอดภัยหน้าสแกน -->
+      <!-- ส่วนใหม่: ตั้งค่า AI -->
       <div class="card">
-        <div class="section-header"><span class="section-title-text">🛡️ ความปลอดภัยหน้าสแกน</span></div>
-        <div class="toggle-container">
-          <div>
-            <div style="font-size: 0.9em; font-weight: 600; color: #e2e8f0;">โหมดการสแกนใบหน้า</div>
-            <div style="font-size: 0.75em; color: #94a3b8;">เลือกโหมดการเข้าใช้งานสำหรับพนักงาน</div>
+        <div class="section-header"><span class="section-title-text">🤖 ตั้งค่าการจดจำใบหน้า</span></div>
+        <div class="form-group">
+          <label>ความเข้มงวดในการตรวจจับ (MATCH_THRESHOLD)</label>
+          <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+             <input type="range" id="faceMatchThreshold" min="0.2" max="0.8" step="0.05" value="0.45" style="margin-bottom: 0;" oninput="updateThresholdValue(this.value)">
+             <span id="thresholdValue" style="font-weight: bold; color: #818cf8; min-width: 40px;">0.45</span>
           </div>
-          <select id="scanMode" style="width: auto; margin-bottom: 0; padding: 8px 12px;">
-            <option value="login">🔵 ต้อง Login ก่อนสแกน</option>
-            <option value="no-login">🟢 สแกนได้ทันที (ไม่ต้อง Login)</option>
-          </select>
+          <div style="font-size: 0.75em; color: #94a3b8; line-height: 1.4;">
+            • <b>0.35:</b> เข้มงวดมาก (ความปลอดภัยสูง)<br>
+            • <b>0.45:</b> ค่าเริ่มต้น (สมดุล)<br>
+            • <b>0.55:</b> หลวม (แสงน้อย/กล้องคุณภาพต่ำ)
+          </div>
         </div>
       </div>
 
@@ -113,8 +269,10 @@
         <div class="section-header"><span class="section-title-text">📍 พื้นที่ GPS หน่วยบริการ</span></div>
         <div id="locations"></div>
         <div style="display:flex; gap:10px; margin-top:10px;">
-          <button class="btn" style="background:rgba(99,102,241,0.15); color:#c7d2fe;" onclick="addLocation()">+ เพิ่มตำแหน่ง</button>
-          <button class="btn" style="background:rgba(255,255,255,0.05); color:#e2e8f0;" onclick="loadFromServer()">🔄 โหลดข้อมูลใหม่</button>
+          <button class="btn" style="background:rgba(99,102,241,0.15); color:#c7d2fe;" onclick="addLocation()">+
+            เพิ่มตำแหน่ง</button>
+          <button class="btn" style="background:rgba(255,255,255,0.05); color:#e2e8f0;" onclick="loadFromServer()">🔄
+            โหลดข้อมูลใหม่</button>
         </div>
       </div>
 
@@ -136,9 +294,11 @@
 
   <!-- Map Modal -->
   <div id="mapModal" class="map-modal">
-    <div class="map-header" style="padding:15px; display:flex; justify-content:space-between; align-items:center; color:white;">
+    <div class="map-header"
+      style="padding:15px; display:flex; justify-content:space-between; align-items:center; color:white;">
       <h3>📍 เลือกตำแหน่งบนแผนที่</h3>
-      <button onclick="closeMap()" style="padding:5px 15px; border-radius:8px; border:none; cursor:pointer;">ปิด</button>
+      <button onclick="closeMap()"
+        style="padding:5px 15px; border-radius:8px; border:none; cursor:pointer;">ปิด</button>
     </div>
     <div id="mapContainer"></div>
     <div class="map-footer">
@@ -152,6 +312,10 @@
     const msgDiv = document.getElementById('msg');
     let map, marker;
     let activeLatInput, activeLngInput;
+
+    function updateThresholdValue(val) {
+      document.getElementById('thresholdValue').innerText = val;
+    }
 
     // ดึง Token จากทุกที่ที่เป็นไปได้
     function getAuthToken() {
@@ -237,7 +401,7 @@
       const apiUrl = document.getElementById('apiUrl').value.trim();
       const token = getAuthToken();
       if (!apiUrl) return alert('กรุณาใส่ API URL');
-      
+
       const data = {
         action: 'saveLocation',
         id: rowEl.dataset.id,
@@ -284,6 +448,10 @@
           if (data.scanMode) {
             document.getElementById('scanMode').value = data.scanMode;
           }
+          if (data.faceMatchThreshold) {
+            document.getElementById('faceMatchThreshold').value = data.faceMatchThreshold;
+            updateThresholdValue(data.faceMatchThreshold);
+          }
           Swal.fire('สำเร็จ', 'โหลดข้อมูลจากเซิร์ฟเวอร์เรียบร้อย', 'success');
         }
       } catch (e) { console.error(e); }
@@ -314,6 +482,7 @@
           end: document.getElementById('workEndTime').value
         },
         token: token,
+        faceMatchThreshold: document.getElementById('faceMatchThreshold').value,
         updatedBy: sessionStorage.getItem('adminName') || 'admin'
       };
 
@@ -342,4 +511,5 @@
     };
   </script>
 </body>
+
 </html>

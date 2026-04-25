@@ -111,7 +111,7 @@ function getLocations(params) {
 //  Config — Save / Load
 // ============================================================
 
-function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, token, scanMode) {
+function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, token, scanMode, faceMatchThreshold) {
   const auth = authorize('saveConfig', { token: token || '' });
   if (!auth.ok) {
     logAction({
@@ -169,6 +169,7 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
   props.setProperty('WORK_TIMES',         JSON.stringify(workTimes || {}));
   props.setProperty('FALLBACK_SETTINGS',  JSON.stringify(fallbackSettings || {}));
   props.setProperty('SCAN_MODE',          scanMode || 'login');
+  props.setProperty('FACE_MATCH_THRESHOLD', String(faceMatchThreshold || 0.45));
 
   logAction({
     username: auth.user && auth.user.username ? auth.user.username : '',
@@ -313,6 +314,7 @@ function getConfig(params) {
       enabled: fallbackSettings.enabled === true,
       contactText: fallbackSettings.contactText || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
     },
-    scanMode: PropertiesService.getScriptProperties().getProperty('SCAN_MODE') || 'login'
+    scanMode: PropertiesService.getScriptProperties().getProperty('SCAN_MODE') || 'login',
+    faceMatchThreshold: parseFloat(PropertiesService.getScriptProperties().getProperty('FACE_MATCH_THRESHOLD') || '0.45')
   };
 }

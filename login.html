@@ -347,7 +347,8 @@
       if (googleButton) googleButton.classList.toggle('active', method === 'google');
       btnLogin.style.display = method === 'code' ? 'flex' : 'none';
       if (method === 'google') {
-        renderGoogleLogin();
+        if (!window.google && googlePollCount >= GOOGLE_POLL_MAX) retryGoogleLoad();
+        else renderGoogleLogin();
       }
     }
 
@@ -531,8 +532,8 @@
             client_id: clientId,
             callback: handleGoogleCredentialResponse,
             auto_select: false,
-            cancel_on_tap_outside: true,
-            use_fedcm_for_prompt: false
+            cancel_on_tap_outside: true
+            // นำ use_fedcm_for_prompt ออก เพื่อให้รองรับ Chrome/Safari รุ่นใหม่ที่บล็อก 3rd-party cookies
           });
           googleClientReady = true;
         } catch(initErr) {
@@ -578,21 +579,28 @@
       }
     }
 
+    let gsiPollTimer = null;
     function waitForGoogleScriptReady() {
-      googlePollCount++;
       if (window.google && window.google.accounts && window.google.accounts.id) {
         console.log('[GSI] SDK ready after', googlePollCount * 200, 'ms');
         renderGoogleLogin(true);
         return;
       }
+      googlePollCount++;
       if (googlePollCount >= GOOGLE_POLL_MAX) {
         console.warn('[GSI] SDK failed to load after 10s');
         if (googleButton && authMethod === 'google') {
-          googleButton.innerHTML = '<div style="color:#f87171;font-size:0.88em;padding:10px;background:rgba(239,68,68,0.08);border-radius:8px;line-height:1.7;">⚠️ โหลด Google Sign-In SDK ไม่สำเร็จ<br><span style="color:#94a3b8;font-size:0.85em;">อาจถูก block โดย browser/extension<br>กรุณาใช้ "เข้าด้วยรหัส" แทน</span></div>';
+          googleButton.innerHTML = '<div style="color:#f87171;font-size:0.88em;padding:10px;background:rgba(239,68,68,0.08);border-radius:8px;line-height:1.7;cursor:pointer;" onclick="retryGoogleLoad()">⚠️ โหลด Google Sign-In SDK ไม่สำเร็จ<br><span style="color:#94a3b8;font-size:0.85em;">คลิกเพื่อลองโหลดใหม่ หรือใช้ "เข้าด้วยรหัส" แทน</span></div>';
         }
         return;
       }
-      setTimeout(waitForGoogleScriptReady, 200);
+      gsiPollTimer = setTimeout(waitForGoogleScriptReady, 200);
+    }
+
+    function retryGoogleLoad() {
+      googlePollCount = 0;
+      if (googleButton) googleButton.innerHTML = '<div style="color:#94a3b8;font-size:0.9em;padding:8px;">⏳ กำลังโหลด Google Sign-In SDK...</div>';
+      waitForGoogleScriptReady();
     }
 
     waitForGoogleScriptReady();

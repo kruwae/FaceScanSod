@@ -48,40 +48,7 @@ function setRowByHeaders(sheet, rowNumber, headerMap, valuesByHeader) {
   });
 }
 
-function maskSensitiveValue(value) {
-  var text = String(value || '');
-  if (!text) return '';
-  if (text.length <= 4) return '****';
-  return text.substring(0, 2) + '****' + text.substring(text.length - 2);
-}
-
-function logAction(entry) {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var schema = ['timestamp', 'username', 'role', 'action', 'endpoint', 'status', 'ip', 'details'];
-    var result = ensureSheetWithHeaders(ss, 'AuditLog', schema);
-    var sheet = result.sheet;
-    var row = sheet.getLastRow() + 1;
-    var timestamp = new Date();
-    var payload = entry || {};
-    var details = payload.details;
-    if (typeof details !== 'string') {
-      try { details = JSON.stringify(details || {}); } catch (e) { details = '{}'; }
-    }
-    sheet.getRange(row, 1, 1, schema.length).setValues([[
-      timestamp,
-      String(payload.username || ''),
-      normalizeRole(payload.role),
-      String(payload.action || ''),
-      String(payload.endpoint || ''),
-      String(payload.status || 'success'),
-      String(payload.ip || ''),
-      details
-    ]]);
-  } catch (e) {
-    // Fail-safe: never block main logic
-  }
-}
+// maskSensitiveValue และ logAction อยู่ใน attendance.gs
 
 function parseLocations(value) {
   if (!value) return [];
@@ -330,10 +297,14 @@ function getConfig(params) {
     fallbackSettings = {};
   }
 
+  var googleClientId = '';
+  try { googleClientId = PropertiesService.getScriptProperties().getProperty('GOOGLE_OAUTH_CLIENT_ID') || ''; } catch(e) {}
+
   return {
     status: 'ok',
     apiUrl: PropertiesService.getScriptProperties().getProperty('API_URL') || '',
     readToken: readToken,
+    googleClientId: googleClientId,
     locations: locations,
     workTimes: workTimes,
     fallbackSettings: {

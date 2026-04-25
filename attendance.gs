@@ -1,7 +1,12 @@
 // ============================================================
 
 var STAFFOS_SHEET   = 'staffOS';
-var STAFFOS_HEADERS = ['Username', 'Code', 'Role', 'Status', 'Note', 'Created At', 'Updated At', 'Email', 'Hash Version', 'Hash Salt'];
+var STAFFOS_HEADERS = [
+  'Username', 'Code', 'Role', 'Status', 'Note',
+  'Created At', 'Updated At', 'Hash Version', 'Hash Salt', 'Email',
+  'Scope', 'Unit', 'Permissions',
+  'Can Register Face', 'Can View Report', 'Can Manage Staff', 'Can Manage Config'
+];
 var DEFAULT_ADMIN_CODE = '2569';
 var ADMIN_PASSWORD_SALT = 'staffOS-v1';
 var HASH_PREFIX = 'sha256:';
@@ -172,9 +177,16 @@ var ROLE_HIERARCHY = {
   'super_admin': 4
 };
 var ENDPOINT_ROLE_RULES = {
-  'getKnownFaces': ['staff', 'admin'],
-  'logAttendance': ['staff', 'admin'],
-  'getConfig': ['admin'],
+  'getKnownFaces':          ['staff', 'admin'],
+  'logAttendance':          ['staff', 'admin'],
+  'getConfig':              ['admin'],
+  'getStaffList':           ['admin'],
+  'createStaffMember':      ['admin'],
+  'updateStaffMember':      ['admin'],
+  'deleteStaffMember':      ['admin'],
+  'toggleStaffPermission':  ['admin'],
+  'updateStaffScope':       ['admin'],
+  'seedStaffOsDemoData':    ['admin'],
   'saveConfig': ['admin'],
   'getAttendanceLogs': ['viewer', 'staff', 'admin'],
   'getLocations': ['staff', 'admin'],
@@ -810,20 +822,22 @@ function logAttendance(payload, actionParam) {
   }
 
   var name, lat, lng, locationName, gpsStatus, gpsSkipReason, userAgent;
-  var meshSynced, meshId, meshClientTime, meshFingerprint;
+  var meshSynced, meshId, meshClientTime, meshFingerprint, matchScore, distance;
 
   if (typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
-    name            = payload.name         || '';
-    lat             = payload.lat          || '';
-    lng             = payload.lng          || '';
-    locationName    = payload.locationName || '';
-    gpsStatus       = payload.gpsStatus    || 'ok';
-    gpsSkipReason   = payload.gpsSkipReason || '';
-    userAgent       = payload.userAgent    || '';
-    meshSynced      = payload.meshSynced   || false;
-    meshId          = payload.meshId       || '';
+    name            = payload.name           || '';
+    lat             = payload.lat            || '';
+    lng             = payload.lng            || '';
+    locationName    = payload.locationName   || '';
+    gpsStatus       = payload.gpsStatus      || 'ok';
+    gpsSkipReason   = payload.gpsSkipReason  || '';
+    userAgent       = payload.userAgent      || '';
+    meshSynced      = payload.meshSynced     || false;
+    meshId          = payload.meshId         || '';
     meshClientTime  = payload.meshClientTime || '';
-    meshFingerprint = payload.meshFingerprint || '';
+    meshFingerprint = payload.meshFingerprint|| '';
+    matchScore      = payload.matchScore     || '';
+    distance        = payload.distance       || '';
   } else {
     name         = arguments[0] || '';
     lat          = arguments[1] || '';
@@ -835,6 +849,7 @@ function logAttendance(payload, actionParam) {
   const ss     = SpreadsheetApp.getActiveSpreadsheet();
   const schema = [
     'Name', 'Time', 'Date', 'Latitude', 'Longitude', 'Google Map Link',
+    'Match Score', 'Distance',
     'Location', 'GPS Status', 'GPS Skip Reason',
     'Mesh Synced', 'Mesh ID', 'Mesh Client Time', 'Mesh Fingerprint',
     'User Agent', 'Duplicate', 'Action Type', 'Verification'
@@ -916,6 +931,8 @@ function logAttendance(payload, actionParam) {
     'Latitude':          lat || '-',
     'Longitude':         lng || '-',
     'Google Map Link':   mapLink,
+    'Match Score':       matchScore || '',
+    'Distance':          distance || '',
     'Location':          locationName,
     'GPS Status':        gpsStatus,
     'GPS Skip Reason':   gpsSkipReason,

@@ -434,6 +434,7 @@
           try { localStorage.setItem('readToken', data.readToken || ''); } catch (e) {}
           try { sessionStorage.setItem('adminRole', data.role || data.userRole || 'admin'); } catch (e) {}
           try { sessionStorage.setItem('adminName', data.name || data.username || data.displayName || 'Admin'); } catch (e) {}
+          try { sessionStorage.setItem('employeeId', data.username || 'ADMIN'); } catch (e) {}
           return { ok: true, token: data.token };
         }
 
@@ -486,6 +487,7 @@
           try { localStorage.setItem('readToken', data.readToken || ''); } catch (e) {}
           try { sessionStorage.setItem('adminRole', data.role || data.userRole || 'admin'); } catch (e) {}
           try { sessionStorage.setItem('adminName', data.name || data.username || data.displayName || 'Admin'); } catch (e) {}
+          try { sessionStorage.setItem('employeeId', data.username || 'ADMIN'); } catch (e) {}
           return { ok: true, token: data.token };
         }
 

@@ -608,14 +608,29 @@
           return;
         }
 
-        // ตรวจสอบสถานะ QR และการสแกนหน้า
+        // ตรวจสอบโหมดการสแกนของหน่วยบริการนี้ (ถ้าไม่มีให้ใช้ Global scanMode)
+        const currentLocScanMode = (selectedLoc.scanMode || scanMode || 'login').toLowerCase();
         const hasQrVerified = (qrVerified || isQrMode);
         
+        // --- ส่วนที่แก้ไข: บังคับ Login รายหน่วยบริการ ---
+        if (currentLocScanMode === 'login') {
+          const adminName = sessionStorage.getItem('adminName');
+          const adminToken = sessionStorage.getItem('adminToken');
+          if (!adminName || !adminToken) {
+            console.log(`[Security] Location ${selectedLoc.name} requires login. Redirecting...`);
+            // ใช้ setTimeout เพื่อให้ UI ได้แสดงผลแป๊บนึงก่อนเด้ง
+            setTimeout(() => {
+              window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
+            }, 500);
+            return;
+          }
+        }
+
         // --- แก้ไขจุดนี้: ปรับการเช็คให้ "ถ้าไม่ใช่ TRUE ให้ถือว่าเป็น FALSE ทันที" เพื่อความปลอดภัย ---
         let rawVal = selectedLoc.qrRequireFace;
         let reqFace = (String(rawVal).trim().toLowerCase() === 'true'); 
         
-        // แสดง Debug Info (จะแสดงที่มุมซ้ายล่างของจอเพื่อให้คุณเห็นค่าที่ระบบได้รับ)
+        // แสดง Debug Info
         let debugDiv = document.getElementById('debugInfo');
         if (!debugDiv) {
           debugDiv = document.createElement('div');
@@ -623,9 +638,9 @@
           debugDiv.style = 'position:fixed; bottom:0; left:0; background:rgba(0,0,0,0.8); color:#0f0; font-size:10px; padding:5px; z-index:9999; pointer-events:none;';
           document.body.appendChild(debugDiv);
         }
-        debugDiv.innerText = `Loc: ${selectedLoc.name} | QR: ${selectedLoc.qrEnabled} | ReqFace: ${reqFace} (Raw: ${rawVal})`;
+        debugDiv.innerText = `Loc: ${selectedLoc.name} | Mode: ${currentLocScanMode} | QR: ${selectedLoc.qrEnabled} | ReqFace: ${reqFace} (Raw: ${rawVal})`;
 
-        console.log(`[Debug] Loc: ${selectedLoc.name}, QR: ${selectedLoc.qrEnabled}, Verified: ${hasQrVerified}, ReqFace: ${reqFace}`);
+        console.log(`[Debug] Loc: ${selectedLoc.name}, Mode: ${currentLocScanMode}, QR: ${selectedLoc.qrEnabled}, Verified: ${hasQrVerified}, ReqFace: ${reqFace}`);
 
         // กรณีที่ 1: ต้องสแกน QR แต่ยังไม่ได้สแกน
         if (selectedLoc.qrEnabled && !hasQrVerified) {
@@ -635,7 +650,7 @@
           return;
         }
 
-        // กรณีที่ 2: สแกน QR แล้ว (หรือจุดนี้ไม่ต้องสแกน QR) และ "ไม่ต้องสแกนหน้า" (reqFace เป็น false)
+        // กรณีที่ 2: สแกน QR แล้ว และ "ไม่ต้องสแกนหน้า" (reqFace เป็น false)
         if (!reqFace) {
            btn.innerText = '✅ บันทึกเวลา (QR Verified)';
            btn.className = 'btn btn-success btn-lg w-100 mt-3';

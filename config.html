@@ -472,6 +472,15 @@
           <label style="margin-bottom: 0;">ต้องสแกนใบหน้า (Face Scan)</label>
           <input type="checkbox" class="loc-qr-require-face" ${ (loc.qrRequireFace === false || String(loc.qrRequireFace).toLowerCase() === 'false') ? '' : 'checked' } style="width: auto; margin-bottom: 0;">
         </div>
+        <div class="input-row" style="margin-top: 10px;">
+          <div>
+            <label>โหมดการสแกน (Login)</label>
+            <select class="loc-scan-mode">
+              <option value="login" ${loc.scanMode === 'login' ? 'selected' : ''}>ต้อง Login ก่อน</option>
+              <option value="no-login" ${loc.scanMode === 'no-login' ? 'selected' : ''}>ไม่ต้อง Login (Fast)</option>
+            </select>
+          </div>
+        </div>
         <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
            <button class="btn" style="width: auto; background:#818cf8; color:white; font-size:12px; padding: 6px 12px;" onclick="showQrCode('${loc.id}', this.parentElement.parentElement)">🖼️ ดู QR Code</button>
            <div style="font-size: 0.7em; color: #94a3b8;">Secret: ${loc.qrSecret || '(อัตโนมัติ)'}</div>
@@ -506,6 +515,7 @@
         qrType: rowEl.querySelector('.loc-qr-type').value,
         qrInterval: rowEl.querySelector('.loc-qr-interval').value,
         qrRequireFace: rowEl.querySelector('.loc-qr-require-face').checked,
+        scanMode: rowEl.querySelector('.loc-scan-mode').value,
         token: token,
         updatedBy: sessionStorage.getItem('adminName') || 'admin'
       };
@@ -578,7 +588,8 @@
         qrEnabled: item.querySelector('.loc-qr-enabled').checked,
         qrType: item.querySelector('.loc-qr-type').value,
         qrInterval: item.querySelector('.loc-qr-interval').value,
-        qrRequireFace: item.querySelector('.loc-qr-require-face').checked
+        qrRequireFace: item.querySelector('.loc-qr-require-face').checked,
+        scanMode: item.querySelector('.loc-scan-mode').value
       }));
 
       const data = {

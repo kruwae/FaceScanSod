@@ -149,7 +149,7 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('Config');
-  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token', 'QR Enabled', 'QR Type', 'QR Interval', 'QR Secret', 'QR Require Face'];
+  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token', 'QR Enabled', 'QR Type', 'QR Interval', 'QR Secret', 'QR Require Face', 'Scan Mode'];
 
   if (!sheet) {
     sheet = ss.insertSheet('Config');
@@ -180,7 +180,8 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
         loc.id, loc.name, loc.lat, loc.lng, loc.radius, true,
         updatedBy || 'admin', now, tokenToSave,
         loc.qrEnabled, loc.qrType, loc.qrInterval, loc.qrSecret || Utilities.getUuid().substring(0, 8),
-        loc.qrRequireFace !== false
+        loc.qrRequireFace !== false,
+        loc.scanMode || 'login'
       ];
     });
     sheet.getRange(2, 1, rows.length, schema.length).setValues(rows);
@@ -216,7 +217,7 @@ function saveSingleLocation(data) {
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('Config');
-  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token', 'QR Enabled', 'QR Type', 'QR Interval', 'QR Secret', 'QR Require Face'];
+  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token', 'QR Enabled', 'QR Type', 'QR Interval', 'QR Secret', 'QR Require Face', 'Scan Mode'];
   
   if (!sheet) {
     sheet = ss.insertSheet('Config');
@@ -244,7 +245,8 @@ function saveSingleLocation(data) {
     finalId, loc.name, loc.lat, loc.lng, loc.radius, true,
     data.updatedBy || 'admin', now, '',
     loc.qrEnabled, loc.qrType, loc.qrInterval, finalQrSecret,
-    loc.qrRequireFace !== false
+    loc.qrRequireFace !== false,
+    loc.scanMode || 'login'
   ];
 
   if (targetRow > 0) {
@@ -326,7 +328,8 @@ function getConfig(params) {
             qrType: hm['QR Type'] ? String(row[hm['QR Type'] - 1] || 'static').trim().toLowerCase() : 'static',
             qrInterval: hm['QR Interval'] ? parseInt(row[hm['QR Interval'] - 1] || 5) : 5,
             qrSecret: hm['QR Secret'] ? String(row[hm['QR Secret'] - 1] || '').trim() : '',
-            qrRequireFace: String(rawQrRequireFace).trim().toLowerCase() === 'true' // บังคับให้เป็น true เฉพาะเมื่อเขียนว่า true เท่านั้น
+            qrRequireFace: String(rawQrRequireFace).trim().toLowerCase() === 'true', // บังคับให้เป็น true เฉพาะเมื่อเขียนว่า true เท่านั้น
+            scanMode: hm['Scan Mode'] ? String(row[hm['Scan Mode'] - 1] || 'login').trim().toLowerCase() : 'login'
           });
         }
       }

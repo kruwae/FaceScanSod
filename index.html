@@ -311,17 +311,35 @@
       apiWarning.style.display = 'block';
     }
 
+    function logout() {
+      sessionStorage.clear();
+      localStorage.removeItem('token'); // ลบ token ออกด้วยถ้ามี
+      window.location.reload();
+    }
+
     function renderAuthBadge() {
       const host = document.getElementById('authBadgeHost');
       if (!host) return;
-      const isAuthed = sessionStorage.getItem('adminAuth') === '1';
+      const isAuthed = sessionStorage.getItem('adminAuth') === '1' || !!sessionStorage.getItem('adminName');
       if (!isAuthed) {
         host.innerHTML = '';
         return;
       }
-      const role = (sessionStorage.getItem('adminRole') || 'admin').trim() || 'admin';
-      const name = (sessionStorage.getItem('adminName') || '').trim() || 'Admin';
-      host.innerHTML = '<div class="auth-badge" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.28);color:#c7d2fe;font-size:0.82em;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.18)">' + '<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block"></span>' + '<span>' + name + '</span>' + '<span style="opacity:0.7">•</span>' + '<span>' + role + '</span>' + '</div>';
+      const role = (sessionStorage.getItem('adminRole') || 'staff').trim();
+      const name = (sessionStorage.getItem('adminName') || '').trim() || 'User';
+      
+      host.innerHTML = `
+        <div class="auth-badge" style="display:inline-flex;align-items:center;gap:12px;padding:8px 16px;border-radius:999px;background:rgba(15,15,35,0.85);border:1px solid rgba(99,102,241,0.4);color:#c7d2fe;font-size:0.85em;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.3);backdrop-filter:blur(8px);">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block;box-shadow:0 0 10px #34d399"></span>
+            <span>👤 ${name}</span>
+            ${role ? `<span style="opacity:0.5; font-weight:400;">(${role})</span>` : ''}
+          </div>
+          <button onclick="logout()" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; padding:4px 12px; border-radius:12px; cursor:pointer; font-size:0.9em; font-family:inherit; transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.3)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">
+            🚪 ออกจากระบบ
+          </button>
+        </div>
+      `;
     }
 
     document.addEventListener('DOMContentLoaded', renderAuthBadge);

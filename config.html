@@ -453,14 +453,14 @@
         <div class="input-row qr-settings" style="display: ${loc.qrEnabled ? 'grid' : 'none'};">
           <div>
             <label>ประเภท QR</label>
-            <select class="loc-qr-type">
+            <select class="loc-qr-type" onchange="toggleInterval(this)">
               <option value="static" ${loc.qrType === 'static' ? 'selected' : ''}>Static (ถาวร)</option>
               <option value="dynamic" ${loc.qrType === 'dynamic' ? 'selected' : ''}>Dynamic (เปลี่ยนตามเวลา)</option>
             </select>
           </div>
           <div>
             <label>รอบเวลา (นาที)</label>
-            <select class="loc-qr-interval">
+            <select class="loc-qr-interval" ${loc.qrType === 'static' ? 'disabled' : ''} style="${loc.qrType === 'static' ? 'opacity:0.5' : ''}">
               <option value="5" ${loc.qrInterval == 5 ? 'selected' : ''}>5 นาที</option>
               <option value="10" ${loc.qrInterval == 10 ? 'selected' : ''}>10 นาที</option>
               <option value="15" ${loc.qrInterval == 15 ? 'selected' : ''}>15 นาที</option>
@@ -637,6 +637,13 @@
       if (type === 'dynamic') {
         qrRefreshInterval = setInterval(updateQr, 30000); // Refresh every 30s
       }
+    }
+
+    function toggleInterval(selectEl) {
+      const intervalSelect = selectEl.parentElement.nextElementSibling.querySelector('.loc-qr-interval');
+      const isStatic = (selectEl.value === 'static');
+      intervalSelect.disabled = isStatic;
+      intervalSelect.style.opacity = isStatic ? '0.5' : '1';
     }
 
     async function getSecretFromServer(locId) {

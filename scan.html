@@ -324,6 +324,7 @@
     let isQrMode = false;
     let qrVerified = false; // ตรวจสอบว่าสแกน QR ผ่านหรือยัง
     let html5QrCode = null;
+    let loadTimeout = null;
 
     async function init() {
       console.log('Starting init()...');

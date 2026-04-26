@@ -351,61 +351,43 @@
       }
 
       try {
-        const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
-        console.log('Loading AI models from:', MODEL_URL);
-        await Promise.all([
-          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
-        console.log('AI Models loaded.');
-
-        document.getElementById('loadingText').innerText = 'กำลังโหลดข้อมูลพนักงาน...';
-
-        // ดึง Config เพื่อเช็ค scanMode
-        const res = await fetch(API_URL + '?action=getConfig&token=' + AUTH_TOKEN);
-        const config = await res.json();
-
+        const adminName = sessionStorage.getItem('adminName');
+        
+        // 1. ดึงข้อมูลหน่วยบริการก่อน (เบาและเร็ว)
+        document.getElementById('loadingText').innerText = 'กำลังโหลดข้อมูลหน่วยบริการ...';
+        const resConfig = await fetch(API_URL + '?action=getConfig&token=' + encodeURIComponent(AUTH_TOKEN));
+        const config = await resConfig.json();
+        
         locations = config.locations || [];
         scanMode = config.scanMode || 'login';
         MATCH_THRESHOLD = parseFloat(config.faceMatchThreshold || 0.45);
 
-        // ถ้าเป็นโหมด no-login และไม่มี Token ให้ใช้ Token ส่วนกลางจาก Config (ถ้ามี)
-        if (scanMode === 'no-login') {
-          if (!AUTH_TOKEN || AUTH_TOKEN === 'undefined') {
-            AUTH_TOKEN = config.readToken || '';
-          }
-        } else if (scanMode === 'login') {
-          if (!AUTH_TOKEN || AUTH_TOKEN === 'undefined' || AUTH_TOKEN.length < 20) {
-            alert('หน้านี้ต้องเข้าสู่ระบบก่อนใช้งาน');
-            window.location.href = 'login.html?to=scan.html';
-            return;
-          }
+        // จัดการ Token สำหรับโหมด No-Login
+        if (scanMode === 'no-login' && (!AUTH_TOKEN || AUTH_TOKEN.length < 20)) {
+           AUTH_TOKEN = config.readToken || '';
         }
 
-        const adminName = sessionStorage.getItem('adminName');
         if (adminName && AUTH_TOKEN && scanMode === 'login') {
           const badge = document.getElementById('loggedInUserBadge');
           badge.innerText = '👤 ผู้ใช้งาน: ' + adminName;
           badge.style.display = 'block';
         }
 
-        // ตรวจสอบ URL Parameters สำหรับ QR Code
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlLocId = urlParams.get('locId');
-        const urlMode = urlParams.get('mode');
-        qrKey = urlParams.get('key');
-
         const select = document.getElementById('locationSelect');
         if (locations.length > 0) {
           select.innerHTML = locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
           
+          const urlParams = new URLSearchParams(window.location.search);
+          const urlLocId = urlParams.get('locId');
+          const urlMode = urlParams.get('mode');
+          qrKey = urlParams.get('key');
+
           if (urlMode === 'qr' && urlLocId) {
             isQrMode = true;
             selectedLoc = locations.find(l => l.id == urlLocId);
             if (selectedLoc) {
               select.value = selectedLoc.id;
-              select.disabled = true; // ล็อกหน่วยบริการ
+              select.disabled = true; 
               const label = document.getElementById('locationLabel');
               if (label) label.innerText += ' (ล็อกโดย QR Code)';
             }
@@ -416,11 +398,24 @@
             select.value = selectedLoc.id;
           }
           updateTargetGpsDisplay();
-        } else {
-          select.innerHTML = '<option value="">-- ไม่พบข้อมูลหน่วยบริการ --</option>';
         }
 
-        await loadFaces();
+        // 2. ตรวจสอบว่าต้องใช้ AI หรือไม่
+        const needsAi = !selectedLoc || !selectedLoc.qrEnabled || selectedLoc.qrRequireFace !== false;
+        
+        if (needsAi) {
+          document.getElementById('loadingText').innerText = 'กำลังเตรียมระบบ AI และข้อมูลใบหน้า...';
+          const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+          await Promise.all([
+            faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+          ]);
+          await loadFaces();
+        } else {
+          console.log('Skip AI: QR-Only mode detected.');
+        }
+
         startGpsTracking();
         checkTodayStatus();
 
@@ -430,15 +425,25 @@
       } catch (e) {
         clearTimeout(loadTimeout);
         console.error('Init failed:', e);
-        document.getElementById('loadingText').innerHTML = `<span style="color:#f87171">เกิดข้อผิดพลาด: ${e.message}</span><br><button onclick="window.location.href='config.html'" style="margin-top:10px; padding:5px 15px;">ไปหน้าตั้งค่า</button>`;
+        document.getElementById('loadingText').innerHTML = `<span style="color:#f87171">เกิดข้อผิดพลาด: ${e.message}</span><br><button onclick="location.reload()" style="margin-top:10px; padding:5px 15px;">ลองโหลดใหม่</button>`;
       }
     }
 
     async function loadFaces() {
       try {
+        console.log('Fetching staff face data...');
         const res = await fetch(API_URL + '?action=getKnownFaces&token=' + encodeURIComponent(AUTH_TOKEN));
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        const resText = await res.text();
+        let data;
+        try {
+           data = JSON.parse(resText);
+        } catch(e) {
+           console.error('Failed to parse staff data:', resText);
+           return;
+        }
+
+        if (Array.isArray(data)) {
+          console.log(`Loaded ${data.length} staff records.`);
           knownFaces = data.map(u => {
             let desc = null;
             if (u.descriptor) {
@@ -447,8 +452,11 @@
             }
             return { employeeId: u.employeeId, name: u.name || u.label, descriptor: desc };
           }).filter(u => u.descriptor !== null);
+          console.log(`Initialized ${knownFaces.length} valid face descriptors.`);
         }
-      } catch (e) { console.error('Load faces failed', e); }
+      } catch (e) {
+        console.error('loadFaces failed:', e);
+      }
     }
 
     function startGpsTracking() {

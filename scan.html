@@ -362,6 +362,14 @@
         scanMode = config.scanMode || 'login';
         MATCH_THRESHOLD = parseFloat(config.faceMatchThreshold || 0.45);
 
+        // ตรวจสอบความจำเป็นในการ Login สำหรับ QR Code
+        const hasAnyQr = locations.some(l => l.qrEnabled);
+        if ((hasAnyQr || isQrMode) && !sessionStorage.getItem('adminName')) {
+          alert('⚠️ ระบบเปิดใช้งาน QR Code จำเป็นต้องเข้าสู่ระบบก่อนบันทึกเวลาครับ');
+          window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
+          return;
+        }
+
         // จัดการ Token สำหรับโหมด No-Login
         if (scanMode === 'no-login' && (!AUTH_TOKEN || AUTH_TOKEN.length < 20)) {
            AUTH_TOKEN = config.readToken || '';

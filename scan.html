@@ -325,6 +325,7 @@
     let qrVerified = false; // ตรวจสอบว่าสแกน QR ผ่านหรือยัง
     let html5QrCode = null;
     let loadTimeout = null;
+    let isRedirecting = false; // ตัวแปรป้องกันการ Redirect ซ้ำซ้อน
 
     async function init() {
       console.log('Starting init()...');
@@ -586,98 +587,111 @@
     }
 
     function checkDistance() {
-      if (!selectedLoc || !currentPos) return;
-
-      const dist = calculateDistance(currentPos.lat, currentPos.lng, selectedLoc.lat, selectedLoc.lng);
-      document.getElementById('distanceText').innerText = dist.toFixed(0) + ' เมตร';
-
-      const msg = document.getElementById('gpsStatusMsg');
       const btn = document.getElementById('btnAction');
-      const radius = parseFloat(selectedLoc.radius) || 100;
+      const msg = document.getElementById('gpsStatusMsg');
+      
+      if (!currentPos || locations.length === 0) {
+        btn.innerText = '📍 กำลังตรวจสอบระยะทาง...';
+        btn.disabled = true;
+        return;
+      }
 
-      if (dist <= radius) {
-        msg.innerText = `✅ อยู่ในระยะ ${radius} เมตร`;
-        msg.className = 'gps-status-msg status-ok';
-        btn.disabled = false;
-        
-        // ตรวจสอบความจำเป็นในการ Login
-        const isAdmin = !!sessionStorage.getItem('adminName');
-        if (selectedLoc.qrEnabled && !isAdmin) {
-          alert('⚠️ จำเป็นต้องเข้าสู่ระบบก่อนครับ');
-          window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
-          return;
+      // 1. ค้นหาจุดที่ใกล้ที่สุดที่อยู่ในระยะรัศมี
+      let minDist = Infinity;
+      let foundLoc = null;
+
+      locations.forEach(loc => {
+        const d = calculateDistance(currentPos.lat, currentPos.lng, loc.lat, loc.lng);
+        if (d <= (parseFloat(loc.radius) || 100) && d < minDist) {
+          minDist = d;
+          foundLoc = loc;
         }
+      });
 
-        // ตรวจสอบโหมดการสแกนของหน่วยบริการนี้ (ถ้าไม่มีให้ใช้ Global scanMode)
-        const currentLocScanMode = (selectedLoc.scanMode || scanMode || 'login').toLowerCase();
-        const hasQrVerified = (qrVerified || isQrMode);
-        
-        // --- ส่วนที่แก้ไข: บังคับ Login รายหน่วยบริการ ---
-        if (currentLocScanMode === 'login') {
-          const adminName = sessionStorage.getItem('adminName');
-          const adminToken = sessionStorage.getItem('adminToken');
-          if (!adminName || !adminToken) {
-            console.log(`[Security] Location ${selectedLoc.name} requires login. Redirecting...`);
-            // ใช้ setTimeout เพื่อให้ UI ได้แสดงผลแป๊บนึงก่อนเด้ง
-            setTimeout(() => {
-              window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
-            }, 500);
-            return;
-          }
-        }
+      // อัปเดตจุดที่เลือก
+      selectedLoc = foundLoc;
 
-        // --- แก้ไขจุดนี้: ปรับการเช็คให้ "ถ้าไม่ใช่ TRUE ให้ถือว่าเป็น FALSE ทันที" เพื่อความปลอดภัย ---
-        let rawVal = selectedLoc.qrRequireFace;
-        let reqFace = (String(rawVal).trim().toLowerCase() === 'true'); 
-        
-        // แสดง Debug Info
-        let debugDiv = document.getElementById('debugInfo');
-        if (!debugDiv) {
-          debugDiv = document.createElement('div');
-          debugDiv.id = 'debugInfo';
-          debugDiv.style = 'position:fixed; bottom:0; left:0; background:rgba(0,0,0,0.8); color:#0f0; font-size:10px; padding:5px; z-index:9999; pointer-events:none;';
-          document.body.appendChild(debugDiv);
-        }
-        debugDiv.innerText = `Loc: ${selectedLoc.name} | Mode: ${currentLocScanMode} | QR: ${selectedLoc.qrEnabled} | ReqFace: ${reqFace} (Raw: ${rawVal})`;
-
-        console.log(`[Debug] Loc: ${selectedLoc.name}, Mode: ${currentLocScanMode}, QR: ${selectedLoc.qrEnabled}, Verified: ${hasQrVerified}, ReqFace: ${reqFace}`);
-
-        // กรณีที่ 1: ต้องสแกน QR แต่ยังไม่ได้สแกน
-        if (selectedLoc.qrEnabled && !hasQrVerified) {
-          btn.innerText = '🤳 สแกน QR Code ประจำจุด';
-          btn.className = 'btn btn-primary btn-lg w-100 mt-3';
-          btn.onclick = startQrScan;
-          return;
-        }
-
-        // กรณีที่ 2: สแกน QR แล้ว และ "ไม่ต้องสแกนหน้า" (reqFace เป็น false)
-        if (!reqFace) {
-           btn.innerText = '✅ บันทึกเวลา (QR Verified)';
-           btn.className = 'btn btn-success btn-lg w-100 mt-3';
-           btn.onclick = () => {
-             const name = sessionStorage.getItem('adminName');
-             const empId = sessionStorage.getItem('employeeId');
-             if (!name || !empId) {
-               alert('⚠️ กรุณาเข้าสู่ระบบก่อนครับ');
-               window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
-               return;
-             }
-             currentMatch = { name: name, employeeId: empId };
-             submitAttendance(); 
-           };
-           return;
-        }
-
-        // กรณีที่ 3: ต้องสแกนใบหน้า (เฉพาะเมื่อ reqFace เป็น true เท่านั้น)
-        btn.innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างาน' : '📸 สแกนใบหน้าออกงาน';
-        btn.className = 'btn btn-primary btn-lg w-100 mt-3';
-        btn.onclick = startScan;
-      } else {
+      if (!selectedLoc) {
+        document.getElementById('distanceText').innerText = '-';
         msg.innerText = '❌ อยู่นอกระยะหน่วยบริการ';
         msg.className = 'gps-status-msg status-error';
         btn.disabled = true;
-        btn.innerText = `⛔ ระยะห่างเกิน ${radius} เมตร`;
+        btn.innerText = '🚫 ไม่อยู่ในพื้นที่บริการ';
+        btn.className = 'btn btn-secondary btn-lg w-100 mt-3';
+        updateTargetGpsDisplay();
+        return;
       }
+
+      // ถ้าเจอจุดบริการแล้ว
+      const radius = parseFloat(selectedLoc.radius) || 100;
+      document.getElementById('distanceText').innerText = minDist.toFixed(0) + ' เมตร';
+      msg.innerText = `✅ อยู่ในระยะ ${radius} เมตร`;
+      msg.className = 'gps-status-msg status-ok';
+      btn.disabled = false;
+      updateTargetGpsDisplay();
+
+      // 2. ตรวจสอบความปลอดภัย (Login)
+      const currentLocScanMode = (selectedLoc.scanMode || scanMode || 'login').toLowerCase();
+      if (currentLocScanMode === 'login' && !isRedirecting) {
+        const adminName = sessionStorage.getItem('adminName');
+        const adminToken = sessionStorage.getItem('adminToken');
+        if (!adminName || !adminToken) {
+          isRedirecting = true; // ล็อกไว้ไม่ให้ดีดซ้ำ
+          btn.innerText = '🔐 กำลังพาไปหน้า Login...';
+          btn.disabled = true;
+          console.log(`[Security] ${selectedLoc.name} requires login.`);
+          setTimeout(() => {
+            window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
+          }, 800);
+          return;
+        }
+      }
+
+      // 3. ตรวจสอบสถานะ QR และการสแกนหน้า
+      const hasQrVerified = (qrVerified || isQrMode);
+      let rawVal = selectedLoc.qrRequireFace;
+      let reqFace = (String(rawVal).trim().toLowerCase() === 'true'); 
+      
+      // แสดง Debug Info
+      let debugDiv = document.getElementById('debugInfo');
+      if (!debugDiv) {
+        debugDiv = document.createElement('div');
+        debugDiv.id = 'debugInfo';
+        debugDiv.style = 'position:fixed; bottom:0; left:0; background:rgba(0,0,0,0.8); color:#0f0; font-size:10px; padding:5px; z-index:9999; pointer-events:none;';
+        document.body.appendChild(debugDiv);
+      }
+      debugDiv.innerText = `Loc: ${selectedLoc.name} | Mode: ${currentLocScanMode} | QR: ${selectedLoc.qrEnabled} | ReqFace: ${reqFace} (Raw: ${rawVal})`;
+
+      // กรณีที่ 1: ต้องสแกน QR แต่ยังไม่ได้สแกน
+      if (selectedLoc.qrEnabled && !hasQrVerified) {
+        btn.innerText = '🤳 สแกน QR Code ประจำจุด';
+        btn.className = 'btn btn-primary btn-lg w-100 mt-3';
+        btn.onclick = startQrScan;
+        return;
+      }
+
+      // กรณีที่ 2: สแกน QR แล้ว และ "ไม่ต้องสแกนหน้า" (reqFace เป็น false)
+      if (!reqFace) {
+         btn.innerText = '✅ บันทึกเวลา (QR Verified)';
+         btn.className = 'btn btn-success btn-lg w-100 mt-3';
+         btn.onclick = () => {
+           const name = sessionStorage.getItem('adminName');
+           const empId = sessionStorage.getItem('employeeId');
+           if (!name || !empId) {
+             alert('⚠️ กรุณาเข้าสู่ระบบก่อนครับ');
+             window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
+             return;
+           }
+           currentMatch = { name: name, employeeId: empId };
+           submitAttendance(); 
+         };
+         return;
+      }
+
+      // กรณีที่ 3: ต้องสแกนใบหน้า
+      btn.innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างาน' : '📸 สแกนใบหน้าออกงาน';
+      btn.className = 'btn btn-primary btn-lg w-100 mt-3';
+      btn.onclick = startScan;
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {

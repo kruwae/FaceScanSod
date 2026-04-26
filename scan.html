@@ -575,9 +575,10 @@
       // 2. ตรวจสอบความปลอดภัย (Login)
       const currentLocScanMode = (selectedLoc.scanMode || scanMode || 'login').toLowerCase();
       if (currentLocScanMode === 'login' && !isRedirecting) {
+        const isAuthed = sessionStorage.getItem('adminAuth') === '1';
         const adminName = sessionStorage.getItem('adminName');
-        const adminToken = sessionStorage.getItem('adminToken');
-        if (!adminName || !adminToken) {
+        
+        if (!isAuthed || !adminName) {
           isRedirecting = true; // ล็อกไว้ไม่ให้ดีดซ้ำ
           btn.innerText = '🔐 กำลังพาไปหน้า Login...';
           btn.disabled = true;

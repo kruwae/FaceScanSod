@@ -592,20 +592,17 @@
         
         // ตรวจสอบความจำเป็นในการ Login ตามเงื่อนไขที่คุณต้องการ
         if (selectedLoc.qrEnabled) {
-          // 1. กรณีใช้ QR Code: ต้อง Login เสมอ
           if (!sessionStorage.getItem('adminName')) {
             alert('⚠️ หน่วยบริการนี้ใช้ระบบ QR Code เพื่อยืนยันตัวตน จำเป็นต้องเข้าสู่ระบบก่อนครับ');
             window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
             return;
           }
         } else {
-          // 2. กรณีสแกนหน้าอย่างเดียว: ตรวจสอบโหมดการสแกนรวม
           if (scanMode === 'login' && !sessionStorage.getItem('adminName')) {
             alert('⚠️ หน่วยบริการนี้ต้องเข้าสู่ระบบก่อนสแกนใบหน้าครับ');
             window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
             return;
           }
-          // หาก scanMode === 'no-login' จะข้ามไปแสดงหน้าสแกนหน้าได้ตามปกติครับ
         }
 
         // ตรวจสอบว่ามีข้อมูล QR หรือยัง (จากการสแกนในแอป หรือจาก URL)
@@ -618,19 +615,27 @@
           return;
         }
 
-        // ถ้าใช้ QR และตั้งค่าว่าไม่ต้องสแกนหน้า
-        if (selectedLoc.qrEnabled && selectedLoc.qrRequireFace === false) {
+        // --- แก้ไขจุดนี้: เช็คค่า QR Require Face ให้ยืดหยุ่นขึ้น ---
+        const rawReqFace = selectedLoc.qrRequireFace;
+        const reqFace = String(rawReqFace).trim().toLowerCase() !== 'false';
+        console.log('--- QR Logic Debug ---');
+        console.log('Location:', selectedLoc.name);
+        console.log('QR Enabled:', selectedLoc.qrEnabled);
+        console.log('Raw ReqFace Value:', rawReqFace);
+        console.log('Computed ReqFace:', reqFace);
+
+        if (selectedLoc.qrEnabled && !reqFace) {
            btn.innerText = '✅ ยืนยันบันทึกเวลา (QR Only)';
            btn.onclick = () => {
              const name = sessionStorage.getItem('adminName');
              const empId = sessionStorage.getItem('employeeId');
              if (!name || !empId) {
-               alert('⚠️ การลงชื่อด้วย QR แบบไม่ใช้ใบหน้า ต้องเข้าสู่ระบบก่อนเพื่อยืนยันตัวตนครับ');
+               alert('⚠️ กรุณาเข้าสู่ระบบก่อนครับ');
                window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
                return;
              }
              currentMatch = { name: name, employeeId: empId };
-             console.log('Confirming QR Only:', currentMatch);
+             console.log('Proceeding with QR Only mode:', currentMatch);
              showConfirmModal(currentMatch);
            };
         } else {

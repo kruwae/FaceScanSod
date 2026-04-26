@@ -933,6 +933,7 @@ function logAttendance(payload, actionParam) {
 
   var name, lat, lng, locationName, gpsStatus, gpsSkipReason, userAgent;
   var meshSynced, meshId, meshClientTime, meshFingerprint, matchScore, distance;
+  var verificationStatus = 'verified'; 
 
   if (typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
     name            = payload.name           || '';

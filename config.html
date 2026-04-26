@@ -448,7 +448,7 @@
         </div>
         <div class="toggle-container" style="margin-top: 10px;">
           <label style="margin-bottom: 0;">ใช้งาน QR Code</label>
-          <input type="checkbox" class="loc-qr-enabled" ${loc.qrEnabled ? 'checked' : ''} style="width: auto; margin-bottom: 0;" onchange="this.parentElement.nextElementSibling.style.display = this.checked ? 'grid' : 'none'">
+          <input type="checkbox" class="loc-qr-enabled" ${loc.qrEnabled ? 'checked' : ''} style="width: auto; margin-bottom: 0;" onchange="this.parentElement.nextElementSibling.style.display = this.checked ? 'grid' : 'none'; this.parentElement.nextElementSibling.nextElementSibling.style.display = this.checked ? 'flex' : 'none';">
         </div>
         <div class="input-row qr-settings" style="display: ${loc.qrEnabled ? 'grid' : 'none'};">
           <div>
@@ -467,6 +467,10 @@
               <option value="20" ${loc.qrInterval == 20 ? 'selected' : ''}>20 นาที</option>
             </select>
           </div>
+        </div>
+        <div class="toggle-container" style="margin-top: 10px; display: ${loc.qrEnabled ? 'flex' : 'none'};">
+          <label style="margin-bottom: 0;">ต้องสแกนใบหน้า (Face Scan)</label>
+          <input type="checkbox" class="loc-qr-require-face" ${loc.qrRequireFace !== false ? 'checked' : ''} style="width: auto; margin-bottom: 0;">
         </div>
         <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
            <button class="btn" style="width: auto; background:#818cf8; color:white; font-size:12px; padding: 6px 12px;" onclick="showQrCode('${loc.id}', this.parentElement.parentElement)">🖼️ ดู QR Code</button>
@@ -493,6 +497,7 @@
         qrEnabled: rowEl.querySelector('.loc-qr-enabled').checked,
         qrType: rowEl.querySelector('.loc-qr-type').value,
         qrInterval: rowEl.querySelector('.loc-qr-interval').value,
+        qrRequireFace: rowEl.querySelector('.loc-qr-require-face').checked,
         token: token,
         updatedBy: sessionStorage.getItem('adminName') || 'admin'
       };
@@ -555,7 +560,8 @@
         enabled: item.querySelector('.loc-enabled').value === 'true',
         qrEnabled: item.querySelector('.loc-qr-enabled').checked,
         qrType: item.querySelector('.loc-qr-type').value,
-        qrInterval: item.querySelector('.loc-qr-interval').value
+        qrInterval: item.querySelector('.loc-qr-interval').value,
+        qrRequireFace: item.querySelector('.loc-qr-require-face').checked
       }));
 
       const data = {

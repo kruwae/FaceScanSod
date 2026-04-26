@@ -73,7 +73,8 @@ function normalizeLocation(loc, index) {
     qrEnabled: loc.qrEnabled === true || String(loc.qrEnabled).toLowerCase() === 'true',
     qrType: loc.qrType || 'static',
     qrInterval: parseInt(loc.qrInterval) || 5,
-    qrSecret: loc.qrSecret || ''
+    qrSecret: loc.qrSecret || '',
+    qrRequireFace: loc.qrRequireFace === true || String(loc.qrRequireFace).toLowerCase() === 'true'
   };
 }
 
@@ -114,7 +115,8 @@ function getLocations(params) {
       qrEnabled: hm['QR Enabled'] ? (String(row[hm['QR Enabled'] - 1] || '').toLowerCase() === 'true') : false,
       qrType: hm['QR Type'] ? String(row[hm['QR Type'] - 1] || 'static') : 'static',
       qrInterval: hm['QR Interval'] ? parseInt(row[hm['QR Interval'] - 1] || 5) : 5,
-      qrSecret: hm['QR Secret'] ? String(row[hm['QR Secret'] - 1] || '') : ''
+      qrSecret: hm['QR Secret'] ? String(row[hm['QR Secret'] - 1] || '') : '',
+      qrRequireFace: hm['QR Require Face'] ? (String(row[hm['QR Require Face'] - 1] || 'true').toLowerCase() === 'true') : true
     });
   }
   return locations;
@@ -141,7 +143,7 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('Config');
-  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token', 'QR Enabled', 'QR Type', 'QR Interval', 'QR Secret'];
+  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token', 'QR Enabled', 'QR Type', 'QR Interval', 'QR Secret', 'QR Require Face'];
 
   if (!sheet) {
     sheet = ss.insertSheet('Config');
@@ -171,7 +173,8 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
       return [
         loc.id, loc.name, loc.lat, loc.lng, loc.radius, true,
         updatedBy || 'admin', now, tokenToSave,
-        loc.qrEnabled, loc.qrType, loc.qrInterval, loc.qrSecret || Utilities.getUuid().substring(0, 8)
+        loc.qrEnabled, loc.qrType, loc.qrInterval, loc.qrSecret || Utilities.getUuid().substring(0, 8),
+        loc.qrRequireFace !== false
       ];
     });
     sheet.getRange(2, 1, rows.length, schema.length).setValues(rows);
@@ -207,7 +210,7 @@ function saveSingleLocation(data) {
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('Config');
-  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token', 'QR Enabled', 'QR Type', 'QR Interval', 'QR Secret'];
+  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token', 'QR Enabled', 'QR Type', 'QR Interval', 'QR Secret', 'QR Require Face'];
   
   if (!sheet) {
     sheet = ss.insertSheet('Config');
@@ -234,7 +237,8 @@ function saveSingleLocation(data) {
   const rowData = [
     finalId, loc.name, loc.lat, loc.lng, loc.radius, true,
     data.updatedBy || 'admin', now, '',
-    loc.qrEnabled, loc.qrType, loc.qrInterval, finalQrSecret
+    loc.qrEnabled, loc.qrType, loc.qrInterval, finalQrSecret,
+    loc.qrRequireFace !== false
   ];
 
   if (targetRow > 0) {
@@ -301,7 +305,8 @@ function getConfig(params) {
         qrEnabled: headerMap['QR Enabled'] ? (String(row[headerMap['QR Enabled'] - 1] || '').toLowerCase() === 'true') : false,
         qrType: headerMap['QR Type'] ? String(row[headerMap['QR Type'] - 1] || 'static') : 'static',
         qrInterval: headerMap['QR Interval'] ? parseInt(row[headerMap['QR Interval'] - 1] || 5) : 5,
-        qrSecret: headerMap['QR Secret'] ? String(row[headerMap['QR Secret'] - 1] || '') : ''
+        qrSecret: headerMap['QR Secret'] ? String(row[headerMap['QR Secret'] - 1] || '') : '',
+        qrRequireFace: headerMap['QR Require Face'] ? (String(row[headerMap['QR Require Face'] - 1] || 'true').toLowerCase() === 'true') : true
       });
     }
   }

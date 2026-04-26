@@ -285,7 +285,7 @@
       </div>
       <div id="scanStatus" style="text-align:center; margin-top:10px; font-size:0.9em; color:#a5b4fc;"></div>
 
-      <button id="btnAction" class="btn btn-primary" disabled onclick="startScan()">
+      <button id="btnAction" class="btn btn-primary" disabled>
         ⌛ รอตรวจสอบระยะทาง...
       </button>
     </div>
@@ -491,7 +491,21 @@
         msg.innerText = `✅ อยู่ในระยะ ${radius} เมตร`;
         msg.className = 'gps-status-msg status-ok';
         btn.disabled = false;
-        btn.innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างาน' : '📸 สแกนใบหน้าออกงาน';
+        
+        if (isQrMode && selectedLoc.qrRequireFace === false) {
+           btn.innerText = '✅ ยืนยันบันทึกเวลา (QR Only)';
+           btn.onclick = () => {
+             const user = { 
+               name: sessionStorage.getItem('adminName') || 'ผู้ใช้ QR Code', 
+               employeeId: sessionStorage.getItem('employeeId') || 'QR-USER' 
+             };
+             currentMatch = user;
+             showConfirmModal(user);
+           };
+        } else {
+           btn.innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างาน' : '📸 สแกนใบหน้าออกงาน';
+           btn.onclick = startScan;
+        }
       } else {
         msg.innerText = '❌ อยู่นอกระยะหน่วยบริการ';
         msg.className = 'gps-status-msg status-error';

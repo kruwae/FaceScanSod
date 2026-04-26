@@ -335,7 +335,6 @@
         return;
       }
 
-      // ตรวจสอบพารามิเตอร์ URL
       const urlParams = new URLSearchParams(window.location.search);
       const urlLocId = urlParams.get('locId');
       const urlKey = urlParams.get('key');
@@ -343,8 +342,6 @@
       if (urlLocId && urlKey) {
          isQrMode = true;
          qrKey = urlKey;
-         console.log('Mode: QR from URL', { urlLocId, qrKey });
-         // บังคับให้ล็อกอินถ้าอยู่ในโหมด QR (ตามที่ยูสเซอร์ต้องการ)
          if (!sessionStorage.getItem('adminName')) {
             alert('⚠️ การใช้งาน QR Code จำเป็นต้องเข้าสู่ระบบก่อนครับ');
             window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
@@ -353,134 +350,59 @@
       }
 
       try {
-        const adminName = sessionStorage.getItem('adminName');
-        
-        // 1. ดึงข้อมูลหน่วยบริการก่อน (เบาและเร็ว)
         const loadingText = document.getElementById('loadingText');
+        const overlay = document.getElementById('loadingOverlay');
         loadingText.innerText = 'กำลังส่งคำขอไปที่เซิร์ฟเวอร์...';
         
-        const cleanApiUrl = API_URL.trim();
-        const fetchUrl = cleanApiUrl + (cleanApiUrl.includes('?') ? '&' : '?') + 'action=getConfig&token=' + encodeURIComponent(AUTH_TOKEN);
+        const fetchUrl = API_URL + (API_URL.includes('?') ? '&' : '?') + 'action=getConfig&token=' + encodeURIComponent(AUTH_TOKEN);
         
-        console.log('Requesting Config from:', fetchUrl);
-        
-        // เพิ่ม Timeout สำหรับการดึง Config
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); 
 
-        let config;
-        try {
-          const resConfig = await fetch(fetchUrl, {
-            signal: controller.signal,
-            mode: 'cors'
-          });
-          clearTimeout(timeoutId);
-          
-          loadingText.innerText = 'เซิร์ฟเวอร์ตอบกลับแล้ว กำลังตรวจสอบข้อมูล...';
-          const resText = await resConfig.text();
-          console.log('Server response received. Length:', resText.length);
-          
-          try {
-            config = JSON.parse(resText);
-          } catch (e) {
-            console.error('JSON Parse Error. Response:', resText);
-            throw new Error('ข้อมูลจาก Server ไม่ใช่ JSON (อาจเกิดจากสิทธิ์การเข้าถึงหรือ URL ผิด)');
-          }
-        } catch (e) {
-          clearTimeout(timeoutId);
-          console.error('Fetch Error:', e);
-          if (e.name === 'AbortError') throw new Error('เซิร์ฟเวอร์ไม่ตอบสนองภายใน 15 วินาที (Timeout)');
-          throw new Error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: ' + e.message);
-        }
+        const res = await fetch(fetchUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
         
-        if (config.status === 'error') {
-          throw new Error('Server Error: ' + config.message);
-        }
+        const config = await res.json();
+        if (!config || !config.locations) throw new Error('ข้อมูลจากเซิร์ฟเวอร์ไม่ถูกต้อง');
 
-        loadingText.innerText = 'โหลดสำเร็จ กำลังเตรียมหน้าจอ...';
-        
-        locations = config.locations || [];
-        scanMode = config.scanMode || 'login';
-        MATCH_THRESHOLD = parseFloat(config.faceMatchThreshold || 0.45);
-
-        // ตรวจสอบความจำเป็นในการ Login สำหรับ QR Code
-        const hasAnyQr = locations.some(l => l.qrEnabled);
-        if ((hasAnyQr || isQrMode) && !sessionStorage.getItem('adminName')) {
-          alert('⚠️ ระบบเปิดใช้งาน QR Code จำเป็นต้องเข้าสู่ระบบก่อนบันทึกเวลาครับ');
-          window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
-          return;
-        }
+        locations = config.locations;
+        scanMode = (config.scanMode || 'login').toLowerCase();
+        MATCH_THRESHOLD = parseFloat(config.faceMatchThreshold) || 0.45;
 
         // จัดการ Token สำหรับโหมด No-Login
-        if (scanMode === 'no-login' && (!AUTH_TOKEN || AUTH_TOKEN === 'null' || AUTH_TOKEN === 'undefined' || AUTH_TOKEN.length < 10)) {
+        if (scanMode === 'no-login' && (!AUTH_TOKEN || AUTH_TOKEN === 'null' || AUTH_TOKEN.length < 10)) {
            AUTH_TOKEN = config.readToken || '';
         }
 
-        if (adminName && AUTH_TOKEN && scanMode === 'login') {
-          const badge = document.getElementById('loggedInUserBadge');
-          if (badge) {
-            badge.innerHTML = `
-              <div style="display:flex; align-items:center; gap:10px;">
-                <span>👤 ผู้ใช้งาน: <strong>${adminName}</strong></span>
-                <button onclick="logout()" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; padding:2px 10px; border-radius:8px; cursor:pointer; font-size:0.85em; font-family:inherit;">
-                  ออกจากระบบ
-                </button>
-              </div>
-            `;
-            badge.style.display = 'block';
-            badge.style.background = 'rgba(15,23,42,0.6)';
-            badge.style.padding = '8px 12px';
-            badge.style.borderRadius = '12px';
-          }
-        }
-
+        // แสดงผล Dropdown
         const select = document.getElementById('locationSelect');
         if (locations.length > 0) {
-          console.log('Populating locations dropdown...');
           select.innerHTML = locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
-          
-          const urlParams = new URLSearchParams(window.location.search);
-          const urlLocId = urlParams.get('locId');
-          const urlMode = urlParams.get('mode');
-          qrKey = urlParams.get('key');
-
-          if ((urlMode === 'qr' || isQrMode) && urlLocId) {
-            isQrMode = true;
+          if (isQrMode && urlLocId) {
             selectedLoc = locations.find(l => l.id == urlLocId);
             if (selectedLoc) {
               select.value = selectedLoc.id;
-              select.disabled = true; 
+              select.disabled = true;
               const label = document.getElementById('locationLabel');
               if (label) label.innerText += ' (ล็อกโดย QR Code)';
             }
           }
-
-          if (!selectedLoc) {
-            selectedLoc = locations[0];
-            select.value = selectedLoc.id;
-          }
+          if (!selectedLoc) selectedLoc = locations[0];
           updateTargetGpsDisplay();
         }
 
-        // 2. ข้ามการโหลด AI ในตอนเริ่มต้น
-        console.log('Finalizing initialization...');
+        // ซ่อน Loading และเริ่มระบบเบื้องหลัง
+        overlay.style.display = 'none';
+        setTimeout(() => {
+          try {
+            startGpsTracking();
+            checkTodayStatus();
+          } catch (e) { console.warn('Background tasks failed', e); }
+        }, 100);
 
-        // ย้ายการปิด Loading มาไว้ก่อนเพื่อความลื่นไหล
-        clearTimeout(loadTimeout);
-        document.getElementById('loadingOverlay').style.display = 'none';
-        
-        // เริ่มระบบ GPS และตรวจสอบสถานะ (ทำงานแบบเบื้องหลัง)
-        try {
-          startGpsTracking();
-          checkTodayStatus();
-        } catch (e) { console.warn('Background tasks failed', e); }
-
-        console.log('Init complete.');
       } catch (e) {
-        clearTimeout(loadTimeout);
         console.error('Init failed:', e);
-        document.getElementById('loadingOverlay').style.display = 'none'; // ปิดเพื่อให้เห็นปุ่มแก้ไข
-        alert('❌ โหลดหน้าจอไม่สำเร็จ: ' + e.message);
+        document.getElementById('loadingText').innerHTML = `<div style="color:#f87171;">❌ โหลดข้อมูลไม่สำเร็จ</div><div style="font-size:0.8em;margin-top:10px;">${e.message}</div><button onclick="location.reload()" style="margin-top:15px;padding:8px 16px;background:#334155;border:none;color:white;border-radius:8px;">🔄 ลองอีกครั้ง</button>`;
       }
     }
 

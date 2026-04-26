@@ -590,42 +590,32 @@
         msg.className = 'gps-status-msg status-ok';
         btn.disabled = false;
         
-        // ตรวจสอบความจำเป็นในการ Login ตามเงื่อนไขที่คุณต้องการ
-        if (selectedLoc.qrEnabled) {
-          if (!sessionStorage.getItem('adminName')) {
-            alert('⚠️ หน่วยบริการนี้ใช้ระบบ QR Code เพื่อยืนยันตัวตน จำเป็นต้องเข้าสู่ระบบก่อนครับ');
-            window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
-            return;
-          }
-        } else {
-          if (scanMode === 'login' && !sessionStorage.getItem('adminName')) {
-            alert('⚠️ หน่วยบริการนี้ต้องเข้าสู่ระบบก่อนสแกนใบหน้าครับ');
-            window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
-            return;
-          }
+        // ตรวจสอบความจำเป็นในการ Login
+        const isAdmin = !!sessionStorage.getItem('adminName');
+        if (selectedLoc.qrEnabled && !isAdmin) {
+          alert('⚠️ จำเป็นต้องเข้าสู่ระบบก่อนครับ');
+          window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
+          return;
         }
 
-        // ตรวจสอบว่ามีข้อมูล QR หรือยัง (จากการสแกนในแอป หรือจาก URL)
-        const hasQr = (qrVerified || isQrMode);
+        // ตรวจสอบสถานะ QR และการสแกนหน้า
+        const hasQrVerified = (qrVerified || isQrMode);
+        const reqFace = String(selectedLoc.qrRequireFace).trim().toLowerCase() !== 'false';
+        
+        console.log(`[Debug] Loc: ${selectedLoc.name}, QR: ${selectedLoc.qrEnabled}, Verified: ${hasQrVerified}, ReqFace: ${reqFace}`);
 
-        // ถ้าหน่วยบริการนี้เปิดใช้งาน QR Code และเรายังไม่ได้สแกนยืนยัน
-        if (selectedLoc.qrEnabled && !hasQr) {
+        // กรณีที่ 1: ต้องสแกน QR แต่ยังไม่ได้สแกน
+        if (selectedLoc.qrEnabled && !hasQrVerified) {
           btn.innerText = '🤳 สแกน QR Code ประจำจุด';
+          btn.className = 'btn btn-primary btn-lg w-100 mt-3';
           btn.onclick = startQrScan;
           return;
         }
 
-        // --- แก้ไขจุดนี้: เช็คค่า QR Require Face ให้ยืดหยุ่นขึ้น ---
-        const rawReqFace = selectedLoc.qrRequireFace;
-        const reqFace = String(rawReqFace).trim().toLowerCase() !== 'false';
-        console.log('--- QR Logic Debug ---');
-        console.log('Location:', selectedLoc.name);
-        console.log('QR Enabled:', selectedLoc.qrEnabled);
-        console.log('Raw ReqFace Value:', rawReqFace);
-        console.log('Computed ReqFace:', reqFace);
-
-        if (selectedLoc.qrEnabled && !reqFace) {
+        // กรณีที่ 2: สแกน QR แล้ว (หรือจุดนี้ไม่ต้องสแกน QR) และ "ไม่ต้องสแกนหน้า"
+        if (!reqFace || (selectedLoc.qrEnabled && !reqFace)) {
            btn.innerText = '✅ ยืนยันบันทึกเวลา (QR Only)';
+           btn.className = 'btn btn-success btn-lg w-100 mt-3';
            btn.onclick = () => {
              const name = sessionStorage.getItem('adminName');
              const empId = sessionStorage.getItem('employeeId');
@@ -635,14 +625,15 @@
                return;
              }
              currentMatch = { name: name, employeeId: empId };
-             console.log('Proceeding with QR Only mode:', currentMatch);
              showConfirmModal(currentMatch);
            };
-        } else {
-           // กรณีต้องสแกนใบหน้า (ทั้งแบบใช้ QR และไม่ใช้ QR)
-           btn.innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างาน' : '📸 สแกนใบหน้าออกงาน';
-           btn.onclick = startScan;
+           return;
         }
+
+        // กรณีที่ 3: ต้องสแกนใบหน้า (เป็นกรณีสุดท้าย)
+        btn.innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างาน' : '📸 สแกนใบหน้าออกงาน';
+        btn.className = 'btn btn-primary btn-lg w-100 mt-3';
+        btn.onclick = startScan;
       } else {
         msg.innerText = '❌ อยู่นอกระยะหน่วยบริการ';
         msg.className = 'gps-status-msg status-error';

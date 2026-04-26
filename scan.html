@@ -354,34 +354,48 @@
         const adminName = sessionStorage.getItem('adminName');
         
         // 1. ดึงข้อมูลหน่วยบริการก่อน (เบาและเร็ว)
-        document.getElementById('loadingText').innerText = 'กำลังโหลดข้อมูลหน่วยบริการ...';
+        const loadingText = document.getElementById('loadingText');
+        loadingText.innerText = 'กำลังส่งคำขอไปที่เซิร์ฟเวอร์...';
         
-        console.log('Fetching Config from:', API_URL);
+        const cleanApiUrl = API_URL.trim();
+        const fetchUrl = cleanApiUrl + (cleanApiUrl.includes('?') ? '&' : '?') + 'action=getConfig&token=' + encodeURIComponent(AUTH_TOKEN);
+        
+        console.log('Requesting Config from:', fetchUrl);
         
         // เพิ่ม Timeout สำหรับการดึง Config
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 วินาที
+        const timeoutId = setTimeout(() => controller.abort(), 15000); 
 
         let config;
         try {
-          const resConfig = await fetch(API_URL + '?action=getConfig&token=' + encodeURIComponent(AUTH_TOKEN), {
-            signal: controller.signal
+          const resConfig = await fetch(fetchUrl, {
+            signal: controller.signal,
+            mode: 'cors'
           });
           clearTimeout(timeoutId);
           
+          loadingText.innerText = 'เซิร์ฟเวอร์ตอบกลับแล้ว กำลังตรวจสอบข้อมูล...';
           const resText = await resConfig.text();
-          console.log('Config response raw:', resText);
+          console.log('Server response received. Length:', resText.length);
           
           try {
             config = JSON.parse(resText);
           } catch (e) {
-            throw new Error('Server ตอบกลับข้อมูลไม่ถูกต้อง (Invalid JSON)');
+            console.error('JSON Parse Error. Response:', resText);
+            throw new Error('ข้อมูลจาก Server ไม่ใช่ JSON (อาจเกิดจากสิทธิ์การเข้าถึงหรือ URL ผิด)');
           }
         } catch (e) {
           clearTimeout(timeoutId);
-          if (e.name === 'AbortError') throw new Error('การเชื่อมต่อล่าช้าเกินไป (Timeout) กรุณาลองใหม่อีกครั้ง');
-          throw e;
+          console.error('Fetch Error:', e);
+          if (e.name === 'AbortError') throw new Error('เซิร์ฟเวอร์ไม่ตอบสนองภายใน 15 วินาที (Timeout)');
+          throw new Error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: ' + e.message);
         }
+        
+        if (config.status === 'error') {
+          throw new Error('Server Error: ' + config.message);
+        }
+
+        loadingText.innerText = 'โหลดสำเร็จ กำลังเตรียมหน้าจอ...';
         
         locations = config.locations || [];
         scanMode = config.scanMode || 'login';

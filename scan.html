@@ -7,6 +7,7 @@
   <title>FaceScanSod - Vercel Edition</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -284,6 +285,10 @@
         <video id="video" autoplay muted playsinline></video>
       </div>
       <div id="scanStatus" style="text-align:center; margin-top:10px; font-size:0.9em; color:#a5b4fc;"></div>
+      
+      <!-- ส่วนแสดงผลการสแกน QR -->
+      <div id="qrReader" style="display:none; width:100%; border-radius:12px; overflow:hidden; margin-top:10px;"></div>
+      <div id="qrStatus" style="text-align:center; margin-top:5px; font-size:0.8em; color:#f87171;"></div>
 
       <button id="btnAction" class="btn btn-primary" disabled>
         ⌛ รอตรวจสอบระยะทาง...
@@ -317,6 +322,8 @@
     let MATCH_THRESHOLD = 0.45; 
     let qrKey = ''; // เก็บค่ารหัส QR ถ้ามี
     let isQrMode = false;
+    let qrVerified = false; // ตรวจสอบว่าสแกน QR ผ่านหรือยัง
+    let html5QrCode = null;
 
     async function init() {
       console.log('Starting init()...');
@@ -492,8 +499,15 @@
         msg.className = 'gps-status-msg status-ok';
         btn.disabled = false;
         
-        if (isQrMode && selectedLoc.qrRequireFace === false) {
-           btn.innerText = '✅ ยืนยันบันทึกเวลา (QR Only)';
+        // ถ้าหน่วยบริการนี้เปิดใช้งาน QR Code และเรายังไม่ได้สแกนยืนยัน
+        if (selectedLoc.qrEnabled && !qrVerified) {
+          btn.innerText = '🤳 สแกน QR Code ประจำจุด';
+          btn.onclick = startQrScan;
+          return;
+        }
+
+        if (selectedLoc.qrEnabled && selectedLoc.qrRequireFace === false) {
+           btn.innerText = '✅ ยืนยันบันทึกเวลา (ไม่ต้องสแกนหน้า)';
            btn.onclick = () => {
              const user = { 
                name: sessionStorage.getItem('adminName') || 'ผู้ใช้ QR Code', 
@@ -533,6 +547,10 @@
       const videoWrap = document.getElementById('videoWrap');
       const btn = document.getElementById('btnAction');
 
+      if (selectedLoc.qrEnabled && !qrVerified) {
+        return alert('กรุณาสแกน QR Code ก่อนครับ');
+      }
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
         video.srcObject = stream;
@@ -571,6 +589,54 @@
       document.getElementById('videoWrap').style.display = 'none';
     }
 
+    async function startQrScan() {
+      const btn = document.getElementById('btnAction');
+      const readerEl = document.getElementById('qrReader');
+      
+      btn.disabled = true;
+      btn.innerText = '⌛ กำลังเปิดกล้องหลัง...';
+      readerEl.style.display = 'block';
+
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("qrReader");
+      }
+
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" }, 
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          async (decodedText) => {
+            console.log('QR Scanned:', decodedText);
+            // แยกค่าจาก URL: scan.html?locId=...&key=...
+            const url = new URL(decodedText);
+            const scannedKey = url.searchParams.get('key');
+            const scannedLocId = url.searchParams.get('locId');
+
+            if (scannedLocId !== selectedLoc.id) {
+              document.getElementById('qrStatus').innerText = '❌ QR Code นี้ไม่ใช่ของหน่วยบริการที่เลือก';
+              return;
+            }
+
+            // ส่งไปตรวจสอบที่ Server
+            qrKey = scannedKey;
+            qrVerified = true;
+            await html5QrCode.stop();
+            readerEl.style.display = 'none';
+            document.getElementById('qrStatus').innerText = '';
+            
+            // ตรวจสอบระยะทางใหม่เพื่ออัปเดตปุ่มเป็นสแกนหน้า
+            checkDistance();
+            alert('✅ ยืนยัน QR Code สำเร็จ');
+          },
+          (errorMessage) => { /* scan error, keep searching */ }
+        );
+      } catch (err) {
+        alert('ไม่สามารถเปิดกล้องหลังได้: ' + err);
+        btn.disabled = false;
+        btn.innerText = '🤳 ลองใหม่อีกครั้ง';
+      }
+    }
+
     function showConfirmModal(person) {
       document.getElementById('modalName').innerText = person.name;
       document.getElementById('modalInfo').innerText = `ยืนยันการบันทึกเวลาที่: ${selectedLoc.name}`;
@@ -588,15 +654,17 @@
       btn.disabled = true;
       btn.innerText = '⌛ กำลังบันทึก...';
 
+      if (!currentMatch) return alert('ไม่พบข้อมูลผู้ใช้งาน กรุณาสแกนใบหน้าใหม่');
+
       const data = {
         action: actionType,
         employeeId: currentMatch.employeeId,
-        name: currentMatch.name, // เพิ่มการส่งชื่อ
+        name: currentMatch.name, 
         locationId: selectedLoc.id,
         locationName: selectedLoc.name,
         lat: currentPos.lat,
         lng: currentPos.lng,
-        qrKey: qrKey, // ส่งรหัส QR ไปตรวจสอบที่ Server
+        qrKey: qrKey, 
         token: AUTH_TOKEN
       };
 

@@ -356,6 +356,7 @@
           }
         }
 
+        const adminName = sessionStorage.getItem('adminName');
         if (adminName && AUTH_TOKEN && scanMode === 'login') {
           const badge = document.getElementById('loggedInUserBadge');
           badge.innerText = '👤 ผู้ใช้งาน: ' + adminName;

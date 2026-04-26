@@ -751,9 +751,20 @@
             readerEl.style.display = 'none';
             document.getElementById('qrStatus').innerText = '';
             
-            // ตรวจสอบระยะทางใหม่เพื่ออัปเดตปุ่มเป็นสแกนหน้า
-            checkDistance();
-            alert('✅ ยืนยัน QR Code สำเร็จ');
+            // ตรวจสอบความจำเป็นในการสแกนหน้า
+            const reqFace = String(selectedLoc.qrRequireFace).trim().toLowerCase() !== 'false';
+            
+            checkDistance(); // อัปเดตสถานะปุ่มในหน้าหลักไว้ด้วย
+
+            if (!reqFace) {
+               const name = sessionStorage.getItem('adminName');
+               const empId = sessionStorage.getItem('employeeId');
+               currentMatch = { name: name, employeeId: empId };
+               console.log('Auto-showing confirm modal for QR-Only:', currentMatch);
+               showConfirmModal(currentMatch);
+            } else {
+               alert('✅ ยืนยัน QR Code สำเร็จ กรุณาสแกนใบหน้าเพื่อบันทึกเวลาครับ');
+            }
           },
           (errorMessage) => { /* scan error, keep searching */ }
         );

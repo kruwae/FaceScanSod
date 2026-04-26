@@ -310,18 +310,23 @@ function getConfig(params) {
           const lng = parseFloat(row[hm['Longitude'] - 1]);
           if (isNaN(lat) || isNaN(lng)) continue;
 
+          // ดึงค่าแยกออกมาเพื่อให้ตรวจสอบง่ายขึ้น
+          const rawEnabled = hm['Enabled'] ? row[hm['Enabled'] - 1] : 'true';
+          const rawQrEnabled = hm['QR Enabled'] ? row[hm['QR Enabled'] - 1] : 'false';
+          const rawQrRequireFace = hm['QR Require Face'] ? row[hm['QR Require Face'] - 1] : 'true';
+
           locations.push({
             id: String(row[hm['Id'] - 1] || ('loc-' + i)).trim(),
             name: String(row[hm['Name'] - 1] || ('Location ' + i)).trim(),
             lat: lat,
             lng: lng,
             radius: parseFloat(row[hm['Radius'] - 1]) || 100,
-            enabled: hm['Enabled'] ? (String(row[hm['Enabled'] - 1] || '').toLowerCase() !== 'false') : true,
-            qrEnabled: hm['QR Enabled'] ? (String(row[hm['QR Enabled'] - 1] || '').trim().toLowerCase() === 'true') : false,
+            enabled: String(rawEnabled).trim().toLowerCase() !== 'false',
+            qrEnabled: String(rawQrEnabled).trim().toLowerCase() === 'true',
             qrType: hm['QR Type'] ? String(row[hm['QR Type'] - 1] || 'static').trim().toLowerCase() : 'static',
             qrInterval: hm['QR Interval'] ? parseInt(row[hm['QR Interval'] - 1] || 5) : 5,
             qrSecret: hm['QR Secret'] ? String(row[hm['QR Secret'] - 1] || '').trim() : '',
-            qrRequireFace: hm['QR Require Face'] ? (String(row[hm['QR Require Face'] - 1] || '').trim().toLowerCase() !== 'false') : true
+            qrRequireFace: String(rawQrRequireFace).trim().toLowerCase() === 'true' // บังคับให้เป็น true เฉพาะเมื่อเขียนว่า true เท่านั้น
           });
         }
       }

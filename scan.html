@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="js/api-config.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -307,8 +308,13 @@
   </div>
 
   <script>
-    // ดึง API URL จาก localStorage หรือพยายามดึงจากหน้า config
-    let API_URL = localStorage.getItem('GAS_API_URL') || localStorage.getItem('gasApiUrl') || '';
+    // ดึง API URL: 1) localStorage (เครื่องที่เคยตั้งค่าไว้)  2) api-config.js (ทุกเครื่อง)
+    let API_URL = (
+      localStorage.getItem('GAS_API_URL') ||
+      localStorage.getItem('gasApiUrl') ||
+      (typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '') ||
+      (typeof window.GAS_API_URL !== 'undefined' ? window.GAS_API_URL : '')
+    ).trim();
     let AUTH_TOKEN = sessionStorage.getItem('token') || sessionStorage.getItem('adminToken') || localStorage.getItem('token') || '';
 
     let locations = [];

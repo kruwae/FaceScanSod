@@ -290,18 +290,18 @@ function getConfig(params) {
     for (let i = 1; i < values.length; i++) {
       const row = values[i];
       // ข้ามถ้าไม่มีพิกัด lat, lng เพราะชื่อกับ id อาจจะว่างได้ในตอนแรก
-      if (!row[hm['Latitude'] - 1] && !row[hm['Longitude'] - 1]) continue;
+      if (!row[headerMap['Latitude'] - 1] && !row[headerMap['Longitude'] - 1]) continue;
       locations.push({
-        id: row[hm['Id'] - 1] || ('loc-' + i),
-        name: row[hm['Name'] - 1] || ('Location ' + i),
-        lat: parseFloat(row[hm['Latitude'] - 1]) || 0,
-        lng: parseFloat(row[hm['Longitude'] - 1]) || 0,
-        radius: parseFloat(row[hm['Radius'] - 1]) || 100,
-        enabled: hm['Enabled'] ? row[hm['Enabled'] - 1] !== false : true,
-        qrEnabled: hm['QR Enabled'] ? (String(row[hm['QR Enabled'] - 1] || '').toLowerCase() === 'true') : false,
-        qrType: hm['QR Type'] ? String(row[hm['QR Type'] - 1] || 'static') : 'static',
-        qrInterval: hm['QR Interval'] ? parseInt(row[hm['QR Interval'] - 1] || 5) : 5,
-        qrSecret: hm['QR Secret'] ? String(row[hm['QR Secret'] - 1] || '') : ''
+        id: row[headerMap['Id'] - 1] || ('loc-' + i),
+        name: row[headerMap['Name'] - 1] || ('Location ' + i),
+        lat: parseFloat(row[headerMap['Latitude'] - 1]) || 0,
+        lng: parseFloat(row[headerMap['Longitude'] - 1]) || 0,
+        radius: parseFloat(row[headerMap['Radius'] - 1]) || 100,
+        enabled: headerMap['Enabled'] ? row[headerMap['Enabled'] - 1] !== false : true,
+        qrEnabled: headerMap['QR Enabled'] ? (String(row[headerMap['QR Enabled'] - 1] || '').toLowerCase() === 'true') : false,
+        qrType: headerMap['QR Type'] ? String(row[headerMap['QR Type'] - 1] || 'static') : 'static',
+        qrInterval: headerMap['QR Interval'] ? parseInt(row[headerMap['QR Interval'] - 1] || 5) : 5,
+        qrSecret: headerMap['QR Secret'] ? String(row[headerMap['QR Secret'] - 1] || '') : ''
       });
     }
   }

@@ -408,21 +408,8 @@
           updateTargetGpsDisplay();
         }
 
-        // 2. ตรวจสอบว่าต้องใช้ AI หรือไม่
-        const needsAi = !selectedLoc || !selectedLoc.qrEnabled || selectedLoc.qrRequireFace !== false;
-        
-        if (needsAi) {
-          document.getElementById('loadingText').innerText = 'กำลังเตรียมระบบ AI และข้อมูลใบหน้า...';
-          const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
-          await Promise.all([
-            faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-          ]);
-          await loadFaces();
-        } else {
-          console.log('Skip AI: QR-Only mode detected.');
-        }
+        // 2. ข้ามการโหลด AI ในตอนเริ่มต้น (จะโหลดเมื่อจำเป็นต้องสแกนใบหน้าเท่านั้น)
+        console.log('Skipping initial AI load. Will load on-demand.');
 
         startGpsTracking();
         checkTodayStatus();
@@ -434,6 +421,36 @@
         clearTimeout(loadTimeout);
         console.error('Init failed:', e);
         document.getElementById('loadingText').innerHTML = `<span style="color:#f87171">เกิดข้อผิดพลาด: ${e.message}</span><br><button onclick="location.reload()" style="margin-top:10px; padding:5px 15px;">ลองโหลดใหม่</button>`;
+      }
+    }
+
+    let isAiLoaded = false;
+    async function ensureAiLoaded() {
+      if (isAiLoaded) return true;
+      
+      const overlay = document.getElementById('loadingOverlay');
+      const text = document.getElementById('loadingText');
+      overlay.style.display = 'flex';
+      text.innerText = 'กำลังเตรียมระบบ AI และข้อมูลใบหน้า...';
+
+      try {
+        const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+        console.log('Loading AI models...');
+        await Promise.all([
+          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        console.log('AI Models loaded.');
+        await loadFaces();
+        isAiLoaded = true;
+        overlay.style.display = 'none';
+        return true;
+      } catch (e) {
+        console.error('AI Load failed:', e);
+        alert('❌ โหลดระบบ AI ไม่สำเร็จ: ' + e.message);
+        overlay.style.display = 'none';
+        return false;
       }
     }
 
@@ -595,6 +612,10 @@
     }
 
     async function startScan() {
+      // ตรวจสอบและโหลด AI เมื่อจำเป็นเท่านั้น
+      const ok = await ensureAiLoaded();
+      if (!ok) return;
+
       const video = document.getElementById('video');
       const videoWrap = document.getElementById('videoWrap');
       const btn = document.getElementById('btnAction');

@@ -333,13 +333,22 @@
         return;
       }
 
-      // ป้องกันการค้าง: ถ้าโหลดนานเกิน 20 วินาที ให้แจ้งเตือน
-      const loadTimeout = setTimeout(() => {
-        const loadingText = document.getElementById('loadingText');
-        if (loadingText && document.getElementById('loadingOverlay').style.display !== 'none') {
-          loadingText.innerHTML = '<span style="color:#f87171">โหลดช้าผิดปกติ... อาจเกิดจากอินเทอร์เน็ตหรือโมเดล AI</span><br><button onclick="location.reload()" style="margin-top:10px; padding:5px 15px;">ลองโหลดใหม่</button>';
-        }
-      }, 20000);
+      // ตรวจสอบพารามิเตอร์ URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlLocId = urlParams.get('locId');
+      const urlKey = urlParams.get('key');
+      
+      if (urlLocId && urlKey) {
+         isQrMode = true;
+         qrKey = urlKey;
+         console.log('Mode: QR from URL', { urlLocId, qrKey });
+         // บังคับให้ล็อกอินถ้าอยู่ในโหมด QR (ตามที่ยูสเซอร์ต้องการ)
+         if (!sessionStorage.getItem('adminName')) {
+            alert('⚠️ การใช้งาน QR Code จำเป็นต้องเข้าสู่ระบบก่อนครับ');
+            window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
+            return;
+         }
+      }
 
       try {
         const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
@@ -499,13 +508,17 @@
         msg.className = 'gps-status-msg status-ok';
         btn.disabled = false;
         
+        // ตรวจสอบว่ามีข้อมูล QR หรือยัง (จากการสแกนในแอป หรือจาก URL)
+        const hasQr = (qrVerified || isQrMode);
+
         // ถ้าหน่วยบริการนี้เปิดใช้งาน QR Code และเรายังไม่ได้สแกนยืนยัน
-        if (selectedLoc.qrEnabled && !qrVerified) {
+        if (selectedLoc.qrEnabled && !hasQr) {
           btn.innerText = '🤳 สแกน QR Code ประจำจุด';
           btn.onclick = startQrScan;
           return;
         }
 
+        // ถ้าใช้ QR และตั้งค่าว่าไม่ต้องสแกนหน้า
         if (selectedLoc.qrEnabled && selectedLoc.qrRequireFace === false) {
            btn.innerText = '✅ ยืนยันบันทึกเวลา (QR Only)';
            btn.onclick = () => {
@@ -516,11 +529,12 @@
                window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
                return;
              }
-             const user = { name: name, employeeId: empId };
-             currentMatch = user;
-             showConfirmModal(user);
+             currentMatch = { name: name, employeeId: empId };
+             console.log('Confirming QR Only:', currentMatch);
+             showConfirmModal(currentMatch);
            };
         } else {
+           // กรณีต้องสแกนใบหน้า (ทั้งแบบใช้ QR และไม่ใช้ QR)
            btn.innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างาน' : '📸 สแกนใบหน้าออกงาน';
            btn.onclick = startScan;
         }
@@ -673,21 +687,33 @@
       };
 
       try {
+        console.log('Submitting Attendance Data:', data);
         const res = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(data)
         });
-        const result = await res.json();
+        
+        const resText = await res.text();
+        console.log('Server Response Raw:', resText);
+        
+        let result;
+        try {
+          result = JSON.parse(resText);
+        } catch (e) {
+          throw new Error('Server returned invalid JSON: ' + resText.substring(0, 100));
+        }
+
         if (result.success || result.status === 'ok') {
           alert('✅ บันทึกเวลาสำเร็จ!');
-          window.location.href = 'index.html'; // Redirect ไปหน้า index ตามสั่ง
+          window.location.href = 'index.html'; 
         } else {
-          alert('❌ บันทึกไม่สำเร็จ: ' + (result.message || 'Unauthorized'));
+          alert('❌ บันทึกไม่สำเร็จ: ' + (result.message || result.error || 'Unauthorized'));
           btn.disabled = false;
           btn.innerText = '✅ ยืนยันบันทึกเวลา';
         }
       } catch (e) {
+        console.error('Submit Attendance Error:', e);
         alert('❌ เกิดข้อผิดพลาด: ' + e.message);
         btn.disabled = false;
         btn.innerText = '✅ ยืนยันบันทึกเวลา';

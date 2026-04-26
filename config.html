@@ -487,6 +487,14 @@
       const token = getAuthToken();
       if (!apiUrl) return alert('กรุณาใส่ API URL');
 
+      const scanMode = document.getElementById('scanMode').value;
+      const qrEnabled = rowEl.querySelector('.loc-qr-enabled').checked;
+
+      if (qrEnabled && scanMode === 'no-login') {
+        Swal.fire('คำเตือน', 'หากต้องการใช้ QR Code กรุณาปรับ "โหมดการสแกน" ด้านบนเป็น "ต้อง Login ก่อน" เพื่อยืนยันตัวตนพนักงานครับ', 'warning');
+        return;
+      }
+
       const data = {
         action: 'saveLocation',
         id: rowEl.dataset.id,
@@ -551,7 +559,16 @@
       const token = getAuthToken();
       if (!apiUrl) return Swal.fire('ผิดพลาด', 'กรุณาใส่ API URL', 'error');
 
-      const locations = [...document.querySelectorAll('.location-item')].map(item => ({
+      const scanMode = document.getElementById('scanMode').value;
+      const items = Array.from(locationsBox.querySelectorAll('.location-item'));
+      
+      const hasQr = items.some(item => item.querySelector('.loc-qr-enabled').checked);
+      if (hasQr && scanMode === 'no-login') {
+        Swal.fire('คำเตือน', 'พบการเปิดใช้งาน QR Code ในบางจุดบริการ กรุณาปรับ "โหมดการสแกน" เป็น "ต้อง Login ก่อน" เพื่อยืนยันตัวตนพนักงานครับ', 'warning');
+        return;
+      }
+
+      const locations = items.map(item => ({
         id: item.dataset.id,
         name: item.querySelector('.loc-name').value,
         lat: item.querySelector('.loc-lat').value,

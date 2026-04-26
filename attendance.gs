@@ -342,7 +342,44 @@ function authorize(action, params) {
     }
   }
 
+  if (action === 'getLocations') return requireRole(ENDPOINT_ROLE_RULES[action] || [], params);
+  if (action === 'getDynamicQrKey') return requireRole(['admin'], params);
+
   return requireRole(ENDPOINT_ROLE_RULES[action] || [], params);
+}
+
+/**
+ * สร้างรหัส Dynamic QR สำหรับแสดงผลในหน้า Admin (ฝั่ง Server เพื่อให้ได้ Hash ตรงกัน)
+ */
+function getDynamicQrKey(params) {
+  const locId = params.locId;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Config');
+  if (!sheet) return { status: 'error', message: 'Config not found' };
+
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0].map(h => String(h || '').trim());
+  const hm = buildHeaderMap(headers);
+
+  let loc = null;
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][hm['Id'] - 1]).trim() === String(locId)) {
+      loc = {
+        secret: String(values[i][hm['QR Secret'] - 1] || ''),
+        interval: parseInt(values[i][hm['QR Interval'] - 1] || 5)
+      };
+      break;
+    }
+  }
+
+  if (!loc || !loc.secret) return { status: 'error', message: 'Location or Secret not found' };
+
+  const now = Date.now();
+  const timeBlock = Math.floor(now / (loc.interval * 60 * 1000));
+  const signature = Utilities.computeHmacSha256Signature(String(timeBlock), loc.secret);
+  const key = bytesToHex(signature).substring(0, 10);
+
+  return { status: 'ok', key: key, expiresAt: (timeBlock + 1) * (loc.interval * 60 * 1000) };
 }
 
 function logout(params) {
@@ -931,9 +968,25 @@ function logAttendance(payload, actionParam) {
   const sheet  = result.sheet;
   const hm     = result.headerMap;
 
+  // --- QR Code Validation ---
+  if (payload.qrKey) {
+    const qrResult = verifyQrToken(payload.locationId, payload.qrKey);
+    if (!qrResult.success) {
+      logAction({
+        username: auth.user && auth.user.username ? auth.user.username : String(name || ''),
+        role: auth.user && auth.user.role ? auth.user.role : DEFAULT_ROLE,
+        action: actionType + '_rejected',
+        endpoint: 'logAttendance',
+        status: 'fail',
+        details: { reason: 'qr_verification_failed', error: qrResult.error }
+      });
+      return { status: 'error', message: '⛔ ปฏิเสธการเช็คอิน: ' + qrResult.error };
+    }
+    verificationStatus = (verificationStatus === 'verified') ? 'QR_VERIFIED' : verificationStatus + ' | QR_VERIFIED';
+  }
+
   // --- Geofencing & Anti-Cheat Validation ---
-  let verificationStatus = 'verified';
-  const toleranceKm = 0.05; // 50 meters tolerance for GPS jitter
+  let toleranceKm = 0.05; // 50 meters tolerance for GPS jitter
 
   if (gpsStatus === 'ok' && lat && lng && locationName && locationName !== '📍 ไม่จำกัดพื้นที่') {
     const config = getConfig({});
@@ -1080,4 +1133,58 @@ function getAttendanceLogs(params) {
     rows.push(row);
   }
   return rows;
+}
+
+/**
+ * ตรวจสอบความถูกต้องของรหัส QR Code (Static/Dynamic)
+ */
+function verifyQrToken(locId, key) {
+  if (!locId || !key) return { success: false, error: 'ข้อมูลไม่ครบ (locId or key)' };
+  
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Config');
+  if (!sheet) return { success: false, error: 'Config sheet not found' };
+  
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0].map(h => String(h || '').trim());
+  const hm = buildHeaderMap(headers);
+  
+  if (!hm['Id'] || !hm['QR Secret']) return { success: false, error: 'Config sheet schema outdated' };
+
+  let loc = null;
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][hm['Id'] - 1]).trim() === String(locId).trim()) {
+      loc = {
+        id: locId,
+        secret: String(values[i][hm['QR Secret'] - 1] || ''),
+        type: String(values[i][hm['QR Type'] - 1] || 'static').toLowerCase(),
+        interval: parseInt(values[i][hm['QR Interval'] - 1] || 5)
+      };
+      break;
+    }
+  }
+  
+  if (!loc) return { success: false, error: 'ไม่พบข้อมูลหน่วยบริการ' };
+  if (!loc.secret) return { success: false, error: 'หน่วยบริการนี้ยังไม่ได้ตั้งค่ารหัส QR' };
+
+  if (loc.type === 'static') {
+    if (key === loc.secret) return { success: true };
+    return { success: false, error: 'รหัส QR ไม่ถูกต้อง (Static Key Mismatch)' };
+  } else {
+    // Dynamic QR
+    const now = Date.now();
+    const intervalMs = loc.interval * 60 * 1000;
+    const timeBlock = Math.floor(now / intervalMs);
+    
+    const checkToken = (block) => {
+      // ใช้ HMAC SHA256 เพื่อความปลอดภัยสูง
+      const signature = Utilities.computeHmacSha256Signature(String(block), loc.secret);
+      return bytesToHex(signature).substring(0, 10);
+    };
+    
+    if (key === checkToken(timeBlock)) return { success: true };
+    if (key === checkToken(timeBlock - 1)) return { success: true }; // เผื่อช่วงรอยต่อ 1 block
+    
+    return { success: false, error: 'QR Code หมดอายุหรือยังไม่เริ่มใช้งาน' };
+  }
 }

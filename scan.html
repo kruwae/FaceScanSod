@@ -315,6 +315,8 @@
     let actionType = 'logAttendance';
     let scanMode = 'login'; // โหมดเริ่มต้น
     let MATCH_THRESHOLD = 0.45; 
+    let qrKey = ''; // เก็บค่ารหัส QR ถ้ามี
+    let isQrMode = false;
 
     async function init() {
       if (!API_URL) {
@@ -354,18 +356,36 @@
           }
         }
 
-        const adminName = sessionStorage.getItem('adminName');
         if (adminName && AUTH_TOKEN && scanMode === 'login') {
           const badge = document.getElementById('loggedInUserBadge');
           badge.innerText = '👤 ผู้ใช้งาน: ' + adminName;
           badge.style.display = 'block';
         }
 
+        // ตรวจสอบ URL Parameters สำหรับ QR Code
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlLocId = urlParams.get('locId');
+        const urlMode = urlParams.get('mode');
+        qrKey = urlParams.get('key');
+
         const select = document.getElementById('locationSelect');
         if (locations.length > 0) {
           select.innerHTML = locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
-          selectedLoc = locations[0];
-          select.value = selectedLoc.id;
+          
+          if (urlMode === 'qr' && urlLocId) {
+            isQrMode = true;
+            selectedLoc = locations.find(l => l.id == urlLocId);
+            if (selectedLoc) {
+              select.value = selectedLoc.id;
+              select.disabled = true; // ล็อกหน่วยบริการ
+              document.querySelector('label[for="locationSelect"]')?.innerText += ' (ล็อกโดย QR Code)';
+            }
+          }
+
+          if (!selectedLoc) {
+            selectedLoc = locations[0];
+            select.value = selectedLoc.id;
+          }
           updateTargetGpsDisplay();
         } else {
           select.innerHTML = '<option value="">-- ไม่พบข้อมูลหน่วยบริการ --</option>';
@@ -546,6 +566,7 @@
         locationName: selectedLoc.name,
         lat: currentPos.lat,
         lng: currentPos.lng,
+        qrKey: qrKey, // ส่งรหัส QR ไปตรวจสอบที่ Server
         token: AUTH_TOKEN
       };
 

@@ -31,6 +31,7 @@ function dispatchAction(action, params, method) {
   else if (action === 'seedStaffOsDemoData') result = seedStaffOsDemoData(params);
   else if (action === 'getMyAccess') result = getMyAccess(params);
   else if (action === 'whoAmI') result = whoAmI(params);
+  else if (action === 'getDynamicQrKey') result = getDynamicQrKey(params);
   else result = { status: 'error', message: 'Unknown action: ' + action };
 
   return ContentService

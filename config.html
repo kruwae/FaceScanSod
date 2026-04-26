@@ -11,6 +11,7 @@
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -226,6 +227,36 @@
       border: 1px solid rgba(255, 255, 255, 0.08);
       margin-bottom: 14px;
     }
+
+    .qr-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .qr-card {
+      background: #1e293b;
+      border-radius: 24px;
+      padding: 30px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    #qrCanvas {
+      background: white;
+      padding: 10px;
+      border-radius: 12px;
+      margin: 20px auto;
+      display: block;
+    }
   </style>
 </head>
 
@@ -262,6 +293,19 @@
             • <b>0.45:</b> ค่าเริ่มต้น (สมดุล)<br>
             • <b>0.55:</b> หลวม (แสงน้อย/กล้องคุณภาพต่ำ)
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-header"><span class="section-title-text">🛡️ โหมดการสแกน</span></div>
+        <label>รูปแบบการใช้งาน</label>
+        <select id="scanMode">
+          <option value="login">Login Mode (ต้องล็อกอินก่อนสแกน)</option>
+          <option value="no-login">No-Login Mode (สแกนได้ทันทีผ่าน Read Token)</option>
+        </select>
+        <div style="font-size: 0.75em; color: #94a3b8; line-height: 1.4;">
+          • <b>Login Mode:</b> เหมาะสำหรับใช้ในสำนักงาน พนักงานต้องมีบัญชี<br>
+          • <b>No-Login Mode:</b> เหมาะสำหรับ Kiosk หรือจุดบริการสาธารณะ
         </div>
       </div>
 
@@ -304,6 +348,17 @@
     <div class="map-footer">
       <button class="btn btn-map-current" onclick="focusCurrentLocation()">📍 ตำแหน่งปัจจุบัน</button>
       <button class="btn btn-map-confirm" onclick="confirmMapSelection()">✅ ยืนยันตำแหน่งนี้</button>
+    </div>
+  </div>
+
+  <!-- QR Modal -->
+  <div id="qrModal" class="qr-modal">
+    <div class="qr-card">
+      <h3 id="qrTitle" style="color:#c7d2fe; margin-bottom:10px;">QR Code หน่วยบริการ</h3>
+      <div id="qrInfo" style="font-size:0.85em; color:#94a3b8;">ประเภท: Static</div>
+      <canvas id="qrCanvas"></canvas>
+      <p style="font-size:0.75em; color:#94a3b8; margin-bottom:20px;">สแกนเพื่อลงชื่อเข้างาน ณ จุดบริการนี้</p>
+      <button class="btn" style="background:rgba(255,255,255,0.1); color:white;" onclick="closeQrModal()">ปิด</button>
     </div>
   </div>
 
@@ -391,6 +446,32 @@
           <div><label>รัศมี (เมตร)</label><input type="number" class="loc-radius" value="${loc.radius || 100}"></div>
           <div><label>เปิดใช้งาน</label><input type="text" class="loc-enabled" value="${loc.enabled !== false ? 'true' : 'false'}"></div>
         </div>
+        <div class="toggle-container" style="margin-top: 10px;">
+          <label style="margin-bottom: 0;">ใช้งาน QR Code</label>
+          <input type="checkbox" class="loc-qr-enabled" ${loc.qrEnabled ? 'checked' : ''} style="width: auto; margin-bottom: 0;" onchange="this.parentElement.nextElementSibling.style.display = this.checked ? 'grid' : 'none'">
+        </div>
+        <div class="input-row qr-settings" style="display: ${loc.qrEnabled ? 'grid' : 'none'};">
+          <div>
+            <label>ประเภท QR</label>
+            <select class="loc-qr-type">
+              <option value="static" ${loc.qrType === 'static' ? 'selected' : ''}>Static (ถาวร)</option>
+              <option value="dynamic" ${loc.qrType === 'dynamic' ? 'selected' : ''}>Dynamic (เปลี่ยนตามเวลา)</option>
+            </select>
+          </div>
+          <div>
+            <label>รอบเวลา (นาที)</label>
+            <select class="loc-qr-interval">
+              <option value="5" ${loc.qrInterval == 5 ? 'selected' : ''}>5 นาที</option>
+              <option value="10" ${loc.qrInterval == 10 ? 'selected' : ''}>10 นาที</option>
+              <option value="15" ${loc.qrInterval == 15 ? 'selected' : ''}>15 นาที</option>
+              <option value="20" ${loc.qrInterval == 20 ? 'selected' : ''}>20 นาที</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
+           <button class="btn" style="width: auto; background:#818cf8; color:white; font-size:12px; padding: 6px 12px;" onclick="showQrCode('${loc.id}', this.parentElement.parentElement)">🖼️ ดู QR Code</button>
+           <div style="font-size: 0.7em; color: #94a3b8;">Secret: ${loc.qrSecret || '(อัตโนมัติ)'}</div>
+        </div>
       `;
       return wrap;
     }
@@ -409,6 +490,9 @@
         lat: rowEl.querySelector('.loc-lat').value,
         lng: rowEl.querySelector('.loc-lng').value,
         radius: rowEl.querySelector('.loc-radius').value,
+        qrEnabled: rowEl.querySelector('.loc-qr-enabled').checked,
+        qrType: rowEl.querySelector('.loc-qr-type').value,
+        qrInterval: rowEl.querySelector('.loc-qr-interval').value,
         token: token,
         updatedBy: sessionStorage.getItem('adminName') || 'admin'
       };
@@ -468,7 +552,10 @@
         lat: item.querySelector('.loc-lat').value,
         lng: item.querySelector('.loc-lng').value,
         radius: item.querySelector('.loc-radius').value,
-        enabled: item.querySelector('.loc-enabled').value === 'true'
+        enabled: item.querySelector('.loc-enabled').value === 'true',
+        qrEnabled: item.querySelector('.loc-qr-enabled').checked,
+        qrType: item.querySelector('.loc-qr-type').value,
+        qrInterval: item.querySelector('.loc-qr-interval').value
       }));
 
       const data = {
@@ -500,6 +587,72 @@
           Swal.fire('ผิดพลาด', result.message || 'Unauthorized', 'error');
         }
       } catch (e) { Swal.fire('ผิดพลาด', e.message, 'error'); }
+    }
+
+    let qrRefreshInterval = null;
+
+    async function showQrCode(locId, rowEl) {
+      if (!locId) return Swal.fire('คำเตือน', 'กรุณาบันทึกหน่วยบริการก่อนสร้าง QR Code', 'warning');
+      
+      const name = rowEl.querySelector('.loc-name').value;
+      const type = rowEl.querySelector('.loc-qr-type').value;
+      const apiUrl = document.getElementById('apiUrl').value.trim();
+      const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
+      
+      if (qrRefreshInterval) clearInterval(qrRefreshInterval);
+
+      async function updateQr() {
+        let key = '';
+        if (type === 'static') {
+          key = await getSecretFromServer(locId);
+        } else {
+          // Fetch dynamic key from server
+          try {
+            const res = await fetch(`${apiUrl}?action=getDynamicQrKey&locId=${locId}&token=${getAuthToken()}`);
+            const data = await res.json();
+            if (data.status === 'ok') {
+              key = data.key;
+              const exp = new Date(data.expiresAt);
+              document.getElementById('qrInfo').innerText = `ประเภท: Dynamic (จะเปลี่ยนใหม่ตอน ${exp.getHours().toString().padStart(2,'0')}:${exp.getMinutes().toString().padStart(2,'0')}:${exp.getSeconds().toString().padStart(2,'0')})`;
+            }
+          } catch (e) { console.error('Failed to fetch dynamic key', e); }
+        }
+
+        if (!key) {
+           if (type === 'static') Swal.fire('คำเตือน', 'ไม่พบรหัสลับ กรุณากดบันทึกก่อนครับ', 'warning');
+           return;
+        }
+
+        const qrUrl = `${baseUrl}/scan.html?locId=${locId}&mode=qr&key=${key}`;
+        QRCode.toCanvas(document.getElementById('qrCanvas'), qrUrl, { width: 250 }, function (error) {
+          if (error) console.error(error);
+        });
+      }
+
+      document.getElementById('qrTitle').innerText = name;
+      if (type === 'static') document.getElementById('qrInfo').innerText = `ประเภท: Static (ถาวร)`;
+      document.getElementById('qrModal').style.display = 'flex';
+      
+      await updateQr();
+      if (type === 'dynamic') {
+        qrRefreshInterval = setInterval(updateQr, 30000); // Refresh every 30s
+      }
+    }
+
+    async function getSecretFromServer(locId) {
+      const apiUrl = document.getElementById('apiUrl').value.trim();
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`${apiUrl}?action=getConfig&token=${token}`);
+        const data = await res.json();
+        const loc = data.locations.find(l => l.id == locId);
+        return loc ? loc.qrSecret : '';
+      } catch (e) { return ''; }
+    }
+
+    function closeQrModal() { 
+      if (qrRefreshInterval) clearInterval(qrRefreshInterval);
+      document.getElementById('qrModal').style.display = 'none'; 
     }
 
     window.onload = () => {

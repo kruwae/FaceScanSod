@@ -69,7 +69,11 @@ function normalizeLocation(loc, index) {
     name: loc.name || ('Location ' + (index + 1)),
     lat: parseFloat(loc.lat),
     lng: parseFloat(loc.lng),
-    radius: parseFloat(loc.radius || 100)
+    radius: parseFloat(loc.radius || 100),
+    qrEnabled: loc.qrEnabled === true || String(loc.qrEnabled).toLowerCase() === 'true',
+    qrType: loc.qrType || 'static',
+    qrInterval: parseInt(loc.qrInterval) || 5,
+    qrSecret: loc.qrSecret || ''
   };
 }
 
@@ -91,19 +95,26 @@ function getLocations(params) {
   const values = sheet.getDataRange().getValues();
   if (values.length <= 1) return [];
 
+  const headers = values[0].map(h => String(h || '').trim());
+  const hm = buildHeaderMap(headers);
+
   const locations = [];
   for (let i = 1; i < values.length; i++) {
     const row = values[i];
-    const enabled = String(row[5] || 'true').toLowerCase();
+    const enabled = String(row[hm['Enabled'] - 1] || 'true').toLowerCase();
     if (enabled === 'false' || enabled === '0') continue;
 
     locations.push({
-      id: row[0] || ('loc-' + i),
-      name: row[1] || ('Location ' + i),
-      lat: parseFloat(row[2]),
-      lng: parseFloat(row[3]),
-      radius: parseFloat(row[4] || 100),
-      enabled: true
+      id: row[hm['Id'] - 1] || ('loc-' + i),
+      name: row[hm['Name'] - 1] || ('Location ' + i),
+      lat: parseFloat(row[hm['Latitude'] - 1]),
+      lng: parseFloat(row[hm['Longitude'] - 1]),
+      radius: parseFloat(row[hm['Radius'] - 1] || 100),
+      enabled: true,
+      qrEnabled: hm['QR Enabled'] ? (String(row[hm['QR Enabled'] - 1] || '').toLowerCase() === 'true') : false,
+      qrType: hm['QR Type'] ? String(row[hm['QR Type'] - 1] || 'static') : 'static',
+      qrInterval: hm['QR Interval'] ? parseInt(row[hm['QR Interval'] - 1] || 5) : 5,
+      qrSecret: hm['QR Secret'] ? String(row[hm['QR Secret'] - 1] || '') : ''
     });
   }
   return locations;
@@ -130,7 +141,7 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('Config');
-  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token'];
+  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token', 'QR Enabled', 'QR Type', 'QR Interval', 'QR Secret'];
 
   if (!sheet) {
     sheet = ss.insertSheet('Config');
@@ -159,7 +170,8 @@ function saveConfig(apiUrl, locations, workTimes, fallbackSettings, updatedBy, t
       const tokenToSave = (index === 0) ? existingReadToken : '';
       return [
         loc.id, loc.name, loc.lat, loc.lng, loc.radius, true,
-        updatedBy || 'admin', now, tokenToSave
+        updatedBy || 'admin', now, tokenToSave,
+        loc.qrEnabled, loc.qrType, loc.qrInterval, loc.qrSecret || Utilities.getUuid().substring(0, 8)
       ];
     });
     sheet.getRange(2, 1, rows.length, schema.length).setValues(rows);
@@ -195,7 +207,7 @@ function saveSingleLocation(data) {
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('Config');
-  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token'];
+  const schema = ['Id', 'Name', 'Latitude', 'Longitude', 'Radius', 'Enabled', 'Updated By', 'Updated At', 'Read Token', 'QR Enabled', 'QR Type', 'QR Interval', 'QR Secret'];
   
   if (!sheet) {
     sheet = ss.insertSheet('Config');
@@ -218,9 +230,11 @@ function saveSingleLocation(data) {
   }
 
   const finalId = id || ('loc-' + Utilities.getUuid().substring(0, 8));
+  const finalQrSecret = loc.qrSecret || Utilities.getUuid().substring(0, 8);
   const rowData = [
     finalId, loc.name, loc.lat, loc.lng, loc.radius, true,
-    data.updatedBy || 'admin', now, ''
+    data.updatedBy || 'admin', now, '',
+    loc.qrEnabled, loc.qrType, loc.qrInterval, finalQrSecret
   ];
 
   if (targetRow > 0) {
@@ -276,14 +290,18 @@ function getConfig(params) {
     for (let i = 1; i < values.length; i++) {
       const row = values[i];
       // ข้ามถ้าไม่มีพิกัด lat, lng เพราะชื่อกับ id อาจจะว่างได้ในตอนแรก
-      if (!row[2] && !row[3]) continue;
+      if (!row[hm['Latitude'] - 1] && !row[hm['Longitude'] - 1]) continue;
       locations.push({
-        id: row[0] || ('loc-' + i),
-        name: row[1] || ('Location ' + i),
-        lat: parseFloat(row[2]) || 0,
-        lng: parseFloat(row[3]) || 0,
-        radius: parseFloat(row[4]) || 100,
-        enabled: row[5] !== false
+        id: row[hm['Id'] - 1] || ('loc-' + i),
+        name: row[hm['Name'] - 1] || ('Location ' + i),
+        lat: parseFloat(row[hm['Latitude'] - 1]) || 0,
+        lng: parseFloat(row[hm['Longitude'] - 1]) || 0,
+        radius: parseFloat(row[hm['Radius'] - 1]) || 100,
+        enabled: hm['Enabled'] ? row[hm['Enabled'] - 1] !== false : true,
+        qrEnabled: hm['QR Enabled'] ? (String(row[hm['QR Enabled'] - 1] || '').toLowerCase() === 'true') : false,
+        qrType: hm['QR Type'] ? String(row[hm['QR Type'] - 1] || 'static') : 'static',
+        qrInterval: hm['QR Interval'] ? parseInt(row[hm['QR Interval'] - 1] || 5) : 5,
+        qrSecret: hm['QR Secret'] ? String(row[hm['QR Secret'] - 1] || '') : ''
       });
     }
   }

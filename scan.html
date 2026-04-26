@@ -286,7 +286,7 @@
         <video id="video" autoplay muted playsinline></video>
       </div>
       <div id="scanStatus" style="text-align:center; margin-top:10px; font-size:0.9em; color:#a5b4fc;"></div>
-      
+
       <!-- ส่วนแสดงผลการสแกน QR -->
       <div id="qrReader" style="display:none; width:100%; border-radius:12px; overflow:hidden; margin-top:10px;"></div>
       <div id="qrStatus" style="text-align:center; margin-top:5px; font-size:0.8em; color:#f87171;"></div>
@@ -325,19 +325,19 @@
     let currentMatch = null;
     let actionType = 'logAttendance';
     let scanMode = 'login'; // โหมดเริ่มต้น
-    let MATCH_THRESHOLD = 0.45; 
+    let MATCH_THRESHOLD = 0.45;
     let qrKey = ''; // เก็บค่ารหัส QR ถ้ามี
     let isQrMode = false;
     let qrVerified = false; // ตรวจสอบว่าสแกน QR ผ่านหรือยัง
     let html5QrCode = null;
-    let isInitialized = false; 
-    let isRedirecting = false; 
+    let isInitialized = false;
+    let isRedirecting = false;
 
     async function init() {
       const loadingText = document.getElementById('loadingText');
       const overlay = document.getElementById('loadingOverlay');
       const adminName = sessionStorage.getItem('adminName');
-      
+
       console.log('--- System Init Start ---');
       loadingText.innerHTML = `
         <div>กำลังตรวจสอบสถานะระบบ...</div>
@@ -354,18 +354,18 @@
         const urlParams = new URLSearchParams(window.location.search);
         const urlLocId = urlParams.get('locId');
         const urlKey = urlParams.get('key');
-        
+
         if (urlLocId && urlKey) {
-           isQrMode = true;
-           qrKey = urlKey;
-           // ลบ Auto-Redirect ออกก่อนเพื่อหยุด Loop
-           if (!adminName) {
-              loadingText.innerHTML = `
+          isQrMode = true;
+          qrKey = urlKey;
+          // ลบ Auto-Redirect ออกก่อนเพื่อหยุด Loop
+          if (!adminName) {
+            loadingText.innerHTML = `
                 <div style="color:#fcd34d;">⚠️ จำเป็นต้อง Login ก่อนสแกน QR</div>
                 <a href="login.html?to=${encodeURIComponent(window.location.href)}" style="display:inline-block;margin-top:10px;padding:8px 16px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;">คลิกเพื่อไปหน้า Login</a>
               `;
-              return; 
-           }
+            return;
+          }
         }
 
         // 2. ดึง Config
@@ -374,16 +374,16 @@
           <div style="font-size:0.6em;color:#64748b;word-break:break-all;">API: ${API_URL.substring(0, 50)}...</div>
         `;
         const fetchUrl = API_URL + (API_URL.includes('?') ? '&' : '?') + 'action=getConfig&token=' + encodeURIComponent(AUTH_TOKEN);
-        
+
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000); 
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
 
         const res = await fetch(fetchUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
-        
+
         loadingText.innerText = 'ประมวลผลข้อมูล (Step 2/3)...';
         const config = await res.json();
-        
+
         if (!config || !config.locations) throw new Error('โครงสร้างข้อมูลไม่ถูกต้อง');
 
         locations = config.locations;
@@ -391,7 +391,7 @@
         MATCH_THRESHOLD = parseFloat(config.faceMatchThreshold) || 0.45;
 
         if (scanMode === 'no-login' && (!AUTH_TOKEN || AUTH_TOKEN === 'null' || AUTH_TOKEN.length < 10)) {
-           AUTH_TOKEN = config.readToken || '';
+          AUTH_TOKEN = config.readToken || '';
         }
 
         // เตรียม UI
@@ -410,9 +410,9 @@
         }
 
         loadingText.innerText = 'เสร็จสมบูรณ์ (Step 3/3)...';
-        
+
         // 3. ปิด Loading และเปิดระบบ GPS
-        isInitialized = true; 
+        isInitialized = true;
         overlay.style.display = 'none';
         console.log('--- System Init Complete ---');
 
@@ -434,7 +434,7 @@
     let isAiLoaded = false;
     async function ensureAiLoaded() {
       if (isAiLoaded) return true;
-      
+
       const overlay = document.getElementById('loadingOverlay');
       const text = document.getElementById('loadingText');
       overlay.style.display = 'flex';
@@ -468,10 +468,10 @@
         const resText = await res.text();
         let data;
         try {
-           data = JSON.parse(resText);
-        } catch(e) {
-           console.error('Failed to parse staff data:', resText);
-           return;
+          data = JSON.parse(resText);
+        } catch (e) {
+          console.error('Failed to parse staff data:', resText);
+          return;
         }
 
         if (Array.isArray(data)) {
@@ -537,7 +537,7 @@
       if (!isInitialized) return; // ห้ามทำงานถ้ายังโหลด Config ไม่เสร็จ
       const btn = document.getElementById('btnAction');
       const msg = document.getElementById('gpsStatusMsg');
-      
+
       if (!currentPos || locations.length === 0) {
         btn.innerText = '📍 กำลังตรวจสอบระยะทาง...';
         btn.disabled = true;
@@ -583,7 +583,7 @@
       if (currentLocScanMode === 'login' && !isRedirecting) {
         const isAuthed = sessionStorage.getItem('adminAuth') === '1';
         const adminName = sessionStorage.getItem('adminName');
-        
+
         if (!isAuthed || !adminName) {
           isRedirecting = true; // ล็อกไว้ไม่ให้ดีดซ้ำ
           btn.innerText = '🔐 กำลังพาไปหน้า Login...';
@@ -599,8 +599,8 @@
       // 3. ตรวจสอบสถานะ QR และการสแกนหน้า
       const hasQrVerified = (qrVerified || isQrMode);
       let rawVal = selectedLoc.qrRequireFace;
-      let reqFace = (String(rawVal).trim().toLowerCase() === 'true'); 
-      
+      let reqFace = (String(rawVal).trim().toLowerCase() === 'true');
+
       // แสดง Debug Info
       let debugDiv = document.getElementById('debugInfo');
       if (!debugDiv) {
@@ -621,20 +621,20 @@
 
       // กรณีที่ 2: สแกน QR แล้ว และ "ไม่ต้องสแกนหน้า" (reqFace เป็น false)
       if (!reqFace) {
-         btn.innerText = '✅ บันทึกเวลา (QR Verified)';
-         btn.className = 'btn btn-success btn-lg w-100 mt-3';
-         btn.onclick = () => {
-           const name = sessionStorage.getItem('adminName');
-           const empId = sessionStorage.getItem('employeeId');
-           if (!name || !empId) {
-             alert('⚠️ กรุณาเข้าสู่ระบบก่อนครับ');
-             window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
-             return;
-           }
-           currentMatch = { name: name, employeeId: empId };
-           submitAttendance(); 
-         };
-         return;
+        btn.innerText = '✅ บันทึกเวลา (QR Verified)';
+        btn.className = 'btn btn-success btn-lg w-100 mt-3';
+        btn.onclick = () => {
+          const name = sessionStorage.getItem('adminName');
+          const empId = sessionStorage.getItem('employeeId');
+          if (!name || !empId) {
+            alert('⚠️ กรุณาเข้าสู่ระบบก่อนครับ');
+            window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
+            return;
+          }
+          currentMatch = { name: name, employeeId: empId };
+          submitAttendance();
+        };
+        return;
       }
 
       // กรณีที่ 3: ต้องสแกนใบหน้า
@@ -711,7 +711,7 @@
     async function startQrScan() {
       const btn = document.getElementById('btnAction');
       const readerEl = document.getElementById('qrReader');
-      
+
       btn.disabled = true;
       btn.innerText = '⌛ กำลังเปิดกล้องหลัง...';
       readerEl.style.display = 'block';
@@ -722,7 +722,7 @@
 
       try {
         await html5QrCode.start(
-          { facingMode: "environment" }, 
+          { facingMode: "environment" },
           { fps: 10, qrbox: { width: 250, height: 250 } },
           async (decodedText) => {
             console.log('QR Scanned:', decodedText);
@@ -742,22 +742,22 @@
             await html5QrCode.stop();
             readerEl.style.display = 'none';
             document.getElementById('qrStatus').innerText = '';
-            
+
             // ตรวจสอบความจำเป็นในการสแกนหน้า
             const rawValue = selectedLoc.qrRequireFace;
             const reqFace = (rawValue === false || String(rawValue).trim().toLowerCase() === 'false') ? false : true;
-            
+
             console.log('QR Scan Success. Setting qrVerified=true');
             checkDistance(); // อัปเดตสถานะปุ่มในหน้าหลักไว้ด้วย
 
             if (!reqFace) {
-               const name = sessionStorage.getItem('adminName');
-               const empId = sessionStorage.getItem('employeeId');
-               currentMatch = { name: name, employeeId: empId };
-               console.log('QR-Only: Auto-submitting attendance...');
-               submitAttendance(); // บันทึกทันที!
+              const name = sessionStorage.getItem('adminName');
+              const empId = sessionStorage.getItem('employeeId');
+              currentMatch = { name: name, employeeId: empId };
+              console.log('QR-Only: Auto-submitting attendance...');
+              submitAttendance(); // บันทึกทันที!
             } else {
-               console.log('Face Scan required. Closing QR reader.');
+              console.log('Face Scan required. Closing QR reader.');
             }
           },
           (errorMessage) => { /* scan error, keep searching */ }
@@ -791,12 +791,12 @@
       const data = {
         action: actionType,
         employeeId: currentMatch.employeeId,
-        name: currentMatch.name, 
+        name: currentMatch.name,
         locationId: selectedLoc.id,
         locationName: selectedLoc.name,
         lat: currentPos.lat,
         lng: currentPos.lng,
-        qrKey: qrKey, 
+        qrKey: qrKey,
         token: AUTH_TOKEN
       };
 
@@ -807,10 +807,10 @@
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(data)
         });
-        
+
         const resText = await res.text();
         console.log('Server Response Raw:', resText);
-        
+
         let result;
         try {
           result = JSON.parse(resText);
@@ -818,9 +818,13 @@
           throw new Error('Server returned invalid JSON: ' + resText.substring(0, 100));
         }
 
-        if (result.success || result.status === 'ok') {
+        if (result.duplicate) {
+          // ลงชื่อซ้ำ — แจ้งเตือนแล้วกลับหน้าหลัก
+          alert('⚠️ ' + (result.message || 'คุณได้ลงชื่อไปแล้วในวันนี้'));
+          window.location.href = 'index.html';
+        } else if (result.success || result.status === 'ok') {
           alert('✅ บันทึกเวลาสำเร็จ!');
-          window.location.href = 'index.html'; 
+          window.location.href = 'index.html';
         } else {
           alert('❌ บันทึกไม่สำเร็จ: ' + (result.message || result.error || 'Unauthorized'));
           btn.disabled = false;

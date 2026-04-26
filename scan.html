@@ -600,8 +600,21 @@
 
         // ตรวจสอบสถานะ QR และการสแกนหน้า
         const hasQrVerified = (qrVerified || isQrMode);
-        const reqFace = (selectedLoc.qrRequireFace === false || String(selectedLoc.qrRequireFace).toLowerCase() === 'false') ? false : true;
         
+        // --- แก้ไขจุดนี้: ปรับการเช็คให้ "ถ้าไม่ใช่ TRUE ให้ถือว่าเป็น FALSE ทันที" เพื่อความปลอดภัย ---
+        let rawVal = selectedLoc.qrRequireFace;
+        let reqFace = (String(rawVal).trim().toLowerCase() === 'true'); 
+        
+        // แสดง Debug Info (จะแสดงที่มุมซ้ายล่างของจอเพื่อให้คุณเห็นค่าที่ระบบได้รับ)
+        let debugDiv = document.getElementById('debugInfo');
+        if (!debugDiv) {
+          debugDiv = document.createElement('div');
+          debugDiv.id = 'debugInfo';
+          debugDiv.style = 'position:fixed; bottom:0; left:0; background:rgba(0,0,0,0.8); color:#0f0; font-size:10px; padding:5px; z-index:9999; pointer-events:none;';
+          document.body.appendChild(debugDiv);
+        }
+        debugDiv.innerText = `Loc: ${selectedLoc.name} | QR: ${selectedLoc.qrEnabled} | ReqFace: ${reqFace} (Raw: ${rawVal})`;
+
         console.log(`[Debug] Loc: ${selectedLoc.name}, QR: ${selectedLoc.qrEnabled}, Verified: ${hasQrVerified}, ReqFace: ${reqFace}`);
 
         // กรณีที่ 1: ต้องสแกน QR แต่ยังไม่ได้สแกน
@@ -612,8 +625,8 @@
           return;
         }
 
-        // กรณีที่ 2: สแกน QR แล้ว และ "ไม่ต้องสแกนหน้า" -> ให้บันทึกเวลาทันที
-        if (!reqFace || (selectedLoc.qrEnabled && !reqFace)) {
+        // กรณีที่ 2: สแกน QR แล้ว (หรือจุดนี้ไม่ต้องสแกน QR) และ "ไม่ต้องสแกนหน้า" (reqFace เป็น false)
+        if (!reqFace) {
            btn.innerText = '✅ บันทึกเวลา (QR Verified)';
            btn.className = 'btn btn-success btn-lg w-100 mt-3';
            btn.onclick = () => {
@@ -625,12 +638,12 @@
                return;
              }
              currentMatch = { name: name, employeeId: empId };
-             submitAttendance(); // บันทึกทันที ไม่ต้องผ่าน Modal
+             submitAttendance(); 
            };
            return;
         }
 
-        // กรณีที่ 3: ต้องสแกนใบหน้า (เป็นกรณีสุดท้าย)
+        // กรณีที่ 3: ต้องสแกนใบหน้า (เฉพาะเมื่อ reqFace เป็น true เท่านั้น)
         btn.innerText = actionType === 'logAttendance' ? '📸 สแกนใบหน้าเข้างาน' : '📸 สแกนใบหน้าออกงาน';
         btn.className = 'btn btn-primary btn-lg w-100 mt-3';
         btn.onclick = startScan;

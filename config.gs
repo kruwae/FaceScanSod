@@ -276,71 +276,81 @@ function deleteSingleLocation(data) {
 }
 
 function getConfig(params) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Config');
-  let locations = [];
-  let readToken = '';
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Config');
+    let locations = [];
+    let readToken = '';
+    
+    const props = PropertiesService.getScriptProperties().getProperties();
+    let scanMode = props['SCAN_MODE'] || 'login';
+    let faceMatchThreshold = parseFloat(props['FACE_MATCH_THRESHOLD'] || '0.45');
+    let googleClientId = props['GOOGLE_OAUTH_CLIENT_ID'] || '';
 
-  if (sheet) {
-    const values = sheet.getDataRange().getValues();
-    const headers = values.length > 0 ? values[0].map(function(h) { return String(h).trim(); }) : [];
-    const headerMap = buildHeaderMap(headers);
-    const tokenCol = headerMap['Read Token'];
+    if (sheet) {
+      const values = sheet.getDataRange().getValues();
+      if (values.length > 0) {
+        const headers = values[0].map(h => String(h || '').trim());
+        const hm = buildHeaderMap(headers);
+        
+        const tokenCol = hm['Read Token'] || hm['read token'];
+        if (tokenCol && values.length > 1) {
+          readToken = String(values[1][tokenCol - 1] || '').trim();
+        }
 
-    if (tokenCol) {
-      readToken = String(sheet.getRange(2, tokenCol).getValue() || '').trim();
+        for (let i = 1; i < values.length; i++) {
+          const row = values[i];
+          const lat = parseFloat(row[hm['Latitude'] - 1]);
+          const lng = parseFloat(row[hm['Longitude'] - 1]);
+          if (isNaN(lat) || isNaN(lng)) continue;
+
+          locations.push({
+            id: String(row[hm['Id'] - 1] || ('loc-' + i)).trim(),
+            name: String(row[hm['Name'] - 1] || ('Location ' + i)).trim(),
+            lat: lat,
+            lng: lng,
+            radius: parseFloat(row[hm['Radius'] - 1]) || 100,
+            enabled: hm['Enabled'] ? (String(row[hm['Enabled'] - 1] || '').toLowerCase() !== 'false') : true,
+            qrEnabled: hm['QR Enabled'] ? (String(row[hm['QR Enabled'] - 1] || '').toLowerCase() === 'true') : false,
+            qrType: hm['QR Type'] ? String(row[hm['QR Type'] - 1] || 'static') : 'static',
+            qrInterval: hm['QR Interval'] ? parseInt(row[hm['QR Interval'] - 1] || 5) : 5,
+            qrSecret: hm['QR Secret'] ? String(row[hm['QR Secret'] - 1] || '') : '',
+            qrRequireFace: hm['QR Require Face'] ? (String(row[hm['QR Require Face'] - 1] || 'true').toLowerCase() === 'true') : true
+          });
+        }
+      }
     }
 
-    for (let i = 1; i < values.length; i++) {
-      const row = values[i];
-      // ข้ามถ้าไม่มีพิกัด lat, lng เพราะชื่อกับ id อาจจะว่างได้ในตอนแรก
-      if (!row[headerMap['Latitude'] - 1] && !row[headerMap['Longitude'] - 1]) continue;
-      locations.push({
-        id: row[headerMap['Id'] - 1] || ('loc-' + i),
-        name: row[headerMap['Name'] - 1] || ('Location ' + i),
-        lat: parseFloat(row[headerMap['Latitude'] - 1]) || 0,
-        lng: parseFloat(row[headerMap['Longitude'] - 1]) || 0,
-        radius: parseFloat(row[headerMap['Radius'] - 1]) || 100,
-        enabled: headerMap['Enabled'] ? row[headerMap['Enabled'] - 1] !== false : true,
-        qrEnabled: headerMap['QR Enabled'] ? (String(row[headerMap['QR Enabled'] - 1] || '').toLowerCase() === 'true') : false,
-        qrType: headerMap['QR Type'] ? String(row[headerMap['QR Type'] - 1] || 'static') : 'static',
-        qrInterval: headerMap['QR Interval'] ? parseInt(row[headerMap['QR Interval'] - 1] || 5) : 5,
-        qrSecret: headerMap['QR Secret'] ? String(row[headerMap['QR Secret'] - 1] || '') : '',
-        qrRequireFace: headerMap['QR Require Face'] ? (String(row[headerMap['QR Require Face'] - 1] || 'true').toLowerCase() === 'true') : true
-      });
-    }
+    let workTimes = {};
+    try {
+      workTimes = JSON.parse(props['WORK_TIMES'] || '{}');
+    } catch (e) {}
+
+    let fallbackSettings = {};
+    try {
+      fallbackSettings = JSON.parse(props['FALLBACK_SETTINGS'] || '{}');
+    } catch (e) {}
+
+    return {
+      status: 'ok',
+      locations: locations,
+      scanMode: scanMode,
+      faceMatchThreshold: faceMatchThreshold,
+      readToken: readToken,
+      googleClientId: googleClientId,
+      workTimes: workTimes,
+      fallbackSettings: {
+        enabled: fallbackSettings.enabled === true,
+        contactText: fallbackSettings.contactText || 'กรุณาติดต่อผู้ดูแลระบบ'
+      }
+    };
+  } catch (err) {
+    Logger.log('getConfig Error: ' + err.message);
+    return { 
+      status: 'error', 
+      message: err.message,
+      locations: [],
+      scanMode: 'login'
+    };
   }
-
-  let workTimes = {};
-  let fallbackSettings = {};
-
-  try {
-    workTimes = JSON.parse(PropertiesService.getScriptProperties().getProperty('WORK_TIMES') || '{}');
-  } catch (e) {
-    workTimes = {};
-  }
-
-  try {
-    fallbackSettings = JSON.parse(PropertiesService.getScriptProperties().getProperty('FALLBACK_SETTINGS') || '{}');
-  } catch (e) {
-    fallbackSettings = {};
-  }
-
-  var googleClientId = '';
-  try { googleClientId = PropertiesService.getScriptProperties().getProperty('GOOGLE_OAUTH_CLIENT_ID') || ''; } catch(e) {}
-
-  return {
-    status: 'ok',
-    apiUrl: PropertiesService.getScriptProperties().getProperty('API_URL') || '',
-    readToken: readToken,
-    googleClientId: googleClientId,
-    locations: locations,
-    workTimes: workTimes,
-    fallbackSettings: {
-      enabled: fallbackSettings.enabled === true,
-      contactText: fallbackSettings.contactText || 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งานแผนสำรอง'
-    },
-    scanMode: PropertiesService.getScriptProperties().getProperty('SCAN_MODE') || 'login',
-    faceMatchThreshold: parseFloat(PropertiesService.getScriptProperties().getProperty('FACE_MATCH_THRESHOLD') || '0.45')
-  };
 }

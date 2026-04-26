@@ -743,18 +743,20 @@
             document.getElementById('qrStatus').innerText = '';
             
             // ตรวจสอบความจำเป็นในการสแกนหน้า
-            const reqFace = String(selectedLoc.qrRequireFace).trim().toLowerCase() !== 'false';
+            const rawValue = selectedLoc.qrRequireFace;
+            const reqFace = (rawValue === false || String(rawValue).trim().toLowerCase() === 'false') ? false : true;
             
+            console.log('QR Scan Success. Setting qrVerified=true');
             checkDistance(); // อัปเดตสถานะปุ่มในหน้าหลักไว้ด้วย
 
             if (!reqFace) {
                const name = sessionStorage.getItem('adminName');
                const empId = sessionStorage.getItem('employeeId');
                currentMatch = { name: name, employeeId: empId };
-               console.log('Auto-showing confirm modal for QR-Only:', currentMatch);
+               console.log('QR-Only: Auto-opening confirmation modal...');
                showConfirmModal(currentMatch);
             } else {
-               alert('✅ ยืนยัน QR Code สำเร็จ กรุณาสแกนใบหน้าเพื่อบันทึกเวลาครับ');
+               console.log('Face Scan required. Closing QR reader.');
             }
           },
           (errorMessage) => { /* scan error, keep searching */ }

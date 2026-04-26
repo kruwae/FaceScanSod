@@ -411,8 +411,30 @@
   }
 
   // ============================================================
-  //  Render Table
+  //  Render Table & Status Calculation
   // ============================================================
+  function calculateStatus(inTime, outTime) {
+    if (!inTime || inTime === '-') return 'ไม่ระบุ';
+    
+    // ตั้งค่าเวลามาตรฐาน (สามารถเปลี่ยนเป็นดึงจาก Config ได้ในอนาคต)
+    const lateThreshold = '08:30:00';
+    const veryLateThreshold = '09:00:00';
+    
+    let status = 'ตรงเวลา';
+    
+    if (inTime > veryLateThreshold) {
+      status = 'สายมาก';
+    } else if (inTime > lateThreshold) {
+      status = 'สาย';
+    }
+    
+    if (outTime === '-' || !outTime) {
+      status += ' (ไม่สแกนออก)';
+    }
+    
+    return status;
+  }
+
   function renderTable(logs) {
     const body = document.getElementById('reportBody');
     if (logs.length === 0) {
@@ -421,19 +443,22 @@
     }
 
     body.innerHTML = logs.map((log, i) => {
-      const status = log.status || log.Status
-                   || (log.displayIn !== '-' ? 'ปกติ' : 'ไม่ระบุ');
+      const inTime = log.displayIn;
+      const outTime = log.displayOut;
+      const status = calculateStatus(inTime, outTime);
+      
       let badgeClass = 'badge-ontime';
-      if (status.includes('สาย'))                              badgeClass = 'badge-late';
-      if (status.includes('ขาด') || status.includes('ไม่ระบุ')) badgeClass = 'badge-absent';
+      if (status.includes('สายมาก')) badgeClass = 'badge-absent'; // สีแดง
+      else if (status.includes('สาย')) badgeClass = 'badge-late';  // สีเหลือง
+      if (status.includes('ไม่สแกนออก')) badgeClass += ' border-red'; // เพิ่มคลาสเน้นถ้าต้องการ
 
       return `
         <tr>
           <td style="color:var(--muted)">${i + 1}</td>
           <td class="td-name">${log.name || log.Name || '-'}</td>
           <td>${log.date || log.Date || '-'}</td>
-          <td style="color:var(--accent); font-family:monospace">${formatTimeHms(log.displayIn)}</td>
-          <td style="font-family:monospace">${formatTimeHms(log.displayOut)}</td>
+          <td style="color:var(--accent); font-family:monospace">${formatTimeHms(inTime)}</td>
+          <td style="font-family:monospace">${formatTimeHms(outTime)}</td>
           <td style="font-size:0.9em; color:var(--muted)">${log.locationName || log.Location || '-'}</td>
           <td><span class="badge ${badgeClass}">${status}</span></td>
         </tr>
@@ -442,13 +467,21 @@
   }
 
   function updateSummary(logs) {
-    document.getElementById('sumTotal').innerText   = logs.length;
-    const onTime  = logs.filter(l => (l.status || '').includes('ปกติ')).length;
-    const late    = logs.filter(l => (l.status || '').includes('สาย')).length;
-    const absent  = logs.length - onTime - late;
-    document.getElementById('sumOnTime').innerText  = onTime;
-    document.getElementById('sumLate').innerText    = late;
-    document.getElementById('sumAbsent').innerText  = absent;
+    document.getElementById('sumTotal').innerText = logs.length;
+    let onTime = 0;
+    let late = 0;
+    let absent = 0;
+
+    logs.forEach(log => {
+      const status = calculateStatus(log.displayIn, log.displayOut);
+      if (status === 'ตรงเวลา') onTime++;
+      else if (status.includes('สาย')) late++;
+      else absent++;
+    });
+
+    document.getElementById('sumOnTime').innerText = onTime;
+    document.getElementById('sumLate').innerText = late;
+    document.getElementById('sumAbsent').innerText = absent;
   }
 
   function exportToPdf() {

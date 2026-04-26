@@ -317,11 +317,11 @@ function getConfig(params) {
             lng: lng,
             radius: parseFloat(row[hm['Radius'] - 1]) || 100,
             enabled: hm['Enabled'] ? (String(row[hm['Enabled'] - 1] || '').toLowerCase() !== 'false') : true,
-            qrEnabled: hm['QR Enabled'] ? (String(row[hm['QR Enabled'] - 1] || '').toLowerCase() === 'true') : false,
-            qrType: hm['QR Type'] ? String(row[hm['QR Type'] - 1] || 'static') : 'static',
+            qrEnabled: hm['QR Enabled'] ? (String(row[hm['QR Enabled'] - 1] || '').trim().toLowerCase() === 'true') : false,
+            qrType: hm['QR Type'] ? String(row[hm['QR Type'] - 1] || 'static').trim().toLowerCase() : 'static',
             qrInterval: hm['QR Interval'] ? parseInt(row[hm['QR Interval'] - 1] || 5) : 5,
-            qrSecret: hm['QR Secret'] ? String(row[hm['QR Secret'] - 1] || '') : '',
-            qrRequireFace: hm['QR Require Face'] ? (String(row[hm['QR Require Face'] - 1] || '').toLowerCase() !== 'false') : true
+            qrSecret: hm['QR Secret'] ? String(row[hm['QR Secret'] - 1] || '').trim() : '',
+            qrRequireFace: hm['QR Require Face'] ? (String(row[hm['QR Require Face'] - 1] || '').trim().toLowerCase() !== 'false') : true
           });
         }
       }

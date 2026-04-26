@@ -308,7 +308,7 @@
 
   <script>
     // ดึง API URL จาก localStorage หรือพยายามดึงจากหน้า config
-    let API_URL = localStorage.getItem('gasApiUrl') || localStorage.getItem('GAS_API_URL') || '';
+    let API_URL = localStorage.getItem('GAS_API_URL') || localStorage.getItem('gasApiUrl') || '';
     let AUTH_TOKEN = sessionStorage.getItem('token') || sessionStorage.getItem('adminToken') || localStorage.getItem('token') || '';
 
     let locations = [];
@@ -355,8 +355,33 @@
         
         // 1. ดึงข้อมูลหน่วยบริการก่อน (เบาและเร็ว)
         document.getElementById('loadingText').innerText = 'กำลังโหลดข้อมูลหน่วยบริการ...';
-        const resConfig = await fetch(API_URL + '?action=getConfig&token=' + encodeURIComponent(AUTH_TOKEN));
-        const config = await resConfig.json();
+        
+        console.log('Fetching Config from:', API_URL);
+        
+        // เพิ่ม Timeout สำหรับการดึง Config
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 วินาที
+
+        let config;
+        try {
+          const resConfig = await fetch(API_URL + '?action=getConfig&token=' + encodeURIComponent(AUTH_TOKEN), {
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          
+          const resText = await resConfig.text();
+          console.log('Config response raw:', resText);
+          
+          try {
+            config = JSON.parse(resText);
+          } catch (e) {
+            throw new Error('Server ตอบกลับข้อมูลไม่ถูกต้อง (Invalid JSON)');
+          }
+        } catch (e) {
+          clearTimeout(timeoutId);
+          if (e.name === 'AbortError') throw new Error('การเชื่อมต่อล่าช้าเกินไป (Timeout) กรุณาลองใหม่อีกครั้ง');
+          throw e;
+        }
         
         locations = config.locations || [];
         scanMode = config.scanMode || 'login';

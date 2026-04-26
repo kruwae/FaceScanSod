@@ -448,7 +448,7 @@
         </div>
         <div class="toggle-container" style="margin-top: 10px;">
           <label style="margin-bottom: 0;">ใช้งาน QR Code</label>
-          <input type="checkbox" class="loc-qr-enabled" ${loc.qrEnabled ? 'checked' : ''} style="width: auto; margin-bottom: 0;" onchange="this.parentElement.nextElementSibling.style.display = this.checked ? 'grid' : 'none'; this.parentElement.nextElementSibling.nextElementSibling.style.display = this.checked ? 'flex' : 'none';">
+          <input type="checkbox" class="loc-qr-enabled" ${loc.qrEnabled ? 'checked' : ''} style="width: auto; margin-bottom: 0;" onchange="handleQrToggle(this)">
         </div>
         <div class="input-row qr-settings" style="display: ${loc.qrEnabled ? 'grid' : 'none'};">
           <div>
@@ -642,6 +642,20 @@
       await updateQr();
       if (type === 'dynamic') {
         qrRefreshInterval = setInterval(updateQr, 30000); // Refresh every 30s
+      }
+    }
+
+    function handleQrToggle(checkbox) {
+      const qrSettings = checkbox.parentElement.nextElementSibling;
+      const faceScanRow = qrSettings.nextElementSibling;
+      const faceCheckbox = faceScanRow.querySelector('.loc-qr-require-face');
+      
+      const isEnabled = checkbox.checked;
+      qrSettings.style.display = isEnabled ? 'grid' : 'none';
+      faceScanRow.style.display = isEnabled ? 'flex' : 'none';
+      
+      if (!isEnabled) {
+        faceCheckbox.checked = true;
       }
     }
 

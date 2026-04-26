@@ -507,12 +507,16 @@
         }
 
         if (selectedLoc.qrEnabled && selectedLoc.qrRequireFace === false) {
-           btn.innerText = '✅ ยืนยันบันทึกเวลา (ไม่ต้องสแกนหน้า)';
+           btn.innerText = '✅ ยืนยันบันทึกเวลา (QR Only)';
            btn.onclick = () => {
-             const user = { 
-               name: sessionStorage.getItem('adminName') || 'ผู้ใช้ QR Code', 
-               employeeId: sessionStorage.getItem('employeeId') || 'QR-USER' 
-             };
+             const name = sessionStorage.getItem('adminName');
+             const empId = sessionStorage.getItem('employeeId');
+             if (!name || !empId) {
+               alert('⚠️ การลงชื่อด้วย QR แบบไม่ใช้ใบหน้า ต้องเข้าสู่ระบบก่อนเพื่อยืนยันตัวตนครับ');
+               window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
+               return;
+             }
+             const user = { name: name, employeeId: empId };
              currentMatch = user;
              showConfirmModal(user);
            };

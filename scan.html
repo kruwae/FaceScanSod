@@ -257,7 +257,7 @@
       <h2>📷 บันทึกเวลาทำงาน</h2>
 
       <div class="form-group">
-        <label>เลือกหน่วยบริการ / สถานที่</label>
+        <label id="locationLabel" for="locationSelect">เลือกหน่วยบริการ / สถานที่</label>
         <select id="locationSelect" onchange="handleLocationChange()">
           <option value="">-- กำลังโหลดหน่วยบริการ --</option>
         </select>
@@ -319,19 +319,30 @@
     let isQrMode = false;
 
     async function init() {
+      console.log('Starting init()...');
       if (!API_URL) {
         alert('ยังไม่ได้ตั้งค่า API URL กรุณาตั้งค่าที่หน้า Config ก่อนครับ');
         window.location.href = 'config.html';
         return;
       }
 
+      // ป้องกันการค้าง: ถ้าโหลดนานเกิน 20 วินาที ให้แจ้งเตือน
+      const loadTimeout = setTimeout(() => {
+        const loadingText = document.getElementById('loadingText');
+        if (loadingText && document.getElementById('loadingOverlay').style.display !== 'none') {
+          loadingText.innerHTML = '<span style="color:#f87171">โหลดช้าผิดปกติ... อาจเกิดจากอินเทอร์เน็ตหรือโมเดล AI</span><br><button onclick="location.reload()" style="margin-top:10px; padding:5px 15px;">ลองโหลดใหม่</button>';
+        }
+      }, 20000);
+
       try {
         const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+        console.log('Loading AI models from:', MODEL_URL);
         await Promise.all([
           faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
         ]);
+        console.log('AI Models loaded.');
 
         document.getElementById('loadingText').innerText = 'กำลังโหลดข้อมูลพนักงาน...';
 
@@ -379,7 +390,8 @@
             if (selectedLoc) {
               select.value = selectedLoc.id;
               select.disabled = true; // ล็อกหน่วยบริการ
-              document.querySelector('label[for="locationSelect"]')?.innerText += ' (ล็อกโดย QR Code)';
+              const label = document.getElementById('locationLabel');
+              if (label) label.innerText += ' (ล็อกโดย QR Code)';
             }
           }
 
@@ -396,10 +408,13 @@
         startGpsTracking();
         checkTodayStatus();
 
+        clearTimeout(loadTimeout);
         document.getElementById('loadingOverlay').style.display = 'none';
+        console.log('Init complete.');
       } catch (e) {
-        console.error(e);
-        document.getElementById('loadingText').innerHTML = `<span style="color:#f87171">เชื่อมต่อ API ไม่ได้: ${e.message}</span><br><button onclick="window.location.href='config.html'" style="margin-top:10px; padding:5px 15px;">ไปหน้าตั้งค่า</button>`;
+        clearTimeout(loadTimeout);
+        console.error('Init failed:', e);
+        document.getElementById('loadingText').innerHTML = `<span style="color:#f87171">เกิดข้อผิดพลาด: ${e.message}</span><br><button onclick="window.location.href='config.html'" style="margin-top:10px; padding:5px 15px;">ไปหน้าตั้งค่า</button>`;
       }
     }
 

@@ -818,13 +818,20 @@
           throw new Error('Server returned invalid JSON: ' + resText.substring(0, 100));
         }
 
-        if (result.duplicate) {
-          // ลงชื่อซ้ำ — แจ้งเตือนแล้วกลับหน้าหลัก
-          alert('⚠️ ' + (result.message || 'คุณได้ลงชื่อไปแล้วในวันนี้'));
+        if (result.blocked) {
+          // ถูกบล็อก — ครั้งที่ 3 ขึ้นไป
+          alert('🚫 ' + (result.message || 'ไม่สามารถสแกนได้อีก บันทึกครบ 2 ครั้งแล้ววันนี้'));
           window.location.href = 'index.html';
+
+        } else if (result.duplicate) {
+          // ซ้ำ action เดิม (เช่น ออกงาน 2 ครั้ง)
+          alert('⚠️ ' + (result.message || 'คุณได้ลงชื่อประเภทนี้ไปแล้วในวันนี้'));
+          window.location.href = 'index.html';
+
         } else if (result.success || result.status === 'ok') {
           alert('✅ บันทึกเวลาสำเร็จ!');
           window.location.href = 'index.html';
+
         } else {
           alert('❌ บันทึกไม่สำเร็จ: ' + (result.message || result.error || 'Unauthorized'));
           btn.disabled = false;

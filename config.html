@@ -470,7 +470,7 @@
         </div>
         <div class="toggle-container" style="margin-top: 10px; display: ${loc.qrEnabled ? 'flex' : 'none'};">
           <label style="margin-bottom: 0;">ต้องสแกนใบหน้า (Face Scan)</label>
-          <input type="checkbox" class="loc-qr-require-face" ${loc.qrRequireFace !== false ? 'checked' : ''} style="width: auto; margin-bottom: 0;">
+          <input type="checkbox" class="loc-qr-require-face" ${ (loc.qrRequireFace === false || String(loc.qrRequireFace).toLowerCase() === 'false') ? '' : 'checked' } style="width: auto; margin-bottom: 0;">
         </div>
         <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
            <button class="btn" style="width: auto; background:#818cf8; color:white; font-size:12px; padding: 6px 12px;" onclick="showQrCode('${loc.id}', this.parentElement.parentElement)">🖼️ ดู QR Code</button>

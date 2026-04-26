@@ -64,6 +64,12 @@ function parseLocations(value) {
 }
 
 function normalizeLocation(loc, index) {
+  // ตรวจสอบค่า qrRequireFace ให้แม่นยำ (รองรับทั้ง boolean และ string)
+  let reqFace = true; 
+  if (loc.qrRequireFace === false || String(loc.qrRequireFace).toLowerCase() === 'false') {
+    reqFace = false;
+  }
+
   return {
     id: loc.id || ('loc-' + (index + 1)),
     name: loc.name || ('Location ' + (index + 1)),
@@ -74,7 +80,7 @@ function normalizeLocation(loc, index) {
     qrType: loc.qrType || 'static',
     qrInterval: parseInt(loc.qrInterval) || 5,
     qrSecret: loc.qrSecret || '',
-    qrRequireFace: loc.qrRequireFace === true || String(loc.qrRequireFace).toLowerCase() === 'true'
+    qrRequireFace: reqFace
   };
 }
 
@@ -315,7 +321,7 @@ function getConfig(params) {
             qrType: hm['QR Type'] ? String(row[hm['QR Type'] - 1] || 'static') : 'static',
             qrInterval: hm['QR Interval'] ? parseInt(row[hm['QR Interval'] - 1] || 5) : 5,
             qrSecret: hm['QR Secret'] ? String(row[hm['QR Secret'] - 1] || '') : '',
-            qrRequireFace: hm['QR Require Face'] ? (String(row[hm['QR Require Face'] - 1] || 'true').toLowerCase() === 'true') : true
+            qrRequireFace: hm['QR Require Face'] ? (String(row[hm['QR Require Face'] - 1] || '').toLowerCase() !== 'false') : true
           });
         }
       }

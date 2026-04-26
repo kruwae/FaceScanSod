@@ -600,7 +600,7 @@
 
         // ตรวจสอบสถานะ QR และการสแกนหน้า
         const hasQrVerified = (qrVerified || isQrMode);
-        const reqFace = String(selectedLoc.qrRequireFace).trim().toLowerCase() !== 'false';
+        const reqFace = (selectedLoc.qrRequireFace === false || String(selectedLoc.qrRequireFace).toLowerCase() === 'false') ? false : true;
         
         console.log(`[Debug] Loc: ${selectedLoc.name}, QR: ${selectedLoc.qrEnabled}, Verified: ${hasQrVerified}, ReqFace: ${reqFace}`);
 

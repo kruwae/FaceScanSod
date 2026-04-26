@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Developer Guide | Technical Documentation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <script src="js/api-config.js"></script>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --bg: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.8);
+      --code-bg: #000000;
+      --text: #f1f5f9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 20px;
+    }
+    .container { max-width: 1000px; margin: 0 auto; display: none; } /* ซ่อนไว้ก่อนเช็คสิทธิ์ */
+    h1 { color: var(--primary); margin-bottom: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+    h2 { margin-top: 30px; color: #a5b4fc; }
+    .section { background: var(--card-bg); padding: 25px; border-radius: 16px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    pre { background: var(--code-bg); padding: 15px; border-radius: 10px; overflow-x: auto; font-family: 'Fira Code', monospace; font-size: 14px; color: #10b981; border: 1px solid #1e293b; margin: 10px 0; }
+    code { font-family: 'Fira Code', monospace; background: rgba(0,0,0,0.3); padding: 2px 5px; border-radius: 4px; color: #f472b6; }
+    table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    th, td { padding: 12px; border: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.9em; }
+    th { background: rgba(255,255,255,0.05); color: var(--primary); }
+    .badge { padding: 3px 8px; border-radius: 5px; font-size: 0.8em; font-weight: bold; }
+    .get { background: #0ea5e9; color: white; }
+    .post { background: #10b981; color: white; }
+    .btn-back { display: inline-block; padding: 10px 20px; background: var(--primary); color: white; text-decoration: none; border-radius: 10px; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <!-- ระบบตรวจสอบสิทธิ์ -->
+  <script>
+    if (sessionStorage.getItem('adminAuth') !== '1') {
+      alert('🔒 หน้านี้สำหรับนักพัฒนา/ผู้ดูแลระบบเท่านั้น กรุณาเข้าสู่ระบบก่อนครับ');
+      window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelector('.container').style.display = 'block';
+      });
+    }
+  </script>
+
+  <div class="container">
+    <a href="index.html" class="btn-back">🔙 กลับหน้าหลัก</a>
+    <h1>👨‍💻 คู่มือสำหรับนักพัฒนา (Developer Guide)</h1>
+    
+    <div class="section">
+      <h2>🚀 ภาพรวมระบบ (System Architecture)</h2>
+      <p>ระบบนี้เป็น Static Web Application ที่สื่อสารกับ <strong>Google Apps Script (GAS)</strong> เป็น Backend ผ่าน REST API โดยข้อมูลทั้งหมดถูกจัดเก็บใน <strong>Google Sheets</strong></p>
+      <ul>
+        <li><strong>Frontend:</strong> HTML/JS/CSS (โฮสต์บน Vercel/Netlify)</li>
+        <li><strong>AI Engine:</strong> face-api.js (SSD MobileNet V1)</li>
+        <li><strong>Database:</strong> Google Sheets</li>
+        <li><strong>Backend:</strong> Google Apps Script (Web App)</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>📡 รายการ API (Endpoint Specification)</h2>
+      <p>Base URL: <code>API_URL</code> (กำหนดใน js/api-config.js)</p>
+      
+      <table>
+        <tr><th>Action</th><th>Method</th><th>Description</th></tr>
+        <tr><td><code>getConfig</code></td><td><span class="badge get">GET</span></td><td>ดึงค่า Config, จุดบริการ และ Token สำหรับ No-Login</td></tr>
+        <tr><td><code>getKnownFaces</code></td><td><span class="badge get">GET</span></td><td>ดึงข้อมูล Face Descriptor ของพนักงานทั้งหมด</td></tr>
+        <tr><td><code>logAttendance</code></td><td><span class="badge post">POST</span></td><td>บันทึกเวลาเข้า/ออกงาน (รองรับ Face/QR Verification)</td></tr>
+        <tr><td><code>registerUser</code></td><td><span class="badge post">POST</span></td><td>ลงทะเบียนใบหน้าใหม่ และบันทึกลง Sheet staffOS</td></tr>
+        <tr><td><code>saveConfig</code></td><td><span class="badge post">POST</span></td><td>อัปเดตการตั้งค่าระบบและจุดบริการ (Admin Only)</td></tr>
+      </table>
+
+      <h3>ตัวอย่างการเรียก API (POST Request):</h3>
+      <pre>
+fetch(API_URL, {
+  method: 'POST',
+  body: JSON.stringify({
+    action: 'logAttendance',
+    employeeId: 'EMP001',
+    location: 'Office',
+    type: 'IN',
+    method: 'QR_FACE' // หรือ QR_ONLY
+  })
+});</pre>
+    </div>
+
+    <div class="section">
+      <h2>📊 โครงสร้างข้อมูล (Data Structure)</h2>
+      <p>คอลัมน์สำคัญในชีท <strong>Config</strong> (Column Index 0-indexed):</p>
+      <ul>
+        <li><code>[1] Name</code>: ชื่อจุดบริการ</li>
+        <li><code>[2-3] Lat/Lng</code>: พิกัดอ้างอิง</li>
+        <li><code>[13] QR Require Face</code>: <br> - <code>TRUE</code>: ต้องสแกนหน้าต่อ <br> - <code>FALSE</code>: บันทึกทันที</li>
+        <li><code>[14] Scan Mode</code>: <br> - <code>login</code>: บังคับ Login <br> - <code>no-login</code>: สแกนอิสระ</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>🔒 ระบบความปลอดภัย (Security)</h2>
+      <ul>
+        <li><strong>API Protection:</strong> ใช้ระบบ <code>AUTH_TOKEN</code> (JWT-like) ในการส่งคำขอแก้ไขข้อมูล</li>
+        <li><strong>Geofencing:</strong> ตรวจสอบพิกัดที่ฝั่ง Client ก่อนแสดงปุ่ม และตรวจสอบซ้ำที่ฝั่ง Server (ถ้าต้องการ)</li>
+        <li><strong>Admin Auth:</strong> ใช้ <code>sessionStorage</code> ในการเก็บสถานะ Login ชั่วคราว (ล้างเมื่อปิด Tab)</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>🛠 การพัฒนาต่อ (Contribution)</h2>
+      <p>หากต้องการเพิ่มฟีเจอร์:</p>
+      <ol>
+        <li>แก้ไข <strong>Backend:</strong> อัปเดตฟังก์ชันในไฟล์ <code>.gs</code> และทำการ Deploy New Version ใน GAS</li>
+        <li>แก้ไข <strong>Frontend:</strong> อัปเดต HTML/JS และ Push ขึ้น GitHub/Vercel</li>
+        <li><strong>AI Models:</strong> หากต้องการเปลี่ยนโมเดล AI สามารถแก้ไขได้ใน <code>scan.html</code> ส่วน <code>faceapi.nets</code></li>
+      </ol>
+    </div>
+
+    <footer style="text-align: center; color: #64748b; font-size: 0.8em; margin-top: 50px;">
+      &copy; 2026 FaceScanSod Technical Documentation.
+    </footer>
+  </div>
+</body>
+</html>

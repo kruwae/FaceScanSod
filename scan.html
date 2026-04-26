@@ -410,18 +410,21 @@
         }
 
         // จัดการ Token สำหรับโหมด No-Login
-        if (scanMode === 'no-login' && (!AUTH_TOKEN || AUTH_TOKEN.length < 20)) {
+        if (scanMode === 'no-login' && (!AUTH_TOKEN || AUTH_TOKEN === 'null' || AUTH_TOKEN === 'undefined' || AUTH_TOKEN.length < 10)) {
            AUTH_TOKEN = config.readToken || '';
         }
 
         if (adminName && AUTH_TOKEN && scanMode === 'login') {
           const badge = document.getElementById('loggedInUserBadge');
-          badge.innerText = '👤 ผู้ใช้งาน: ' + adminName;
-          badge.style.display = 'block';
+          if (badge) {
+            badge.innerText = '👤 ผู้ใช้งาน: ' + adminName;
+            badge.style.display = 'block';
+          }
         }
 
         const select = document.getElementById('locationSelect');
         if (locations.length > 0) {
+          console.log('Populating locations dropdown...');
           select.innerHTML = locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
           
           const urlParams = new URLSearchParams(window.location.search);
@@ -429,7 +432,7 @@
           const urlMode = urlParams.get('mode');
           qrKey = urlParams.get('key');
 
-          if (urlMode === 'qr' && urlLocId) {
+          if ((urlMode === 'qr' || isQrMode) && urlLocId) {
             isQrMode = true;
             selectedLoc = locations.find(l => l.id == urlLocId);
             if (selectedLoc) {
@@ -447,19 +450,25 @@
           updateTargetGpsDisplay();
         }
 
-        // 2. ข้ามการโหลด AI ในตอนเริ่มต้น (จะโหลดเมื่อจำเป็นต้องสแกนใบหน้าเท่านั้น)
-        console.log('Skipping initial AI load. Will load on-demand.');
+        // 2. ข้ามการโหลด AI ในตอนเริ่มต้น
+        console.log('Finalizing initialization...');
 
-        startGpsTracking();
-        checkTodayStatus();
-
+        // ย้ายการปิด Loading มาไว้ก่อนเพื่อความลื่นไหล
         clearTimeout(loadTimeout);
         document.getElementById('loadingOverlay').style.display = 'none';
+        
+        // เริ่มระบบ GPS และตรวจสอบสถานะ (ทำงานแบบเบื้องหลัง)
+        try {
+          startGpsTracking();
+          checkTodayStatus();
+        } catch (e) { console.warn('Background tasks failed', e); }
+
         console.log('Init complete.');
       } catch (e) {
         clearTimeout(loadTimeout);
         console.error('Init failed:', e);
-        document.getElementById('loadingText').innerHTML = `<span style="color:#f87171">เกิดข้อผิดพลาด: ${e.message}</span><br><button onclick="location.reload()" style="margin-top:10px; padding:5px 15px;">ลองโหลดใหม่</button>`;
+        document.getElementById('loadingOverlay').style.display = 'none'; // ปิดเพื่อให้เห็นปุ่มแก้ไข
+        alert('❌ โหลดหน้าจอไม่สำเร็จ: ' + e.message);
       }
     }
 

@@ -524,6 +524,24 @@
         msg.className = 'gps-status-msg status-ok';
         btn.disabled = false;
         
+        // ตรวจสอบความจำเป็นในการ Login ตามเงื่อนไขที่คุณต้องการ
+        if (selectedLoc.qrEnabled) {
+          // 1. กรณีใช้ QR Code: ต้อง Login เสมอ
+          if (!sessionStorage.getItem('adminName')) {
+            alert('⚠️ หน่วยบริการนี้ใช้ระบบ QR Code เพื่อยืนยันตัวตน จำเป็นต้องเข้าสู่ระบบก่อนครับ');
+            window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
+            return;
+          }
+        } else {
+          // 2. กรณีสแกนหน้าอย่างเดียว: ตรวจสอบโหมดการสแกนรวม
+          if (scanMode === 'login' && !sessionStorage.getItem('adminName')) {
+            alert('⚠️ หน่วยบริการนี้ต้องเข้าสู่ระบบก่อนสแกนใบหน้าครับ');
+            window.location.href = 'login.html?to=' + encodeURIComponent(window.location.href);
+            return;
+          }
+          // หาก scanMode === 'no-login' จะข้ามไปแสดงหน้าสแกนหน้าได้ตามปกติครับ
+        }
+
         // ตรวจสอบว่ามีข้อมูล QR หรือยัง (จากการสแกนในแอป หรือจาก URL)
         const hasQr = (qrVerified || isQrMode);
 

@@ -10,4 +10,17 @@ if (typeof window !== 'undefined') {
   window.GAS_API_URL = GAS_API_URL;
   window.GOOGLE_OAUTH_CLIENT_ID = GOOGLE_OAUTH_CLIENT_ID;
   window.GOOGLE_CLIENT_ID = GOOGLE_OAUTH_CLIENT_ID;
+
+  // เขียนลง localStorage ทันที เพื่อให้ทุกเครื่อง/browser ได้ค่าโดยอัตโนมัติ
+  // ไม่ต้องตั้งค่าผ่าน config.html ก่อนอีกต่อไป
+  try {
+    if (!localStorage.getItem('GAS_API_URL')) {
+      localStorage.setItem('GAS_API_URL', GAS_API_URL);
+    }
+    if (!localStorage.getItem('gasApiUrl')) {
+      localStorage.setItem('gasApiUrl', GAS_API_URL);
+    }
+  } catch(e) {
+    console.warn('[api-config] localStorage unavailable:', e.message);
+  }
 }

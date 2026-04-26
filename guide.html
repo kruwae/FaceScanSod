@@ -3,473 +3,210 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>วิธีการใช้เว็บแอปนี้</title>
+  <title>คู่มือการใช้งาน | ระบบบันทึกเวลาสแกนใบหน้า</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <script src="js/api-config.js"></script>
   <style>
+    :root {
+      --primary: #6366f1;
+      --secondary: #06b6d4;
+      --accent: #f59e0b;
+      --bg: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --text: #f1f5f9;
+      --text-dim: #94a3b8;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: 'Sarabun', sans-serif;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1b2a 100%);
-      color: #e2e8f0;
-      padding: 28px 16px 56px;
-      position: relative;
-      overflow-x: hidden;
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.1) 0px, transparent 50%);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 20px;
     }
 
-    body::before, body::after {
-      content: '';
-      position: fixed;
-      border-radius: 50%;
-      filter: blur(90px);
-      opacity: 0.12;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    body::before {
-      width: 360px;
-      height: 360px;
-      background: #6366f1;
-      top: -120px;
-      left: -100px;
-    }
-
-    body::after {
-      width: 320px;
-      height: 320px;
-      background: #06b6d4;
-      right: -90px;
-      bottom: -80px;
-    }
-
-    .page-wrap {
-      width: 100%;
-      max-width: 920px;
+    .container {
+      max-width: 900px;
       margin: 0 auto;
-      position: relative;
-      z-index: 1;
     }
 
-    .hero-card,
-    .content-card {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 24px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      box-shadow: 0 18px 50px rgba(0,0,0,0.2);
-    }
-
-    .hero-card {
-      padding: 28px 22px;
-      margin-bottom: 18px;
-      animation: fadeInDown 0.5s ease;
-    }
-
-    .hero-icon {
-      font-size: 42px;
-      margin-bottom: 10px;
-      display: inline-block;
+    header {
+      text-align: center;
+      padding: 40px 0;
     }
 
     h1 {
-      font-size: 1.8em;
-      margin-bottom: 8px;
-      font-weight: 700;
+      font-size: 2.2em;
       background: linear-gradient(135deg, #a5b4fc, #e2e8f0);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      background-clip: text;
+      margin-bottom: 10px;
     }
 
-    .subtitle {
-      color: #94a3b8;
-      line-height: 1.8;
-      font-size: 0.95em;
-    }
-
-    .quick-links {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      gap: 12px;
-      margin: 18px 0 24px;
-    }
-
-    .quick-link {
-      display: block;
-      text-decoration: none;
-      padding: 14px 16px;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.05);
+    .card {
+      background: var(--card-bg);
       border: 1px solid rgba(255,255,255,0.1);
-      color: #e2e8f0;
-      transition: all 0.25s ease;
-    }
-
-    .quick-link:hover {
-      transform: translateY(-2px);
-      background: rgba(255,255,255,0.09);
-      border-color: rgba(255,255,255,0.18);
-    }
-
-    .quick-link strong {
-      display: block;
-      margin-bottom: 4px;
-      color: #f8fafc;
-    }
-
-    .quick-link span {
-      color: #94a3b8;
-      font-size: 0.88em;
-      line-height: 1.6;
-    }
-
-    .content-card {
-      padding: 22px 18px;
-      margin-bottom: 16px;
-      animation: fadeInUp 0.5s ease;
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 25px;
+      backdrop-filter: blur(10px);
     }
 
     h2 {
-      font-size: 1.2em;
-      margin-bottom: 14px;
-      color: #f8fafc;
-    }
-
-    h3 {
-      font-size: 1em;
-      margin: 18px 0 10px;
-      color: #c7d2fe;
-    }
-
-    p, li {
-      color: #cbd5e1;
-      line-height: 1.8;
-      font-size: 0.95em;
-    }
-
-    ol, ul {
-      margin-left: 20px;
-    }
-
-    li + li {
-      margin-top: 6px;
-    }
-
-    .info-box,
-    .warning-box,
-    .success-box {
-      border-radius: 16px;
-      padding: 14px 16px;
-      margin-top: 12px;
-      line-height: 1.8;
-      font-size: 0.92em;
-    }
-
-    .info-box {
-      background: rgba(59,130,246,0.12);
-      border: 1px solid rgba(59,130,246,0.25);
-      color: #dbeafe;
-    }
-
-    .warning-box {
-      background: rgba(245,158,11,0.12);
-      border: 1px solid rgba(245,158,11,0.28);
-      color: #fde68a;
-    }
-
-    .success-box {
-      background: rgba(16,185,129,0.12);
-      border: 1px solid rgba(16,185,129,0.28);
-      color: #d1fae5;
-    }
-
-    .code-block {
-      margin-top: 10px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      background: rgba(15,23,42,0.65);
-      border: 1px solid rgba(148,163,184,0.18);
-      color: #e2e8f0;
-      font-size: 0.88em;
-      overflow-x: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .browser-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 14px;
-      margin-top: 14px;
-    }
-
-    .browser-card {
-      padding: 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .browser-card h3 {
-      margin-top: 0;
-    }
-
-    .footer-links {
+      color: var(--primary);
+      margin-bottom: 20px;
       display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 22px;
-    }
-
-    .footer-link {
-      display: inline-flex;
       align-items: center;
-      gap: 6px;
-      text-decoration: none;
-      color: #e2e8f0;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 999px;
-      padding: 10px 14px;
-      transition: all 0.25s ease;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding-bottom: 10px;
     }
 
-    .footer-link:hover {
+    .step {
+      margin-bottom: 20px;
+    }
+
+    .step-num {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      border-radius: 50%;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85em;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    .highlight {
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 0.85em;
+      font-weight: bold;
+      margin-left: 5px;
+    }
+
+    .badge-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .badge-orange { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+    ul {
+      list-style-position: inside;
+      margin-left: 10px;
+    }
+
+    li { margin-bottom: 8px; }
+
+    .btn-back {
+      display: inline-block;
+      padding: 12px 24px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      text-decoration: none;
+      border-radius: 12px;
+      margin-top: 20px;
+      transition: 0.3s;
+    }
+
+    .btn-back:hover {
       background: rgba(255,255,255,0.1);
     }
 
-    .auth-badge-wrap {
-      position: fixed;
-      top: 14px;
-      right: 14px;
-      z-index: 9999;
+    code {
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #fda4af;
     }
 
-    .auth-badge-wrap .auth-badge {
-      pointer-events: auto;
-    }
-
-    @keyframes fadeInDown {
-      from { opacity: 0; transform: translateY(-18px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(18px); }
-      to { opacity: 1; transform: translateY(0); }
+    .mode-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <div class="auth-badge-wrap" id="authBadgeHost"></div>
+  <div class="container">
+    <header>
+      <h1>📚 คู่มือการใช้งานระบบ</h1>
+      <p style="color: var(--text-dim)">ระบบบันทึกเวลาสแกนใบหน้า + GPS Geofencing (Updated 2026)</p>
+    </header>
 
-  <div class="page-wrap">
-    <div class="hero-card">
-      <div class="hero-icon">📘</div>
-      <h1>วิธีการใช้เว็บแอปนี้</h1>
-      <p class="subtitle">
-        คู่มือการใช้งานระบบสแกนเข้างานด้วยใบหน้า + GPS สำหรับทั้งพนักงานและผู้ดูแลระบบ
-        รวมถึงคำแนะนำการแก้ปัญหา Google Login บน Chrome / Safari / iPhone
-      </p>
-
-      <div class="quick-links">
-        <a class="quick-link" href="scan.html">
-          <strong>📷 สแกนเข้างาน</strong>
-          <span>สำหรับพนักงานใช้งานประจำวัน</span>
-        </a>
-        <a class="quick-link" href="login.html?to=register.html">
-          <strong>👤 ลงทะเบียนพนักงาน</strong>
-          <span>สำหรับผู้ดูแลระบบ</span>
-        </a>
-        <a class="quick-link" href="login.html?to=config.html">
-          <strong>⚙️ ตั้งค่าระบบ</strong>
-          <span>ตั้งค่า API และ GPS</span>
-        </a>
-        <a class="quick-link" href="login.html?to=report.html">
-          <strong>📊 ดูรายงาน</strong>
-          <span>ตรวจสอบการลงชื่อเข้าออก</span>
-        </a>
+    <!-- ส่วนที่ 1: สำหรับพนักงาน -->
+    <div class="card">
+      <h2>👤 สำหรับพนักงาน</h2>
+      <div class="step">
+        <span class="step-num">1</span> <strong>การลงทะเบียนใบหน้า:</strong> 
+        ไปที่เมนู "ลงทะเบียนพนักงาน" เพื่อถ่ายภาพใบหน้าเข้าสู่ฐานข้อมูล AI (ทำครั้งเดียว)
+      </div>
+      <div class="step">
+        <span class="step-num">2</span> <strong>การบันทึกเวลา:</strong> 
+        เปิดหน้า "สแกนเข้า/ออกงาน" ระบบจะตรวจสอบตำแหน่ง GPS ของคุณ
+      </div>
+      <div class="step">
+        <span class="step-num">3</span> <strong>สแกน QR Code:</strong> 
+        หากหน่วยบริการมีการติดตั้ง QR Code ให้กดปุ่ม <span class="highlight">🤳 สแกน QR Code ประจำจุด</span> เพื่อยืนยันว่าคุณอยู่ที่จุดนั้นจริง
+      </div>
+      <div class="step">
+        <span class="step-num">4</span> <strong>บันทึกเวลา:</strong> 
+        หากตั้งค่าให้ต้องสแกนหน้า ระบบจะเปิดกล้องเพื่อยืนยันตัวตน หากไม่ต้องการสแกนหน้า ระบบจะบันทึกเวลาให้ทันทีหลังจากสแกน QR Code สำเร็จ
       </div>
     </div>
 
-    <div class="content-card">
-      <h2>เริ่มใช้งานครั้งแรก</h2>
-      <ol>
-        <li>ผู้ดูแลระบบเข้าเมนู <strong>ตั้งค่าระบบ</strong> เพื่อกำหนด GAS API URL และค่าตำแหน่ง GPS</li>
-        <li>ผู้ดูแลระบบเข้าเมนู <strong>ลงทะเบียนพนักงาน</strong> เพื่อบันทึกใบหน้าให้ครบหลายมุม</li>
-        <li>พนักงานเข้าเมนู <strong>สแกนเข้างาน</strong> เพื่อยืนยันตัวตนและลงเวลา</li>
-        <li>ตรวจสอบผลได้ที่เมนู <strong>รายงานการลงชื่อ</strong> และใน Google Sheets</li>
-      </ol>
+    <!-- ส่วนที่ 2: สำหรับผู้ดูแลระบบ -->
+    <div class="card">
+      <h2>⚙️ สำหรับผู้ดูแลระบบ (Admin)</h2>
+      
+      <div class="mode-box">
+        <strong>🛡️ โหมดการสแกน (Scan Mode):</strong>
+        <p style="font-size: 0.9em; margin-top: 5px;">ตั้งค่าได้ที่หน้า Config รายจุดบริการ:</p>
+        <ul>
+          <li><span class="badge badge-blue">Login Required</span> (ค่าเริ่มต้น): ผู้ใช้ต้อง Login ด้วยชื่อ/รหัสผ่านก่อนถึงจะสแกนได้ เหมาะสำหรับจุดบริการที่เน้นความปลอดภัย</li>
+          <li><span class="badge badge-orange">No-Login Mode</span>: ผู้ใช้ไม่ต้อง Login สามารถสแกนได้ทันทีเมื่ออยู่ในระยะ GPS เหมาะสำหรับจุดบริการที่ต้องการความรวดเร็ว</li>
+        </ul>
+      </div>
 
-      <div class="info-box">
-        แนะนำให้ผู้ดูแลระบบเปิดใช้งานครั้งแรกบนคอมพิวเตอร์ก่อน เพื่อให้ตรวจสอบ API, กล้อง, GPS และการล็อกอินได้ง่าย
+      <div style="margin-top: 20px;">
+        <strong>📸 การตั้งค่า QR Require Face:</strong>
+        <ul>
+          <li>ถ้าเป็น <code>TRUE</code>: หลังจากสแกน QR Code แล้ว ต้องสแกนใบหน้าต่อเพื่อยืนยัน</li>
+          <li>ถ้าเป็น <code>FALSE</code>: สแกน QR Code สำเร็จแล้วจะบันทึกเวลาให้ทันที (ไม่ต้องสแกนใบหน้า)</li>
+        </ul>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <strong>📊 รายงานและการเช็คชื่อ:</strong>
+        <p>ระบบจะคำนวณสถานะให้อัตโนมัติตามเวลาที่กำหนด (เช่น 08:30)</p>
+        <ul>
+          <li>✅ <strong>ตรงเวลา:</strong> มาก่อนหรือเท่ากับเวลาที่กำหนด</li>
+          <li>⚠️ <strong>สาย:</strong> มาหลังเวลาที่กำหนดแต่ไม่เกิน 30 นาที</li>
+          <li>🚨 <strong>สายมาก:</strong> มาสายเกิน 30 นาที</li>
+          <li>❌ <strong>ไม่สแกนออก:</strong> กรณีลงชื่อเข้าแต่ไม่มีข้อมูลการลงชื่อออก</li>
+        </ul>
       </div>
     </div>
 
-    <div class="content-card">
-      <h2>คู่มือสำหรับพนักงาน</h2>
-      <ol>
-        <li>เปิดหน้า <strong>สแกนเข้างาน</strong></li>
-        <li>กดอนุญาต <strong>Camera</strong> และ <strong>Location</strong></li>
-        <li>อยู่ในพื้นที่ที่กำหนดตามรัศมี GPS ขององค์กร</li>
-        <li>มองกล้องให้ชัดเจน แสงพอ และไม่ถูกบังใบหน้า</li>
-        <li>เมื่อระบบพบใบหน้าที่ตรงกัน ให้กดยืนยันลงเวลา</li>
-      </ol>
+    <center>
+      <a href="index.html" class="btn-back">🔙 กลับหน้าหลัก</a>
+    </center>
 
-      <div class="warning-box">
-        หากสแกนไม่ผ่าน ให้ตรวจสอบแสง, มุมกล้อง, คุณภาพอินเทอร์เน็ต, และว่าคุณอยู่ในรัศมี GPS ที่กำหนด
-      </div>
-    </div>
-
-    <div class="content-card">
-      <h2>คู่มือสำหรับผู้ดูแลระบบ</h2>
-
-      <h3>1) ตั้งค่าระบบ</h3>
-      <ol>
-        <li>เข้าเมนู <strong>ตั้งค่าระบบ</strong></li>
-        <li>ตรวจสอบว่า <strong>API URL</strong> ถูกต้อง</li>
-        <li>ดึงตำแหน่งปัจจุบันหรือกรอกพิกัดเอง</li>
-        <li>กำหนดรัศมีที่อนุญาตให้เช็คอิน</li>
-        <li>บันทึกการตั้งค่าทั้งหมด</li>
-      </ol>
-
-      <h3>2) ลงทะเบียนพนักงาน</h3>
-      <ol>
-        <li>เข้าเมนู <strong>ลงทะเบียนพนักงาน</strong></li>
-        <li>กรอกชื่อพนักงาน</li>
-        <li>บันทึกใบหน้าอย่างน้อย 3 มุม เช่น ตรง, ซ้ายเล็กน้อย, ขวาเล็กน้อย</li>
-      </ol>
-
-      <ul>
-        <li>สามารถเข้าด้วย <strong>รหัสแอดมิน</strong> หรือ <strong>Gmail</strong></li>
-        <li>หาก Google Login ใช้งานไม่ได้บนบางเครื่อง ให้ใช้รหัสแอดมินแทนชั่วคราว</li>
-      </ul>
-
-      <h3>4) ระบบลงชื่อด้วย QR Code</h3>
-      <ol>
-        <li>ไปที่หน้า <strong>ตั้งค่าระบบ</strong></li>
-        <li>ที่รายการหน่วยบริการ กดปุ่ม <strong>🖼️ ดู QR Code</strong></li>
-        <li>เลือกประเภทเป็น <strong>Static</strong> (ภาพเดียวถาวร) หรือ <strong>Dynamic</strong> (รหัสเปลี่ยนตามเวลา)</li>
-        <li>หากเลือก Dynamic สามารถกำหนดรอบเวลาได้ (5, 10, 15, 20 นาที)</li>
-        <li>พิมพ์ภาพ QR Code ไปติดที่หน่วยบริการ หรือเปิดทิ้งไว้บนหน้าจอ Tablet</li>
-      </ol>
-      <div class="info-box">
-        พนักงานที่สแกน QR Code ระบบจะล็อกชื่อหน่วยบริการให้ทันที และตรวจสอบพิกัด GPS ควบคู่กันไป
-      </div>
-    </div>
-
-    <div class="content-card">
-      <h2>การแก้ปัญหา Google Login ใช้ได้บางเครื่อง บางเครื่องใช้ไม่ได้</h2>
-      <p>
-        อาการนี้มักเกิดจากนโยบายของ browser เกี่ยวกับ third-party cookies, popups,
-        cross-site tracking หรือ extension ที่บล็อกการทำงานของ Google Sign-In
-      </p>
-
-      <div class="success-box">
-        ถ้าพบว่าเครื่องหนึ่งใช้ Gmail login ได้ แต่อีกเครื่องใช้ไม่ได้ ทั้งที่เป็นเว็บเดียวกัน
-        แปลว่าส่วนใหญ่ปัญหาอยู่ที่การตั้งค่า browser / device ไม่ใช่รหัสแอดมินหรือ API หลักของระบบ
-      </div>
-
-      <div class="browser-grid">
-        <div class="browser-card">
-          <h3>🔧 Chrome บน Mac</h3>
-          <ol>
-            <li>อัปเดต Chrome ที่ <code>chrome://settings/help</code></li>
-            <li>ไปที่ <code>chrome://settings/cookies</code></li>
-            <li>เปิด <strong>Allow all cookies</strong> ชั่วคราวสำหรับการทดสอบ หรืออย่างน้อยปิดการ block third-party cookies</li>
-            <li>ไปที่ <code>chrome://settings/content/popups</code></li>
-            <li>เพิ่มเว็บของคุณ เช่น <code>https://face-scan-sod.vercel.app</code> เป็น Allowed</li>
-            <li>ไปที่ <code>chrome://settings/content/javascript</code> แล้วตรวจว่า JavaScript เป็น Allowed</li>
-            <li>ลองปิด extension เช่น AdBlock, uBlock, Ghostery, Privacy Badger</li>
-            <li>หากยังไม่ได้ ให้ลอง Incognito และล้าง cache/cookies</li>
-          </ol>
-        </div>
-
-        <div class="browser-card">
-          <h3>📱 Chrome บน iPhone</h3>
-          <ol>
-            <li>ไปที่ <strong>Settings → Chrome</strong></li>
-            <li>เปิด <strong>Allow Cross-Website Tracking</strong></li>
-            <li>จากนั้นไปที่ <strong>Settings → Safari</strong></li>
-            <li>ตั้งค่า <strong>Block All Cookies = OFF</strong></li>
-            <li>ตั้งค่า <strong>Prevent Cross-Site Tracking = OFF</strong> ชั่วคราวเพื่อทดสอบ</li>
-            <li>ตั้งค่า <strong>Block Pop-ups = OFF</strong></li>
-          </ol>
-          <div class="info-box">
-            Chrome บน iPhone ใช้ engine เดียวกับ Safari ดังนั้นต้องดูการตั้งค่าของ Safari ด้วย
-          </div>
-        </div>
-
-        <div class="browser-card">
-          <h3>🍏 Safari บน Mac</h3>
-          <ol>
-            <li>Safari → Settings → Advanced → เปิด <strong>Show Develop menu</strong></li>
-            <li>Safari → Settings → Privacy</li>
-            <li>ตั้งค่า <strong>Block all cookies = OFF</strong></li>
-            <li>ตั้งค่า <strong>Prevent cross-site tracking = OFF</strong> ชั่วคราวเพื่อทดสอบ</li>
-            <li>Safari → Settings → Websites → Pop-up Windows</li>
-            <li>อนุญาตเว็บของคุณเป็น <strong>Allow</strong></li>
-            <li>Develop → <strong>Empty Caches</strong></li>
-          </ol>
-        </div>
-
-        <div class="browser-card">
-          <h3>📱 Safari บน iPhone</h3>
-          <ol>
-            <li>ไปที่ <strong>Settings → Safari</strong></li>
-            <li>ตั้งค่า <strong>Block All Cookies = OFF</strong></li>
-            <li>ตั้งค่า <strong>Prevent Cross-Site Tracking = OFF</strong> ชั่วคราวเพื่อทดสอบ</li>
-            <li>ตั้งค่า <strong>Block Pop-ups = OFF</strong></li>
-            <li>หากยังไม่ได้ ให้เลือก <strong>Clear History and Website Data</strong></li>
-          </ol>
-        </div>
-      </div>
-
-      <h3>โดเมนที่ควรตรวจใน Google Cloud Console</h3>
-      <p>
-        ใน OAuth Client ของ Google ควรมี <strong>Authorized JavaScript origins</strong>
-        ตรงกับโดเมนที่ใช้งานจริง เช่น:
-      </p>
-      <div class="code-block">https://face-scan-sod.vercel.app</div>
-    </div>
-
-    <div class="content-card">
-      <h2>ถ้า Google Login ยังไม่ได้ ให้ทำอย่างไร</h2>
-      <ol>
-        <li>ลองใช้ <strong>รหัสแอดมิน</strong> ก่อน เพื่อให้ทำงานต่อได้ทันที</li>
-        <li>ทดสอบบน Chrome ล่าสุดแบบไม่มี extension</li>
-        <li>อนุญาต cookies, popups และ cross-site tracking ตามคู่มือด้านบน</li>
-        <li>ล้าง cache/cookies แล้วลองใหม่</li>
-        <li>ตรวจว่าใช้งานผ่านโดเมนจริง ไม่ใช่ browser ภายในแอปอื่น</li>
-      </ol>
-    </div>
-
-    <div class="footer-links">
-      <a class="footer-link" href="index.html">← กลับเมนูหลัก</a>
-      <a class="footer-link" href="scan.html">📷 ไปหน้าสแกนเข้างาน</a>
-      <a class="footer-link" href="login.html?to=config.html">⚙️ ไปหน้าตั้งค่าระบบ</a>
-    </div>
+    <footer style="text-align: center; margin-top: 40px; color: var(--text-dim); font-size: 0.8em;">
+      &copy; 2026 FaceScanSod System. All rights reserved.
+    </footer>
   </div>
-
-  <script>
-    function renderAuthBadge() {
-      const host = document.getElementById('authBadgeHost');
-      if (!host) return;
-      const isAuthedNow = sessionStorage.getItem('adminAuth') === '1';
-      if (!isAuthedNow) {
-        host.innerHTML = '';
-        return;
-      }
-      const role = (sessionStorage.getItem('adminRole') || 'admin').trim() || 'admin';
-      const name = (sessionStorage.getItem('adminName') || '').trim() || 'Admin';
-      host.innerHTML = '<div class="auth-badge" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.28);color:#c7d2fe;font-size:0.82em;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.18)">' + '<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block"></span>' + '<span>' + name + '</span>' + '<span style="opacity:0.7">•</span>' + '<span>' + role + '</span>' + '</div>';
-    }
-
-    document.addEventListener('DOMContentLoaded', renderAuthBadge);
-  </script>
 </body>
 </html>

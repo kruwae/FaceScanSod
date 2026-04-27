@@ -285,8 +285,9 @@
         <div class="form-group">
           <label>ความเข้มงวดในการตรวจจับ (MATCH_THRESHOLD)</label>
           <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
-             <input type="range" id="faceMatchThreshold" min="0.2" max="0.8" step="0.05" value="0.45" style="margin-bottom: 0;" oninput="updateThresholdValue(this.value)">
-             <span id="thresholdValue" style="font-weight: bold; color: #818cf8; min-width: 40px;">0.45</span>
+            <input type="range" id="faceMatchThreshold" min="0.2" max="0.8" step="0.05" value="0.45"
+              style="margin-bottom: 0;" oninput="updateThresholdValue(this.value)">
+            <span id="thresholdValue" style="font-weight: bold; color: #818cf8; min-width: 40px;">0.45</span>
           </div>
           <div style="font-size: 0.75em; color: #94a3b8; line-height: 1.4;">
             • <b>0.35:</b> เข้มงวดมาก (ความปลอดภัยสูง)<br>
@@ -470,7 +471,7 @@
         </div>
         <div class="toggle-container" style="margin-top: 10px; display: ${loc.qrEnabled ? 'flex' : 'none'};">
           <label style="margin-bottom: 0;">ต้องสแกนใบหน้า (Face Scan)</label>
-          <input type="checkbox" class="loc-qr-require-face" ${ (loc.qrRequireFace === false || String(loc.qrRequireFace).toLowerCase() === 'false') ? '' : 'checked' } style="width: auto; margin-bottom: 0;">
+          <input type="checkbox" class="loc-qr-require-face" ${(loc.qrRequireFace === false || String(loc.qrRequireFace).toLowerCase() === 'false') ? '' : 'checked'} style="width: auto; margin-bottom: 0;">
         </div>
         <div class="input-row" style="margin-top: 10px;">
           <div>
@@ -496,11 +497,11 @@
       const token = getAuthToken();
       if (!apiUrl) return alert('กรุณาใส่ API URL');
 
-      const scanMode = document.getElementById('scanMode').value;
+      const locScanMode = rowEl.querySelector('.loc-scan-mode').value;
       const qrEnabled = rowEl.querySelector('.loc-qr-enabled').checked;
 
-      if (qrEnabled && scanMode === 'no-login') {
-        Swal.fire('คำเตือน', 'หากต้องการใช้ QR Code กรุณาปรับ "โหมดการสแกน" ด้านบนเป็น "ต้อง Login ก่อน" เพื่อยืนยันตัวตนพนักงานครับ', 'warning');
+      if (qrEnabled && locScanMode === 'no-login') {
+        Swal.fire('คำเตือน', 'หน่วยบริการนี้เปิด QR แต่ตั้งโหมดเป็น no-login กรุณาเลือก "ต้อง Login ก่อน" ในหน่วยบริการนี้', 'warning');
         return;
       }
 
@@ -571,13 +572,16 @@
 
       const scanMode = document.getElementById('scanMode').value;
       const items = Array.from(locationsBox.querySelectorAll('.location-item'));
-      
-      const hasQr = items.some(item => item.querySelector('.loc-qr-enabled').checked);
-      if (hasQr && scanMode === 'no-login') {
-        Swal.fire('คำเตือน', 'พบการเปิดใช้งาน QR Code ในบางจุดบริการ กรุณาปรับ "โหมดการสแกน" เป็น "ต้อง Login ก่อน" เพื่อยืนยันตัวตนพนักงานครับ', 'warning');
+
+      const conflictLoc = items.find(item =>
+        item.querySelector('.loc-qr-enabled').checked &&
+        item.querySelector('.loc-scan-mode').value === 'no-login'
+      );
+      if (conflictLoc) {
+        const name = conflictLoc.querySelector('.loc-name').value;
+        Swal.fire('คำเตือน', `หน่วยบริการ "${name}" เปิด QR แต่ตั้งโหมดเป็น no-login กรุณาแก้ไขก่อนบันทึก`, 'warning');
         return;
       }
-
       const locations = items.map(item => ({
         id: item.dataset.id,
         name: item.querySelector('.loc-name').value,
@@ -627,12 +631,12 @@
 
     async function showQrCode(locId, rowEl) {
       if (!locId) return Swal.fire('คำเตือน', 'กรุณาบันทึกหน่วยบริการก่อนสร้าง QR Code', 'warning');
-      
+
       const name = rowEl.querySelector('.loc-name').value;
       const type = rowEl.querySelector('.loc-qr-type').value;
       const apiUrl = document.getElementById('apiUrl').value.trim();
       const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
-      
+
       if (qrRefreshInterval) clearInterval(qrRefreshInterval);
 
       async function updateQr() {
@@ -647,14 +651,14 @@
             if (data.status === 'ok') {
               key = data.key;
               const exp = new Date(data.expiresAt);
-              document.getElementById('qrInfo').innerText = `ประเภท: Dynamic (จะเปลี่ยนใหม่ตอน ${exp.getHours().toString().padStart(2,'0')}:${exp.getMinutes().toString().padStart(2,'0')}:${exp.getSeconds().toString().padStart(2,'0')})`;
+              document.getElementById('qrInfo').innerText = `ประเภท: Dynamic (จะเปลี่ยนใหม่ตอน ${exp.getHours().toString().padStart(2, '0')}:${exp.getMinutes().toString().padStart(2, '0')}:${exp.getSeconds().toString().padStart(2, '0')})`;
             }
           } catch (e) { console.error('Failed to fetch dynamic key', e); }
         }
 
         if (!key) {
-           if (type === 'static') Swal.fire('คำเตือน', 'ไม่พบรหัสลับ กรุณากดบันทึกก่อนครับ', 'warning');
-           return;
+          if (type === 'static') Swal.fire('คำเตือน', 'ไม่พบรหัสลับ กรุณากดบันทึกก่อนครับ', 'warning');
+          return;
         }
 
         const qrUrl = `${baseUrl}/scan.html?locId=${locId}&mode=qr&key=${key}`;
@@ -666,7 +670,7 @@
       document.getElementById('qrTitle').innerText = name;
       if (type === 'static') document.getElementById('qrInfo').innerText = `ประเภท: Static (ถาวร)`;
       document.getElementById('qrModal').style.display = 'flex';
-      
+
       await updateQr();
       if (type === 'dynamic') {
         qrRefreshInterval = setInterval(updateQr, 30000); // Refresh every 30s
@@ -677,11 +681,11 @@
       const qrSettings = checkbox.parentElement.nextElementSibling;
       const faceScanRow = qrSettings.nextElementSibling;
       const faceCheckbox = faceScanRow.querySelector('.loc-qr-require-face');
-      
+
       const isEnabled = checkbox.checked;
       qrSettings.style.display = isEnabled ? 'grid' : 'none';
       faceScanRow.style.display = isEnabled ? 'flex' : 'none';
-      
+
       if (!isEnabled) {
         faceCheckbox.checked = true;
       }
@@ -705,9 +709,9 @@
       } catch (e) { return ''; }
     }
 
-    function closeQrModal() { 
+    function closeQrModal() {
       if (qrRefreshInterval) clearInterval(qrRefreshInterval);
-      document.getElementById('qrModal').style.display = 'none'; 
+      document.getElementById('qrModal').style.display = 'none';
     }
 
     window.onload = () => {

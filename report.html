@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -9,12 +10,19 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="js/api-config.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     :root {
       --bg: #07071a;
       --surface: #0f0f2d;
       --card: #131330;
-      --border: rgba(99,102,241,0.18);
+      --border: rgba(99, 102, 241, 0.18);
       --accent: #6366f1;
       --green: #10b981;
       --red: #ef4444;
@@ -23,6 +31,7 @@
       --text: #e2e8f0;
       --muted: #64748b;
     }
+
     body {
       background: var(--bg);
       color: var(--text);
@@ -34,30 +43,125 @@
       padding: 24px 16px 40px;
       position: relative;
     }
-    body::before {
-      content: ''; position: fixed; width: 420px; height: 420px; background: #6366f1; border-radius: 50%; filter: blur(100px); opacity: 0.09; top: -120px; left: -100px; pointer-events: none; z-index: 0;
-    }
-    .page-wrap { width: 100%; max-width: 1100px; position: relative; z-index: 1; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 0 18px; margin-bottom: 10px; }
-    .topbar-title { font-size: 1.2em; font-weight: 700; color: #c7d2fe; }
-    .topbar-btns { display: flex; gap: 10px; }
-    .topbar-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; font-family: inherit; font-size: 0.88em; font-weight: 600; cursor: pointer; transition: all 0.25s; }
-    .topbar-btn:hover { background: rgba(255,255,255,0.1); }
-    .topbar-btn.logout { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: #fca5a5; }
 
-    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-    @media (max-width: 700px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
-    .sum-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 14px; text-align: center; }
-    .sum-num { font-size: 2em; font-weight: 800; margin: 4px 0; color: var(--accent); }
-    .sum-label { font-size: 0.78em; color: var(--muted); font-weight: 600; }
-    .sum-card.green .sum-num { color: #34d399; }
-    .sum-card.yellow .sum-num { color: #fcd34d; }
-    .sum-card.red .sum-num { color: #fca5a5; }
+    body::before {
+      content: '';
+      position: fixed;
+      width: 420px;
+      height: 420px;
+      background: #6366f1;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.09;
+      top: -120px;
+      left: -100px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page-wrap {
+      width: 100%;
+      max-width: 1100px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 12px 0 18px;
+      margin-bottom: 10px;
+    }
+
+    .topbar-title {
+      font-size: 1.2em;
+      font-weight: 700;
+      color: #c7d2fe;
+    }
+
+    .topbar-btns {
+      display: flex;
+      gap: 10px;
+    }
+
+    .topbar-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      font-family: inherit;
+      font-size: 0.88em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    .topbar-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .topbar-btn.logout {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 700px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .sum-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 14px;
+      text-align: center;
+    }
+
+    .sum-num {
+      font-size: 2em;
+      font-weight: 800;
+      margin: 4px 0;
+      color: var(--accent);
+    }
+
+    .sum-label {
+      font-size: 0.78em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .sum-card.green .sum-num {
+      color: #34d399;
+    }
+
+    .sum-card.yellow .sum-num {
+      color: #fcd34d;
+    }
+
+    .sum-card.red .sum-num {
+      color: #fca5a5;
+    }
 
     /* API URL warning banner */
     .api-warning {
-      background: rgba(245,158,11,0.12);
-      border: 1px solid rgba(245,158,11,0.35);
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
       border-radius: 12px;
       padding: 12px 16px;
       margin-bottom: 16px;
@@ -67,22 +171,27 @@
       font-size: 0.88em;
       color: #fcd34d;
     }
-    .api-warning.show { display: flex; }
+
+    .api-warning.show {
+      display: flex;
+    }
+
     .api-warning input {
       flex: 1;
       padding: 8px 12px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(245,158,11,0.35);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(245, 158, 11, 0.35);
       border-radius: 8px;
       color: var(--text);
       font-family: inherit;
       font-size: 0.9em;
       outline: none;
     }
+
     .api-warning button {
       padding: 8px 14px;
-      background: rgba(245,158,11,0.2);
-      border: 1px solid rgba(245,158,11,0.4);
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.4);
       border-radius: 8px;
       color: #fcd34d;
       font-family: inherit;
@@ -91,369 +200,507 @@
       white-space: nowrap;
     }
 
-    .filter-bar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
-    .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-    .filter-group { display: flex; flex-direction: column; gap: 4px; }
-    .filter-group label { font-size: 0.78em; color: var(--muted); font-weight: 600; }
-    .filter-input { padding: 10px 14px; background: rgba(99,102,241,0.07); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; font-size: 0.9em; outline: none; }
-    .btn-filter { border: none; background: linear-gradient(135deg, var(--accent), #818cf8); color: white; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; font-family: inherit; }
-    .btn-export { border: 1px solid rgba(16,185,129,0.3); background: rgba(16,185,129,0.1); color: #34d399; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .filter-bar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
 
-    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.85em; min-width: 800px; }
-    th { padding: 12px 14px; text-align: left; background: rgba(99,102,241,0.06); color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); }
-    td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
-    .td-name { font-weight: 700; color: #c7d2fe; }
-    .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 700; }
-    .badge-ontime { background: rgba(16,185,129,0.15); color: #34d399; }
-    .badge-late { background: rgba(245,158,11,0.15); color: #fcd34d; }
-    .badge-absent { background: rgba(239,68,68,0.15); color: #fca5a5; }
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
 
-    #loadingOverlay { position: fixed; inset: 0; background: rgba(7,7,26,0.8); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; }
-    .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-group label {
+      font-size: 0.78em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .filter-input {
+      padding: 10px 14px;
+      background: rgba(99, 102, 241, 0.07);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9em;
+      outline: none;
+    }
+
+    .btn-filter {
+      border: none;
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn-export {
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: rgba(16, 185, 129, 0.1);
+      color: #34d399;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .table-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85em;
+      min-width: 800px;
+    }
+
+    th {
+      padding: 12px 14px;
+      text-align: left;
+      background: rgba(99, 102, 241, 0.06);
+      color: var(--muted);
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .td-name {
+      font-weight: 700;
+      color: #c7d2fe;
+    }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: 700;
+    }
+
+    .badge-ontime {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+
+    .badge-late {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fcd34d;
+    }
+
+    .badge-absent {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+    }
+
+    #loadingOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 7, 26, 0.8);
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
   </style>
 </head>
+
 <body>
 
-<div id="loadingOverlay">
-  <div class="spinner"></div>
-  <p style="margin-top:16px; color:var(--accent)">กำลังโหลดข้อมูล...</p>
-</div>
+  <div id="loadingOverlay">
+    <div class="spinner"></div>
+    <p style="margin-top:16px; color:var(--accent)">กำลังโหลดข้อมูล...</p>
+  </div>
 
-<div class="page-wrap">
-  <div class="topbar">
-    <div class="topbar-title">📊 รายงานการลงชื่อเข้าออก</div>
-    <div class="topbar-btns">
-      <button class="topbar-btn" onclick="goBack()">⬅️ กลับ</button>
-      <button class="topbar-btn logout" onclick="logout()">🚪 ออกจากระบบ</button>
+  <div class="page-wrap">
+    <div class="topbar">
+      <div class="topbar-title">📊 รายงานการลงชื่อเข้าออก</div>
+      <div class="topbar-btns">
+        <button class="topbar-btn" onclick="goBack()">⬅️ กลับ</button>
+        <button class="topbar-btn logout" onclick="logout()">🚪 ออกจากระบบ</button>
+      </div>
+    </div>
+
+    <!-- API URL Warning Banner (แสดงเมื่อหา API URL ไม่เจอ) -->
+    <div class="api-warning" id="apiWarning">
+      ⚠️ ไม่พบ API URL — กรุณากรอกด้านล่างเพื่อดำเนินการต่อ:
+      <input type="url" id="apiUrlInput" placeholder="https://script.google.com/macros/s/..." />
+      <button onclick="saveApiUrl()">💾 บันทึก</button>
+    </div>
+
+    <div class="summary-grid">
+      <div class="sum-card">
+        <div class="sum-num" id="sumTotal">0</div>
+        <div class="sum-label">ทั้งหมด</div>
+      </div>
+      <div class="sum-card green">
+        <div class="sum-num" id="sumOnTime">0</div>
+        <div class="sum-label">มาตรงเวลา</div>
+      </div>
+      <div class="sum-card yellow">
+        <div class="sum-num" id="sumLate">0</div>
+        <div class="sum-label">มาสาย</div>
+      </div>
+      <div class="sum-card red">
+        <div class="sum-num" id="sumAbsent">0</div>
+        <div class="sum-label">ขาด/ไม่ระบุ</div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>วันที่เริ่มต้น</label>
+          <input type="date" id="filterStart" class="filter-input">
+        </div>
+        <div class="filter-group">
+          <label>วันที่สิ้นสุด</label>
+          <input type="date" id="filterEnd" class="filter-input">
+        </div>
+        <div class="filter-group">
+          <label>ค้นหาชื่อ</label>
+          <input type="text" id="filterName" class="filter-input" placeholder="ระบุชื่อพนักงาน...">
+        </div>
+        <button class="btn-filter" onclick="loadReport()">🔍 ค้นหาข้อมูล</button>
+        <button class="btn-export" onclick="exportToPdf()">📄 ส่งออก PDF</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table id="reportTable">
+        <thead>
+          <tr>
+            <th>ลำดับ</th>
+            <th>ชื่อ-นามสกุล</th>
+            <th>วันที่</th>
+            <th>เวลาเข้า</th>
+            <th>เวลาออก</th>
+            <th>สถานที่</th>
+            <th>สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="reportBody">
+          <tr>
+            <td colspan="7" style="text-align:center; padding:40px; color:var(--muted)">กรุณาเลือกช่วงวันที่และกดค้นหา
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
-  <!-- API URL Warning Banner (แสดงเมื่อหา API URL ไม่เจอ) -->
-  <div class="api-warning" id="apiWarning">
-    ⚠️ ไม่พบ API URL — กรุณากรอกด้านล่างเพื่อดำเนินการต่อ:
-    <input type="url" id="apiUrlInput" placeholder="https://script.google.com/macros/s/..." />
-    <button onclick="saveApiUrl()">💾 บันทึก</button>
-  </div>
-
-  <div class="summary-grid">
-    <div class="sum-card"><div class="sum-num" id="sumTotal">0</div><div class="sum-label">ทั้งหมด</div></div>
-    <div class="sum-card green"><div class="sum-num" id="sumOnTime">0</div><div class="sum-label">มาตรงเวลา</div></div>
-    <div class="sum-card yellow"><div class="sum-num" id="sumLate">0</div><div class="sum-label">มาสาย</div></div>
-    <div class="sum-card red"><div class="sum-num" id="sumAbsent">0</div><div class="sum-label">ขาด/ไม่ระบุ</div></div>
-  </div>
-
-  <div class="filter-bar">
-    <div class="filter-row">
-      <div class="filter-group">
-        <label>วันที่เริ่มต้น</label>
-        <input type="date" id="filterStart" class="filter-input">
-      </div>
-      <div class="filter-group">
-        <label>วันที่สิ้นสุด</label>
-        <input type="date" id="filterEnd" class="filter-input">
-      </div>
-      <div class="filter-group">
-        <label>ค้นหาชื่อ</label>
-        <input type="text" id="filterName" class="filter-input" placeholder="ระบุชื่อพนักงาน...">
-      </div>
-      <button class="btn-filter" onclick="loadReport()">🔍 ค้นหาข้อมูล</button>
-      <button class="btn-export" onclick="exportToPdf()">📄 ส่งออก PDF</button>
-    </div>
-  </div>
-
-  <div class="table-wrap">
-    <table id="reportTable">
-      <thead>
-        <tr>
-          <th>ลำดับ</th>
-          <th>ชื่อ-นามสกุล</th>
-          <th>วันที่</th>
-          <th>เวลาเข้า</th>
-          <th>เวลาออก</th>
-          <th>สถานที่</th>
-          <th>สถานะ</th>
-        </tr>
-      </thead>
-      <tbody id="reportBody">
-        <tr><td colspan="7" style="text-align:center; padding:40px; color:var(--muted)">กรุณาเลือกช่วงวันที่และกดค้นหา</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<script>
-  // ============================================================
-  //  FIX 1: ระบบค้นหา API URL ที่ทนทาน — ค้นหาจากทุกแหล่ง
-  // ============================================================
-  function getApiUrl() {
-    // ลำดับความสำคัญ: window global → localStorage → sessionStorage → ทั้งหมดใน localStorage
-    const sources = [
-      () => (typeof window.GAS_API_URL !== 'undefined' ? window.GAS_API_URL : ''),
-      () => localStorage.getItem('gasApiUrl') || '',
-      () => localStorage.getItem('apiUrl') || '',
-      () => localStorage.getItem('api_url') || '',
-      () => localStorage.getItem('GAS_API_URL') || '',
-      () => sessionStorage.getItem('gasApiUrl') || '',
-      () => sessionStorage.getItem('apiUrl') || '',
-      () => sessionStorage.getItem('api_url') || '',
-      () => sessionStorage.getItem('GAS_API_URL') || '',
-      // สแกนทุก key ใน localStorage ที่มีคำว่า "url" หรือ "api"
-      () => {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (key.toLowerCase().includes('url') || key.toLowerCase().includes('api'))) {
-            const val = localStorage.getItem(key) || '';
-            if (val.startsWith('https://')) return val;
+  <script>
+    // ============================================================
+    //  ระบบค้นหา API URL ที่ทนทาน — ค้นหาจากทุกแหล่ง
+    // ============================================================
+    function getApiUrl() {
+      const sources = [
+        () => (typeof window.GAS_API_URL !== 'undefined' ? window.GAS_API_URL : ''),
+        () => localStorage.getItem('gasApiUrl') || '',
+        () => localStorage.getItem('apiUrl') || '',
+        () => localStorage.getItem('api_url') || '',
+        () => localStorage.getItem('GAS_API_URL') || '',
+        () => sessionStorage.getItem('gasApiUrl') || '',
+        () => sessionStorage.getItem('apiUrl') || '',
+        () => sessionStorage.getItem('api_url') || '',
+        () => sessionStorage.getItem('GAS_API_URL') || '',
+        () => {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.toLowerCase().includes('url') || key.toLowerCase().includes('api'))) {
+              const val = localStorage.getItem(key) || '';
+              if (val.startsWith('https://')) return val;
+            }
           }
-        }
-        return '';
-      },
-      // สแกนทุก key ใน sessionStorage ที่มีคำว่า "url" หรือ "api"
-      () => {
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const key = sessionStorage.key(i);
-          if (key && (key.toLowerCase().includes('url') || key.toLowerCase().includes('api'))) {
-            const val = sessionStorage.getItem(key) || '';
-            if (val.startsWith('https://')) return val;
+          return '';
+        },
+        () => {
+          for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (key && (key.toLowerCase().includes('url') || key.toLowerCase().includes('api'))) {
+              const val = sessionStorage.getItem(key) || '';
+              if (val.startsWith('https://')) return val;
+            }
           }
+          return '';
         }
-        return '';
+      ];
+
+      for (const source of sources) {
+        try {
+          const val = source().trim();
+          if (val && val.startsWith('https://')) return val;
+        } catch (_) { /* ignore */ }
       }
-    ];
-
-    for (const source of sources) {
-      try {
-        const val = source().trim();
-        if (val && val.startsWith('https://')) return val;
-      } catch (_) { /* ignore */ }
-    }
-    return '';
-  }
-
-  function getToken() {
-    return localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-  }
-
-  function getUsername() {
-    return localStorage.getItem('username') || sessionStorage.getItem('username') || 'Admin';
-  }
-
-  function getRole() {
-    return localStorage.getItem('role') || sessionStorage.getItem('role') || '';
-  }
-
-  function formatTimeHms(timeStr) {
-    if (!timeStr || timeStr === '-') return '-';
-    return timeStr;
-  }
-
-  function logout() {
-    ['token','username','role'].forEach(k => {
-      localStorage.removeItem(k);
-      sessionStorage.removeItem(k);
-    });
-    window.location.href = 'login.html';
-  }
-
-  function goBack() { window.history.back(); }
-
-  // บันทึก API URL จาก warning banner
-  function saveApiUrl() {
-    const val = document.getElementById('apiUrlInput').value.trim();
-    if (!val || !val.startsWith('https://')) {
-      alert('⚠️ กรุณากรอก URL ที่ขึ้นต้นด้วย https://');
-      return;
-    }
-    localStorage.setItem('gasApiUrl', val);
-    sessionStorage.setItem('gasApiUrl', val);
-    document.getElementById('apiWarning').classList.remove('show');
-    alert('✅ บันทึก API URL เรียบร้อยแล้ว กำลังโหลดข้อมูล...');
-    loadReport();
-  }
-
-  // ============================================================
-  //  Init
-  // ============================================================
-  async function init() {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    document.getElementById('filterStart').value = firstDay.toISOString().split('T')[0];
-    document.getElementById('filterEnd').value = now.toISOString().split('T')[0];
-
-    if (!getToken()) {
-      alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
-      window.location.href = 'login.html';
-      return;
+      return '';
     }
 
-    // ตรวจสอบ API URL ก่อนโหลด
-    if (!getApiUrl()) {
-      document.getElementById('apiWarning').classList.add('show');
-      return; // รอให้ user กรอก API URL ก่อน
+    function getToken() {
+      return localStorage.getItem('token') || sessionStorage.getItem('token') || '';
     }
 
-    await loadReport();
-  }
-
-  // ============================================================
-  //  FIX 2: Logic การโหลดและจัดกลุ่ม
-  // ============================================================
-  async function loadReport() {
-    const apiUrl = getApiUrl();
-    const token = getToken();
-    const start = document.getElementById('filterStart').value;
-    const end = document.getElementById('filterEnd').value;
-    const nameFilter = document.getElementById('filterName').value.trim();
-
-    if (!apiUrl) {
-      document.getElementById('apiWarning').classList.add('show');
-      return;
+    function getUsername() {
+      return localStorage.getItem('username') || sessionStorage.getItem('username') || 'Admin';
     }
-    if (!start || !end) return alert('⚠️ กรุณาเลือกช่วงวันที่');
 
-    document.getElementById('loadingOverlay').style.display = 'flex';
+    function getRole() {
+      return localStorage.getItem('role') || sessionStorage.getItem('role') || '';
+    }
 
-    try {
-      const params = new URLSearchParams();
-      params.set('action', 'getAttendanceLogs');
-      params.set('token', token);
-      params.set('startDate', start);
-      params.set('endDate', end);
-      if (nameFilter) params.set('name', nameFilter);
-      params.set('_ts', Date.now().toString());
+    function formatTimeHms(timeStr) {
+      if (!timeStr || timeStr === '-') return '-';
+      return timeStr;
+    }
 
-      const response = await fetch(`${apiUrl}?${params.toString()}`, {
-        method: 'GET',
-        cache: 'no-store'
+    // ============================================================
+    //  [แก้ไข] normalizeTime: เติม 0 นำหน้าให้ครบ HH:MM:SS
+    //  เพื่อให้เปรียบเทียบ string เวลาได้ถูกต้อง
+    //  เช่น '7:22:16' → '07:22:16', '07:58:46' → '07:58:46'
+    // ============================================================
+    function normalizeTime(t) {
+      if (!t || t === '-') return '';
+      const parts = String(t).trim().split(':');
+      // เติม 0 นำหน้าแต่ละส่วนให้ครบ 2 หลัก (HH, MM, SS)
+      return parts.map(function (p) { return p.padStart(2, '0'); }).join(':');
+    }
+
+    function logout() {
+      ['token', 'username', 'role'].forEach(k => {
+        localStorage.removeItem(k);
+        sessionStorage.removeItem(k);
       });
+      window.location.href = 'login.html';
+    }
 
-      const result = await response.json();
+    function goBack() { window.history.back(); }
 
-      if (!response.ok) {
-        throw new Error(result.message || `HTTP ${response.status}`);
+    function saveApiUrl() {
+      const val = document.getElementById('apiUrlInput').value.trim();
+      if (!val || !val.startsWith('https://')) {
+        alert('⚠️ กรุณากรอก URL ที่ขึ้นต้นด้วย https://');
+        return;
       }
-      if (result && result.status === 'error') {
-        throw new Error(result.message || 'Unknown server error');
+      localStorage.setItem('gasApiUrl', val);
+      sessionStorage.setItem('gasApiUrl', val);
+      document.getElementById('apiWarning').classList.remove('show');
+      alert('✅ บันทึก API URL เรียบร้อยแล้ว กำลังโหลดข้อมูล...');
+      loadReport();
+    }
+
+    // ============================================================
+    //  Init
+    // ============================================================
+    async function init() {
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      document.getElementById('filterStart').value = firstDay.toISOString().split('T')[0];
+      document.getElementById('filterEnd').value = now.toISOString().split('T')[0];
+
+      if (!getToken()) {
+        alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
+        window.location.href = 'login.html';
+        return;
       }
 
-      // รองรับรูปแบบ response หลายแบบ
-      const logs = Array.isArray(result)
-        ? result
-        : Array.isArray(result.data)   ? result.data
-        : Array.isArray(result.logs)   ? result.logs
-        : Array.isArray(result.result) ? result.result
-        : [];
+      if (!getApiUrl()) {
+        document.getElementById('apiWarning').classList.add('show');
+        return;
+      }
 
-      // ============================================================
-      //  FIX 3: จัดกลุ่ม เข้า/ออก ให้อยู่ในแถวเดียวกัน
-      //  — ใช้ชื่อ + วันที่เป็น key
-      //  — log แรกของวัน = เวลาเข้า, log ที่สองขึ้นไป = เวลาออก
-      //  — ถ้า server ส่ง checkOut field มาแล้ว ให้ใช้โดยตรง
-      // ============================================================
-      const groupedLogs = [];
-      const map = new Map();
+      await loadReport();
+    }
 
-      logs.forEach(log => {
-        const name  = (log.name  || log.Name  || '').trim() || '-';
-        const date  = (log.date  || log.Date  || '').trim() || '-';
-        const key   = `${name}_${date}`;
+    // ============================================================
+    //  Logic การโหลดและจัดกลุ่ม
+    // ============================================================
+    async function loadReport() {
+      const apiUrl = getApiUrl();
+      const token = getToken();
+      const start = document.getElementById('filterStart').value;
+      const end = document.getElementById('filterEnd').value;
+      const nameFilter = document.getElementById('filterName').value.trim();
 
-        // ดึง field เวลาเข้า/ออก ที่ server อาจส่งมาในชื่อต่างๆ
-        const rawTime    = log.time           || log.Time           || '';
-        const rawCheckIn = log.checkinTime    || log.checkInTime    || log.checkIn   || log.CheckIn  || '';
-        const rawCheckOut= log.checkoutTime   || log.checkOutTime   || log.checkout  || log.CheckOut
-                         || log.checkOut      || log.outTime        || log.OutTime   || '';
+      if (!apiUrl) {
+        document.getElementById('apiWarning').classList.add('show');
+        return;
+      }
+      if (!start || !end) return alert('⚠️ กรุณาเลือกช่วงวันที่');
 
-        // --- server ส่งทั้ง in/out มาในบรรทัดเดียว ---
-        if (rawCheckIn || rawCheckOut) {
+      document.getElementById('loadingOverlay').style.display = 'flex';
+
+      try {
+        const params = new URLSearchParams();
+        params.set('action', 'getAttendanceLogs');
+        params.set('token', token);
+        params.set('startDate', start);
+        params.set('endDate', end);
+        if (nameFilter) params.set('name', nameFilter);
+        params.set('_ts', Date.now().toString());
+
+        const response = await fetch(`${apiUrl}?${params.toString()}`, {
+          method: 'GET',
+          cache: 'no-store'
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || `HTTP ${response.status}`);
+        }
+        if (result && result.status === 'error') {
+          throw new Error(result.message || 'Unknown server error');
+        }
+
+        const logs = Array.isArray(result)
+          ? result
+          : Array.isArray(result.data) ? result.data
+            : Array.isArray(result.logs) ? result.logs
+              : Array.isArray(result.result) ? result.result
+                : [];
+
+        // ============================================================
+        //  จัดกลุ่ม เข้า/ออก ให้อยู่ในแถวเดียวกัน
+        // ============================================================
+        const groupedLogs = [];
+        const map = new Map();
+
+        logs.forEach(log => {
+          const name = (log.name || log.Name || '').trim() || '-';
+          const date = (log.date || log.Date || '').trim() || '-';
+          const key = `${name}_${date}`;
+
+          const rawTime = log.time || log.Time || '';
+          const rawCheckIn = log.checkinTime || log.checkInTime || log.checkIn || log.CheckIn || '';
+          const rawCheckOut = log.checkoutTime || log.checkOutTime || log.checkout || log.CheckOut
+            || log.checkOut || log.outTime || log.OutTime || '';
+
+          if (rawCheckIn || rawCheckOut) {
+            if (!map.has(key)) {
+              const newLog = { ...log };
+              newLog.displayIn = rawCheckIn || rawTime || '-';
+              newLog.displayOut = rawCheckOut || '-';
+              map.set(key, newLog);
+              groupedLogs.push(newLog);
+            } else {
+              const ex = map.get(key);
+              if (rawCheckIn && ex.displayIn === '-') ex.displayIn = rawCheckIn;
+              if (rawCheckOut && ex.displayOut === '-') ex.displayOut = rawCheckOut;
+            }
+            return;
+          }
+
           if (!map.has(key)) {
             const newLog = { ...log };
-            newLog.displayIn  = rawCheckIn  || rawTime || '-';
-            newLog.displayOut = rawCheckOut || '-';
+            newLog.displayIn = rawTime || '-';
+            newLog.displayOut = '-';
             map.set(key, newLog);
             groupedLogs.push(newLog);
           } else {
-            // อัปเดตข้อมูลที่ยังขาดอยู่
             const ex = map.get(key);
-            if (rawCheckIn  && ex.displayIn  === '-') ex.displayIn  = rawCheckIn;
-            if (rawCheckOut && ex.displayOut === '-') ex.displayOut = rawCheckOut;
+            if (rawTime && ex.displayOut === '-') {
+              ex.displayOut = rawTime;
+            }
           }
-          return;
-        }
+        });
 
-        // --- server ส่งทีละ log (เข้า/ออก แยก record) ---
-        if (!map.has(key)) {
-          const newLog = { ...log };
-          newLog.displayIn  = rawTime || '-';
-          newLog.displayOut = '-';
-          map.set(key, newLog);
-          groupedLogs.push(newLog);
-        } else {
-          // record ที่ 2 → เวลาออกงาน
-          const ex = map.get(key);
-          if (rawTime && ex.displayOut === '-') {
-            ex.displayOut = rawTime;
-          }
-        }
-      });
+        renderTable(groupedLogs);
+        updateSummary(groupedLogs);
 
-      renderTable(groupedLogs);
-      updateSummary(groupedLogs);
-
-    } catch (e) {
-      alert('❌ โหลดข้อมูลล้มเหลว: ' + e.message);
-      document.getElementById('reportBody').innerHTML =
-        `<tr><td colspan="7" style="text-align:center; color:var(--red)">⚠️ ไม่สามารถโหลดข้อมูลได้: ${e.message}</td></tr>`;
-    } finally {
-      document.getElementById('loadingOverlay').style.display = 'none';
-    }
-  }
-
-  // ============================================================
-  //  Render Table & Status Calculation
-  // ============================================================
-  function calculateStatus(inTime, outTime) {
-    if (!inTime || inTime === '-') return 'ไม่ระบุ';
-    
-    // ตั้งค่าเวลามาตรฐาน (สามารถเปลี่ยนเป็นดึงจาก Config ได้ในอนาคต)
-    const lateThreshold = '08:30:00';
-    const veryLateThreshold = '09:00:00';
-    
-    let status = 'ตรงเวลา';
-    
-    if (inTime > veryLateThreshold) {
-      status = 'สายมาก';
-    } else if (inTime > lateThreshold) {
-      status = 'สาย';
-    }
-    
-    if (outTime === '-' || !outTime) {
-      status += ' (ไม่สแกนออก)';
-    }
-    
-    return status;
-  }
-
-  function renderTable(logs) {
-    const body = document.getElementById('reportBody');
-    if (logs.length === 0) {
-      body.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:var(--muted)">📭 ไม่พบข้อมูลในช่วงที่เลือก</td></tr>';
-      return;
+      } catch (e) {
+        alert('❌ โหลดข้อมูลล้มเหลว: ' + e.message);
+        document.getElementById('reportBody').innerHTML =
+          `<tr><td colspan="7" style="text-align:center; color:var(--red)">⚠️ ไม่สามารถโหลดข้อมูลได้: ${e.message}</td></tr>`;
+      } finally {
+        document.getElementById('loadingOverlay').style.display = 'none';
+      }
     }
 
-    body.innerHTML = logs.map((log, i) => {
-      const inTime = log.displayIn;
-      const outTime = log.displayOut;
-      const status = calculateStatus(inTime, outTime);
-      
-      let badgeClass = 'badge-ontime';
-      if (status.includes('สายมาก')) badgeClass = 'badge-absent'; // สีแดง
-      else if (status.includes('สาย')) badgeClass = 'badge-late';  // สีเหลือง
-      if (status.includes('ไม่สแกนออก')) badgeClass += ' border-red'; // เพิ่มคลาสเน้นถ้าต้องการ
+    // ============================================================
+    //  [แก้ไข] calculateStatus: ใช้ normalizeTime() ก่อนเปรียบเทียบ
+    //  แก้ bug: '7:58:46' > '09:00:00' เป็น true แบบผิดๆ
+    //  เพราะ JavaScript เปรียบเทียบ string ตาม ASCII ทีละตัวอักษร
+    //  '7' (ASCII 55) > '0' (ASCII 48) → true ทันที โดยไม่สนตัวถัดไป
+    //  หลังแก้: normalizeTime('7:58:46') = '07:58:46' < '09:00:00' → ถูกต้อง
+    // ============================================================
+    function calculateStatus(inTime, outTime) {
+      if (!inTime || inTime === '-') return 'ไม่ระบุ';
 
-      return `
+      const lateThreshold = '08:30:00';
+      const veryLateThreshold = '09:00:00';
+
+      // [แก้ไข] normalize เป็น HH:MM:SS ก่อนเปรียบเทียบทุกครั้ง
+      const t = normalizeTime(inTime);
+
+      let status = 'ตรงเวลา';
+
+      if (t > veryLateThreshold) {
+        status = 'สายมาก';
+      } else if (t > lateThreshold) {
+        status = 'สาย';
+      }
+
+      if (!outTime || outTime === '-') {
+        status += ' (ไม่สแกนออก)';
+      }
+
+      return status;
+    }
+
+    function renderTable(logs) {
+      const body = document.getElementById('reportBody');
+      if (logs.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:var(--muted)">📭 ไม่พบข้อมูลในช่วงที่เลือก</td></tr>';
+        return;
+      }
+
+      body.innerHTML = logs.map((log, i) => {
+        const inTime = log.displayIn;
+        const outTime = log.displayOut;
+        const status = calculateStatus(inTime, outTime);
+
+        let badgeClass = 'badge-ontime';
+        if (status.includes('สายมาก')) badgeClass = 'badge-absent';
+        else if (status.includes('สาย')) badgeClass = 'badge-late';
+
+        return `
         <tr>
           <td style="color:var(--muted)">${i + 1}</td>
           <td class="td-name">${log.name || log.Name || '-'}</td>
@@ -464,40 +711,41 @@
           <td><span class="badge ${badgeClass}">${status}</span></td>
         </tr>
       `;
-    }).join('');
-  }
+      }).join('');
+    }
 
-  function updateSummary(logs) {
-    document.getElementById('sumTotal').innerText = logs.length;
-    let onTime = 0;
-    let late = 0;
-    let absent = 0;
+    function updateSummary(logs) {
+      document.getElementById('sumTotal').innerText = logs.length;
+      let onTime = 0;
+      let late = 0;
+      let absent = 0;
 
-    logs.forEach(log => {
-      const status = calculateStatus(log.displayIn, log.displayOut);
-      if (status === 'ตรงเวลา') onTime++;
-      else if (status.includes('สาย')) late++;
-      else absent++;
-    });
+      logs.forEach(log => {
+        const status = calculateStatus(log.displayIn, log.displayOut);
+        if (status === 'ตรงเวลา') onTime++;
+        else if (status.includes('สาย')) late++;
+        else absent++;
+      });
 
-    document.getElementById('sumOnTime').innerText = onTime;
-    document.getElementById('sumLate').innerText = late;
-    document.getElementById('sumAbsent').innerText = absent;
-  }
+      document.getElementById('sumOnTime').innerText = onTime;
+      document.getElementById('sumLate').innerText = late;
+      document.getElementById('sumAbsent').innerText = absent;
+    }
 
-  function exportToPdf() {
-    const element = document.getElementById('reportTable');
-    const opt = {
-      margin: 10,
-      filename: `Attendance_Report_${new Date().toISOString().split('T')[0]}.pdf`,
-      image:    { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, backgroundColor: '#07071a' },
-      jsPDF:    { unit: 'mm', format: 'a4', orientation: 'landscape' }
-    };
-    html2pdf().set(opt).from(element).save();
-  }
+    function exportToPdf() {
+      const element = document.getElementById('reportTable');
+      const opt = {
+        margin: 10,
+        filename: `Attendance_Report_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, backgroundColor: '#07071a' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
 
-  init();
-</script>
+    init();
+  </script>
 </body>
+
 </html>

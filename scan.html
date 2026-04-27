@@ -579,7 +579,9 @@
       updateTargetGpsDisplay();
 
       // 2. ตรวจสอบความปลอดภัย (Login)
-      const currentLocScanMode = (selectedLoc.scanMode || scanMode || 'login').toLowerCase();
+      const locScanMode = String(selectedLoc.scanMode || '').trim().toLowerCase();
+      const globalScanMode = String(scanMode || 'login').trim().toLowerCase();
+      const currentLocScanMode = locScanMode || globalScanMode;
       if (currentLocScanMode === 'login' && !isRedirecting) {
         const isAuthed = sessionStorage.getItem('adminAuth') === '1';
         const adminName = sessionStorage.getItem('adminName');

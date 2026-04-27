@@ -257,6 +257,29 @@
       margin: 20px auto;
       display: block;
     }
+
+    /* Badge แสดงโหมดของแต่ละหน่วยบริการ */
+    .mode-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.72em;
+      font-weight: 600;
+    }
+
+    .mode-badge.login {
+      background: rgba(99, 102, 241, 0.2);
+      color: #c7d2fe;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .mode-badge.nologin {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
   </style>
 </head>
 
@@ -298,15 +321,16 @@
       </div>
 
       <div class="card">
-        <div class="section-header"><span class="section-title-text">🛡️ โหมดการสแกน</span></div>
-        <label>รูปแบบการใช้งาน</label>
+        <div class="section-header"><span class="section-title-text">🛡️ โหมดการสแกนเริ่มต้น</span></div>
+        <label>รูปแบบการใช้งานเริ่มต้น (ใช้กับหน่วยบริการที่ไม่ได้กำหนดเอง)</label>
         <select id="scanMode">
           <option value="login">Login Mode (ต้องล็อกอินก่อนสแกน)</option>
           <option value="no-login">No-Login Mode (สแกนได้ทันทีผ่าน Read Token)</option>
         </select>
         <div style="font-size: 0.75em; color: #94a3b8; line-height: 1.4;">
           • <b>Login Mode:</b> เหมาะสำหรับใช้ในสำนักงาน พนักงานต้องมีบัญชี<br>
-          • <b>No-Login Mode:</b> เหมาะสำหรับ Kiosk หรือจุดบริการสาธารณะ
+          • <b>No-Login Mode:</b> เหมาะสำหรับ Kiosk หรือจุดบริการสาธารณะ<br>
+          • แต่ละหน่วยบริการสามารถตั้งโหมดของตัวเองได้อิสระด้านล่าง
         </div>
       </div>
 
@@ -373,7 +397,6 @@
       document.getElementById('thresholdValue').innerText = val;
     }
 
-    // ดึง Token จากทุกที่ที่เป็นไปได้
     function getAuthToken() {
       return sessionStorage.getItem('token') || sessionStorage.getItem('adminToken') || localStorage.getItem('token') || '';
     }
@@ -428,20 +451,35 @@
 
     function closeMap() { document.getElementById('mapModal').style.display = 'none'; }
 
+    // อัปเดต badge แสดงโหมดบนหัวหน่วยบริการเมื่อเปลี่ยน select
+    function onScanModeChange(selectEl) {
+      const badge = selectEl.closest('.location-item').querySelector('.loc-mode-badge');
+      if (!badge) return;
+      const isLogin = selectEl.value === 'login';
+      badge.className = `mode-badge ${isLogin ? 'login' : 'nologin'}`;
+      badge.textContent = isLogin ? '🔒 Login' : '⚡ No-Login';
+    }
+
     function createLocationItem(loc = {}) {
+      const scanMode = loc.scanMode || 'login';
+      const isLogin = scanMode === 'login';
+
       const wrap = document.createElement('div');
       wrap.className = 'location-item';
       wrap.dataset.id = loc.id || '';
       wrap.innerHTML = `
         <div class="location-item__top">
-          <span style="font-weight:bold; color:#f8fafc;">🏥 ${loc.name || 'ตำแหน่งใหม่'}</span>
-          <button class="btn" style="width:auto; padding:5px 10px; background:#10b981; color:white; font-size:12px;" onclick="saveSingleLocation(this.parentElement.parentElement)">💾 บันทึกจุดนี้</button>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:bold; color:#f8fafc;">🏥 ${loc.name || 'ตำแหน่งใหม่'}</span>
+            <span class="loc-mode-badge mode-badge ${isLogin ? 'login' : 'nologin'}">${isLogin ? '🔒 Login' : '⚡ No-Login'}</span>
+          </div>
+          <button class="btn" style="width:auto; padding:5px 10px; background:#10b981; color:white; font-size:12px;" onclick="saveSingleLocation(this.closest('.location-item'))">💾 บันทึกจุดนี้</button>
         </div>
         <label>ชื่อสถานที่</label>
         <input type="text" class="loc-name" value="${loc.name || ''}" placeholder="ชื่อหน่วยบริการ">
         <div class="input-row">
-          <div><label>Latitude</label><input type="number" step="any" class="loc-lat" value="${loc.lat || ''}" readonly onclick="openMap(this, this.parentElement.parentElement.querySelector('.loc-lng'))" style="cursor:pointer"></div>
-          <div><label>Longitude</label><input type="number" step="any" class="loc-lng" value="${loc.lng || ''}" readonly onclick="openMap(this.parentElement.parentElement.querySelector('.loc-lat'), this)" style="cursor:pointer"></div>
+          <div><label>Latitude</label><input type="number" step="any" class="loc-lat" value="${loc.lat || ''}" readonly onclick="openMap(this, this.closest('.location-item').querySelector('.loc-lng'))" style="cursor:pointer"></div>
+          <div><label>Longitude</label><input type="number" step="any" class="loc-lng" value="${loc.lng || ''}" readonly onclick="openMap(this.closest('.location-item').querySelector('.loc-lat'), this)" style="cursor:pointer"></div>
         </div>
         <div class="input-row">
           <div><label>รัศมี (เมตร)</label><input type="number" class="loc-radius" value="${loc.radius || 100}"></div>
@@ -475,15 +513,15 @@
         </div>
         <div class="input-row" style="margin-top: 10px;">
           <div>
-            <label>โหมดการสแกน (Login)</label>
-            <select class="loc-scan-mode">
-              <option value="login" ${loc.scanMode === 'login' ? 'selected' : ''}>ต้อง Login ก่อน</option>
-              <option value="no-login" ${loc.scanMode === 'no-login' ? 'selected' : ''}>ไม่ต้อง Login (Fast)</option>
+            <label>โหมดการสแกน (หน่วยบริการนี้)</label>
+            <select class="loc-scan-mode" onchange="onScanModeChange(this)">
+              <option value="login" ${scanMode === 'login' ? 'selected' : ''}>🔒 ต้อง Login ก่อน</option>
+              <option value="no-login" ${scanMode === 'no-login' ? 'selected' : ''}>⚡ ไม่ต้อง Login (Fast)</option>
             </select>
           </div>
         </div>
         <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
-           <button class="btn" style="width: auto; background:#818cf8; color:white; font-size:12px; padding: 6px 12px;" onclick="showQrCode('${loc.id}', this.parentElement.parentElement)">🖼️ ดู QR Code</button>
+           <button class="btn" style="width: auto; background:#818cf8; color:white; font-size:12px; padding: 6px 12px;" onclick="showQrCode('${loc.id}', this.closest('.location-item'))">🖼️ ดู QR Code</button>
            <div style="font-size: 0.7em; color: #94a3b8;">Secret: ${loc.qrSecret || '(อัตโนมัติ)'}</div>
         </div>
       `;
@@ -492,33 +530,34 @@
 
     function addLocation(loc = {}) { locationsBox.appendChild(createLocationItem(loc)); }
 
+    // ดึงข้อมูลจาก row โดยไม่มีการ validate ความขัดแย้ง QR+mode
+    function extractLocationData(rowEl) {
+      return {
+        id: rowEl.dataset.id || '',
+        name: rowEl.querySelector('.loc-name').value.trim(),
+        lat: rowEl.querySelector('.loc-lat').value,
+        lng: rowEl.querySelector('.loc-lng').value,
+        radius: rowEl.querySelector('.loc-radius').value,
+        enabled: rowEl.querySelector('.loc-enabled').value === 'true',
+        qrEnabled: rowEl.querySelector('.loc-qr-enabled').checked,
+        qrType: rowEl.querySelector('.loc-qr-type').value,
+        qrInterval: rowEl.querySelector('.loc-qr-interval').value,
+        qrRequireFace: rowEl.querySelector('.loc-qr-require-face').checked,
+        scanMode: rowEl.querySelector('.loc-scan-mode').value
+      };
+    }
+
     async function saveSingleLocation(rowEl) {
       const apiUrl = document.getElementById('apiUrl').value.trim();
       const token = getAuthToken();
       if (!apiUrl) return alert('กรุณาใส่ API URL');
 
-      const locScanMode = rowEl.querySelector('.loc-scan-mode').value;
-      const qrEnabled = rowEl.querySelector('.loc-qr-enabled').checked;
-
-      if (qrEnabled && locScanMode === 'no-login') {
-        Swal.fire('คำเตือน', 'หน่วยบริการนี้เปิด QR แต่ตั้งโหมดเป็น no-login กรุณาเลือก "ต้อง Login ก่อน" ในหน่วยบริการนี้', 'warning');
-        return;
-      }
-
+      // ✅ ลบ validation ที่ block QR+no-login ออก — แต่ละหน่วยตั้งโหมดได้อิสระ
       const data = {
         action: 'saveLocation',
-        id: rowEl.dataset.id,
-        name: rowEl.querySelector('.loc-name').value.trim(),
-        lat: rowEl.querySelector('.loc-lat').value,
-        lng: rowEl.querySelector('.loc-lng').value,
-        radius: rowEl.querySelector('.loc-radius').value,
-        qrEnabled: rowEl.querySelector('.loc-qr-enabled').checked,
-        qrType: rowEl.querySelector('.loc-qr-type').value,
-        qrInterval: rowEl.querySelector('.loc-qr-interval').value,
-        qrRequireFace: rowEl.querySelector('.loc-qr-require-face').checked,
-        scanMode: rowEl.querySelector('.loc-scan-mode').value,
         token: token,
-        updatedBy: sessionStorage.getItem('adminName') || 'admin'
+        updatedBy: sessionStorage.getItem('adminName') || 'admin',
+        ...extractLocationData(rowEl)
       };
 
       try {
@@ -529,7 +568,11 @@
         });
         const result = await res.json();
         if (result.success || result.status === 'ok') {
-          rowEl.dataset.id = result.id;
+          // อัปเดต id ที่ได้รับกลับมาจากเซิร์ฟเวอร์
+          if (result.id) rowEl.dataset.id = result.id;
+          // อัปเดตชื่อหัว location item
+          const nameSpan = rowEl.querySelector('.location-item__top span');
+          if (nameSpan) nameSpan.childNodes[0].textContent = `🏥 ${data.name}`;
           Swal.fire('สำเร็จ', 'บันทึกตำแหน่งเรียบร้อย', 'success');
         } else {
           Swal.fire('ผิดพลาด', result.message || 'Unauthorized', 'error');
@@ -570,31 +613,11 @@
       const token = getAuthToken();
       if (!apiUrl) return Swal.fire('ผิดพลาด', 'กรุณาใส่ API URL', 'error');
 
-      const scanMode = document.getElementById('scanMode').value;
       const items = Array.from(locationsBox.querySelectorAll('.location-item'));
 
-      const conflictLoc = items.find(item =>
-        item.querySelector('.loc-qr-enabled').checked &&
-        item.querySelector('.loc-scan-mode').value === 'no-login'
-      );
-      if (conflictLoc) {
-        const name = conflictLoc.querySelector('.loc-name').value;
-        Swal.fire('คำเตือน', `หน่วยบริการ "${name}" เปิด QR แต่ตั้งโหมดเป็น no-login กรุณาแก้ไขก่อนบันทึก`, 'warning');
-        return;
-      }
-      const locations = items.map(item => ({
-        id: item.dataset.id,
-        name: item.querySelector('.loc-name').value,
-        lat: item.querySelector('.loc-lat').value,
-        lng: item.querySelector('.loc-lng').value,
-        radius: item.querySelector('.loc-radius').value,
-        enabled: item.querySelector('.loc-enabled').value === 'true',
-        qrEnabled: item.querySelector('.loc-qr-enabled').checked,
-        qrType: item.querySelector('.loc-qr-type').value,
-        qrInterval: item.querySelector('.loc-qr-interval').value,
-        qrRequireFace: item.querySelector('.loc-qr-require-face').checked,
-        scanMode: item.querySelector('.loc-scan-mode').value
-      }));
+      // ✅ ลบ conflictLoc validation ออกทั้งหมด
+      // แต่ละหน่วยบริการตั้ง scanMode ได้อิสระ ไม่ว่าจะเปิด QR หรือไม่ก็ตาม
+      const locations = items.map(item => extractLocationData(item));
 
       const data = {
         action: 'saveConfig',
@@ -644,7 +667,6 @@
         if (type === 'static') {
           key = await getSecretFromServer(locId);
         } else {
-          // Fetch dynamic key from server
           try {
             const res = await fetch(`${apiUrl}?action=getDynamicQrKey&locId=${locId}&token=${getAuthToken()}`);
             const data = await res.json();
@@ -673,12 +695,13 @@
 
       await updateQr();
       if (type === 'dynamic') {
-        qrRefreshInterval = setInterval(updateQr, 30000); // Refresh every 30s
+        qrRefreshInterval = setInterval(updateQr, 30000);
       }
     }
 
     function handleQrToggle(checkbox) {
-      const qrSettings = checkbox.parentElement.nextElementSibling;
+      const item = checkbox.closest('.location-item');
+      const qrSettings = item.querySelector('.qr-settings');
       const faceScanRow = qrSettings.nextElementSibling;
       const faceCheckbox = faceScanRow.querySelector('.loc-qr-require-face');
 
